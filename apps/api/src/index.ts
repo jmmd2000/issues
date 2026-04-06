@@ -3,6 +3,8 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { db } from "./db";
 
 const app = new Hono();
 
@@ -15,10 +17,21 @@ const routes = app.get("/api/health", c => {
 
 export type AppType = typeof routes;
 
-const port = 4000;
+async function start() {
+  console.log("Running migrations...");
+  await migrate(db, { migrationsFolder: "./drizzle" });
+  console.log("Migrations complete...");
 
-serve({ fetch: routes.fetch, port }, info => {
-  console.log(`Server running at http://localhost:${info.port}`);
+  const port = Number(process.env.PORT) || 4000;
+
+  serve({ fetch: routes.fetch, port }, info => {
+    console.log(`Server running at http://localhost:${info.port}`);
+  });
+}
+
+start().catch(error => {
+  console.error("Failed to start:", error);
+  process.exit(1);
 });
 
 export default app;
