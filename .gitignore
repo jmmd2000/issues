@@ -4,3 +4,22 @@ dist/
 drizzle/meta/
 data/
 *.log
+
+.output
+.svelte-kit/
+/build
+.DS_Store
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Playwright
+test-results
+
+.vscode/
