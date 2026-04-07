@@ -32,9 +32,11 @@ async function start() {
   });
 }
 
-start().catch((error) => {
-  console.error("Failed to start:", error);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== "test") {
+  start().catch((error) => {
+    console.error("Failed to start:", error);
+    process.exit(1);
+  });
+}
 
 export default app;
