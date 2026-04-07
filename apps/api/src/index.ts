@@ -3,14 +3,25 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { HTTPException } from "hono/http-exception";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
 import { auth } from "./routes/auth";
 
 const app = new Hono();
 
-app.use("*", logger());
+if (process.env.NODE_ENV !== "test") {
+  app.use("*", logger());
+}
+
 app.use("*", cors());
+
+app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return c.json({ message: err.message }, err.status);
+  }
+  return c.json({ message: "Internal server error" }, 500);
+});
 
 const routes = app
   .get("/api/health", (c) => {
