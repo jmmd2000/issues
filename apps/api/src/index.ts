@@ -5,15 +5,18 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
+import { auth } from "./routes/auth";
 
 const app = new Hono();
 
 app.use("*", logger());
 app.use("*", cors());
 
-const routes = app.get("/api/health", c => {
-  return c.json({ status: "ok", timestamp: new Date().toISOString() });
-});
+const routes = app
+  .get("/api/health", (c) => {
+    return c.json({ status: "ok", timestamp: new Date().toISOString() });
+  })
+  .route("", auth);
 
 export type AppType = typeof routes;
 
@@ -24,12 +27,12 @@ async function start() {
 
   const port = Number(process.env.PORT) || 4000;
 
-  serve({ fetch: routes.fetch, port }, info => {
+  serve({ fetch: routes.fetch, port }, (info) => {
     console.log(`Server running at http://localhost:${info.port}`);
   });
 }
 
-start().catch(error => {
+start().catch((error) => {
   console.error("Failed to start:", error);
   process.exit(1);
 });
