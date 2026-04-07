@@ -194,3 +194,35 @@ describe("GET /api/auth/me", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("GET /api/auth/registration-status", () => {
+  beforeEach(async () => {
+    await db.delete(users);
+  });
+
+  it("returns true if max users hasn't been reached", async () => {
+    const res = await app.request("/api/auth/registration-status", {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.open).toBe(true);
+  });
+
+  it("returns false if max users has been reached", async () => {
+    await app.request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "James", email: "j@example.com", password: "password123" }),
+    });
+
+    const res = await app.request("/api/auth/registration-status", {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.open).toBe(false);
+  });
+});
