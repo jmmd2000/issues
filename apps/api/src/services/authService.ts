@@ -73,4 +73,13 @@ export class AuthService {
 
     return sessionUser;
   }
+
+  /**
+   * Checks the number of current users, compares to 0.
+   * @returns Boolean whether registration is open or closed
+   */
+  static async checkRegistrationStatus() {
+    const [{ count: userCount }] = await db.select({ count: count() }).from(users);
+    return userCount === 0;
+  }
 }

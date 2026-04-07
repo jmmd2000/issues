@@ -42,4 +42,8 @@ export const auth = new Hono()
     if (!sessionID) throw new HTTPException(401, { message: "Not authenticated." });
     const user = await AuthService.getUserFromSession(sessionID);
     return c.json({ user }, 200);
+  })
+  .get("/api/auth/registration-status", async (c) => {
+    const open = await AuthService.checkRegistrationStatus();
+    return c.json({ open }, 200);
   });
