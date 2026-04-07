@@ -1,9 +1,16 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import type { Snippet } from "svelte";
+  import "$lib/../app.css";
 
   let { children }: { children: Snippet } = $props();
 </script>
+
+<svelte:head>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet" />
+</svelte:head>
 
 <nav>
   <a href={resolve("/")}>Issues</a>
@@ -14,24 +21,18 @@
 </main>
 
 <style>
-  :global(body) {
-    margin: 0;
-    font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande", "Lucida Sans", Arial, sans-serif;
-    color: #1a1a1a;
-    background: #fafafa;
-  }
-
   nav {
     padding: 1rem 2rem;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: var(--border);
     background: white;
+    background-color: var(--colour-bg-lighter);
   }
 
   nav a {
     font-weight: 700;
     font-size: 1.25rem;
     text-decoration: none;
-    color: #1a1a1a;
+    color: var(--colour-text);
   }
 
   main {
