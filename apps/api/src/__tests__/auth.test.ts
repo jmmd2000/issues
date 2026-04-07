@@ -17,8 +17,8 @@ describe("POST /api/auth/register", () => {
 
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.user[0].email).toBe("j@example.com");
-    expect(body.user[0]).not.toHaveProperty("passwordHash");
+    expect(body.user.email).toBe("j@example.com");
+    expect(body.user).not.toHaveProperty("passwordHash");
   });
 
   it("returns 403 when a user already exists", async () => {
@@ -144,5 +144,53 @@ describe("POST /api/auth/logout", () => {
     });
     const remaining = await db.select().from(sessions);
     expect(remaining).toHaveLength(0);
+  });
+});
+
+describe("GET /api/auth/me", () => {
+  let sessionCookie: string;
+
+  beforeEach(async () => {
+    await db.delete(sessions);
+    await db.delete(users);
+    // register + login to get a session cookie
+    await app.request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "James", email: "j@example.com", password: "password123" }),
+    });
+    const loginRes = await app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "j@example.com", password: "password123" }),
+    });
+    sessionCookie = loginRes.headers.get("set-cookie") ?? "";
+  });
+
+  it("returns the user based on the sessionID", async () => {
+    const res = await app.request("/api/auth/me", {
+      method: "GET",
+      headers: { Cookie: sessionCookie },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.user.email).toBe("j@example.com");
+    expect(body.user.name).toBe("James");
+    expect(body.user).not.toHaveProperty("passwordHash");
+  });
+
+  it("returns 401 if the user could not be found", async () => {
+    await db.delete(sessions);
+
+    const res = await app.request("/api/auth/me", {
+      method: "GET",
+      headers: { Cookie: sessionCookie },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 with no session cookie", async () => {
+    const res = await app.request("/api/auth/me", { method: "GET" });
+    expect(res.status).toBe(401);
   });
 });
