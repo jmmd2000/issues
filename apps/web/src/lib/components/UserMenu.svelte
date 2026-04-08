@@ -118,8 +118,8 @@
 
   .login-link {
     padding: 0.5rem 1rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
+    border: var(--border-accent);
+    border-radius: var(--border-radius-outer);
     background-color: var(--accent);
     text-decoration: none;
     color: white;
