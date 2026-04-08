@@ -1,7 +1,14 @@
 <script lang="ts">
+  import "$lib/../app.css";
+  import { onMount } from "svelte";
   import { resolve } from "$app/paths";
   import type { Snippet } from "svelte";
-  import "$lib/../app.css";
+  import { fetchUser } from "$lib/stores/user.svelte";
+  import UserMenu from "$lib/components/UserMenu.svelte";
+
+  onMount(() => {
+    fetchUser();
+  });
 
   let { children }: { children: Snippet } = $props();
 </script>
@@ -14,6 +21,7 @@
 
 <nav>
   <a href={resolve("/")}>Issues</a>
+  <div class="user-menu-container"><UserMenu /></div>
 </nav>
 
 <main>
@@ -22,17 +30,23 @@
 
 <style>
   nav {
+    min-height: 65px;
+    display: flex;
+    align-items: center;
     padding: 1rem 2rem;
     border-bottom: var(--border);
-    background: white;
     background-color: var(--colour-bg-lighter);
+
+    a {
+      font-weight: 700;
+      font-size: 1.25rem;
+      text-decoration: none;
+      color: var(--colour-text);
+    }
   }
 
-  nav a {
-    font-weight: 700;
-    font-size: 1.25rem;
-    text-decoration: none;
-    color: var(--colour-text);
+  .user-menu-container {
+    margin-left: auto;
   }
 
   main {
