@@ -53,12 +53,13 @@ export class AuthService {
   /**
    * Gets the current user based on the session ID
    * @param sessionID User's session ID
-   * @returns User's name, email, avatarURL and createdAt
+   * @returns User's id, name, email, avatarURL and createdAt
    * @throws {HTTPException} 401 if user could not be found.
    */
   static async getUserFromSession(sessionID: string) {
     const [sessionUser] = await db
       .select({
+        id: users.id,
         email: users.email,
         name: users.name,
         avatarURL: users.avatarURL,

@@ -1,0 +1,25 @@
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import { validationHook } from "../lib/validation";
+import { ProjectService } from "../services/projectService";
+import { requireAuth } from "../middleware/auth";
+
+const createProjectSchema = z.object({
+  key: z
+    .string()
+    .min(2)
+    .max(6)
+    .transform((v) => v.toUpperCase()),
+  name: z.string(),
+  description: z.string(),
+  visibility: z.enum(["public", "private"]),
+});
+
+export const projects = new Hono().post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async (c) => {
+  const { key, name, description, visibility } = c.req.valid("json");
+  const userID = c.get("userID");
+  const project = await ProjectService.createProject(key, name, description, visibility, userID);
+
+  return c.json({ project }, 201);
+});

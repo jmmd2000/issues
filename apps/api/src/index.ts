@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
 import { auth } from "./routes/auth";
+import { projects } from "./routes/projects";
 
 const app = new Hono();
 
@@ -27,7 +28,8 @@ const routes = app
   .get("/api/health", (c) => {
     return c.json({ status: "ok", timestamp: new Date().toISOString() });
   })
-  .route("", auth);
+  .route("", auth)
+  .route("", projects);
 
 export type AppType = typeof routes;
 
