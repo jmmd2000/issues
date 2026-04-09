@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { sessions, users } from "../db/schema";
+import { sessions } from "../db/schema";
+import { createAuthenticatedUser, resetDatabase } from "./helpers";
 
 describe("POST /api/auth/register", () => {
   beforeEach(async () => {
-    await db.delete(users);
+    await resetDatabase();
   });
 
   it("creates user when none exist", async () => {
@@ -57,9 +58,7 @@ describe("POST /api/auth/register", () => {
 
 describe("POST /api/auth/login", () => {
   beforeEach(async () => {
-    await db.delete(sessions);
-    await db.delete(users);
-
+    await resetDatabase();
     await app.request("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -110,20 +109,8 @@ describe("POST /api/auth/logout", () => {
   let sessionCookie: string;
 
   beforeEach(async () => {
-    await db.delete(sessions);
-    await db.delete(users);
-    // register + login to get a session cookie
-    await app.request("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "James", email: "j@example.com", password: "password123" }),
-    });
-    const loginRes = await app.request("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "j@example.com", password: "password123" }),
-    });
-    sessionCookie = loginRes.headers.get("set-cookie") ?? "";
+    await resetDatabase();
+    ({ cookies: sessionCookie } = await createAuthenticatedUser());
   });
 
   it("clears the session cookie", async () => {
@@ -151,20 +138,8 @@ describe("GET /api/auth/me", () => {
   let sessionCookie: string;
 
   beforeEach(async () => {
-    await db.delete(sessions);
-    await db.delete(users);
-    // register + login to get a session cookie
-    await app.request("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "James", email: "j@example.com", password: "password123" }),
-    });
-    const loginRes = await app.request("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "j@example.com", password: "password123" }),
-    });
-    sessionCookie = loginRes.headers.get("set-cookie") ?? "";
+    await resetDatabase();
+    ({ cookies: sessionCookie } = await createAuthenticatedUser());
   });
 
   it("returns the user based on the sessionID", async () => {
@@ -174,8 +149,8 @@ describe("GET /api/auth/me", () => {
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.user.email).toBe("j@example.com");
-    expect(body.user.name).toBe("James");
+    expect(body.user.email).toBe("test@test.com");
+    expect(body.user.name).toBe("Test User");
     expect(body.user).not.toHaveProperty("passwordHash");
   });
 
@@ -197,7 +172,7 @@ describe("GET /api/auth/me", () => {
 
 describe("GET /api/auth/registration-status", () => {
   beforeEach(async () => {
-    await db.delete(users);
+    await resetDatabase();
   });
 
   it("returns true if max users hasn't been reached", async () => {
