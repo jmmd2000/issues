@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { labels, projectMembers, statuses } from "../db/schema";
+import { labels, projectMembers, sessions, statuses } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { createAuthenticatedUser, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createProject, resetDatabase } from "./helpers";
 
 let cookies: string;
 
@@ -126,5 +126,64 @@ describe("POST /api/projects/create", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.project.visibility).toBe("private");
+  });
+});
+
+describe("GET /api/projects/", () => {
+  let cookies: string;
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+  });
+
+  it("returns public projects for anonymous users", async () => {
+    await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
+    await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private" });
+
+    const res = await app.request("/api/projects/", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.projects).toHaveLength(1);
+    expect(body.projects[0].name).toBe("Public");
+  });
+
+  it("returns public and member projects for authenticated users", async () => {
+    await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
+    await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private" });
+
+    const res = await app.request("/api/projects/", {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.projects).toHaveLength(2);
+  });
+
+  // This test isn't needed now, as it stands there can't be more than one user, so there
+  // can't be projects that an authed user isn't a member of. Keeping for
+  // future reference in case the user limit is lifted, this test should be included.
+  // it("does not return private projects the user is not a member of", async () => {});
+
+  it("returns empty array when no projects exist", async () => {
+    const res = await app.request("/api/projects/", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.projects).toHaveLength(0);
+  });
+
+  it("returns 401 for expired session cookie", async () => {
+    await db.delete(sessions);
+
+    const res = await app.request("/api/projects/", {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(401);
   });
 });
