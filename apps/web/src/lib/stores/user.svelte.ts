@@ -1,3 +1,5 @@
+import { resolve } from "$app/paths";
+import { goto } from "$app/navigation";
 import { client } from "$lib/api/client";
 
 interface User {
@@ -69,4 +71,13 @@ export async function fetchUser() {
   } finally {
     loaded = true;
   }
+}
+
+/**
+ * Redirects to `/login` if the user is not authed.
+ */
+export function guardRoute() {
+  $effect(() => {
+    if (loaded && !user) goto(resolve("/login"));
+  });
 }
