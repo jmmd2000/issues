@@ -8,6 +8,13 @@
       "when": 1775482532907,
       "tag": "0000_nifty_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775750058777,
+      "tag": "0001_shiny_the_watchers",
+      "breakpoints": true
     }
   ]
 }
