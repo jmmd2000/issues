@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { validationHook } from "../lib/validation";
 import { ProjectService } from "../services/projectService";
-import { requireAuth } from "../middleware/auth";
+import { optionalAuth, requireAuth } from "../middleware/auth";
 
 const createProjectSchema = z.object({
   key: z
@@ -16,10 +16,17 @@ const createProjectSchema = z.object({
   visibility: z.enum(["public", "private"]),
 });
 
-export const projects = new Hono().post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async (c) => {
-  const { key, name, description, visibility } = c.req.valid("json");
-  const userID = c.get("userID");
-  const project = await ProjectService.createProject(key, name, description, visibility, userID);
+export const projects = new Hono()
+  .post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async (c) => {
+    const { key, name, description, visibility } = c.req.valid("json");
+    const userID = c.get("userID");
+    const project = await ProjectService.createProject(key, name, description, visibility, userID);
 
-  return c.json({ project }, 201);
-});
+    return c.json({ project }, 201);
+  })
+  .get("/api/projects/", optionalAuth, async (c) => {
+    const userID = c.get("userID");
+    const projects = await ProjectService.getAllProjects(userID);
+
+    return c.json({ projects }, 200);
+  });

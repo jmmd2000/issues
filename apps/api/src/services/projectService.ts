@@ -1,7 +1,8 @@
 import { db } from "../db";
-import { projectMembers, projects } from "../db/schema";
+import { eq, inArray, or } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
+import { projectMembers, projects } from "../db/schema";
 
 export class ProjectService {
   /**
@@ -20,5 +21,22 @@ export class ProjectService {
       await tx.insert(projectMembers).values({ projectID: project.id, userID: ownerID, role: "owner" });
       return project;
     });
+  }
+
+  /**
+   * Gets all public projects for an un-authed user, additionally gets all member projects for an authed user
+   * @param userID The ID of the current user, if there is one
+   * @returns An array of projects
+   */
+  static async getAllProjects(userID: string | undefined) {
+    if (userID) {
+      const userProjects = db.select({ id: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
+      return await db
+        .select()
+        .from(projects)
+        .where(or(eq(projects.visibility, "public"), inArray(projects.id, userProjects)));
+    } else {
+      return await db.select().from(projects).where(eq(projects.visibility, "public"));
+    }
   }
 }
