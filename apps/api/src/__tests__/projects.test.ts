@@ -3,7 +3,7 @@ import app from "../index";
 import { db } from "../db";
 import { labels, projectMembers, sessions, statuses } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { createAuthenticatedUser, createProject, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase, updateProject } from "./helpers";
 
 let cookies: string;
 
@@ -23,6 +23,8 @@ describe("POST /api/projects/create", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.project.name).toBe("Test Project");
+    expect(body.project.repo).toBeNull();
+    expect(body.project.stack).toEqual([]);
   });
 
   it("returns 401 for non-authenticated requests", async () => {
@@ -127,6 +129,23 @@ describe("POST /api/projects/create", () => {
     const body = await res.json();
     expect(body.project.visibility).toBe("private");
   });
+
+  it("rejects invalid repo URL", async () => {
+    const res = await app.request("/api/projects/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({
+        key: "BAD",
+        name: "Bad Repo",
+        description: "Invalid URL",
+        visibility: "public",
+        repo: "not-a-url",
+        stack: [],
+      }),
+    });
+
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("GET /api/projects/", () => {
@@ -163,10 +182,35 @@ describe("GET /api/projects/", () => {
     expect(body.projects).toHaveLength(2);
   });
 
-  // This test isn't needed now, as it stands there can't be more than one user, so there
-  // can't be projects that an authed user isn't a member of. Keeping for
-  // future reference in case the user limit is lifted, this test should be included.
-  // it("does not return private projects the user is not a member of", async () => {});
+  it("does not return private projects the user is not a member of", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/", {
+      method: "GET",
+      headers: { Cookie: otherCookies },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.projects).toHaveLength(0);
+  });
+
+  it("returns public projects but not non-member private ones for authed users", async () => {
+    await createProject(cookies, { key: "PUB", visibility: "public" });
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/", {
+      method: "GET",
+      headers: { Cookie: otherCookies },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.projects).toHaveLength(1);
+    expect(body.projects[0].key).toBe("PUB");
+  });
 
   it("returns empty array when no projects exist", async () => {
     const res = await app.request("/api/projects/", { method: "GET" });
@@ -287,5 +331,142 @@ describe("GET /api/projects/:key", () => {
     const res = await app.request("/api/projects/A", { method: "GET" });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("PATCH /api/projects/:key", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+  });
+
+  it("updates name, description, repo, stack, metadata, and visibility", async () => {
+    await createProject(cookies, { key: "PROJ", visibility: "public" });
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({
+        name: "New Name",
+        description: "New description",
+        repo: "https://github.com/x/y",
+        stack: ["Hono", "Drizzle"],
+        metadata: { docs: "https://docs.example.com", notes: "main side project" },
+        visibility: "private",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.project.name).toBe("New Name");
+    expect(body.project.description).toBe("New description");
+    expect(body.project.repo).toBe("https://github.com/x/y");
+    expect(body.project.stack).toEqual(["Hono", "Drizzle"]);
+    expect(body.project.metadata).toEqual({ docs: "https://docs.example.com", notes: "main side project" });
+    expect(body.project.visibility).toBe("private");
+  });
+
+  it("returns full project shape with statuses, labels, and members", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const updated = await updateProject(cookies, "PROJ", { name: "Changed" });
+
+    expect(updated.statuses).toHaveLength(4);
+    expect(updated.labels).toHaveLength(5);
+    expect(updated.members).toHaveLength(1);
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "X", description: "X", repo: null, stack: [], metadata: {}, visibility: "public" }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 for non-existent project", async () => {
+    const res = await app.request("/api/projects/NOPE", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ name: "X", description: "X", repo: null, stack: [], metadata: {}, visibility: "public" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when authed user is not a member of a public project", async () => {
+    await createProject(cookies, { key: "PUB", visibility: "public" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/PUB", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: otherCookies },
+      body: JSON.stringify({ name: "Hacked", description: "X", repo: null, stack: [], metadata: {}, visibility: "public" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when authed user is not a member of a private project", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/PRIV", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: otherCookies },
+      body: JSON.stringify({ name: "Hacked", description: "X", repo: null, stack: [], metadata: {}, visibility: "private" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("allows members to update private projects", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const updated = await updateProject(cookies, "PRIV", { name: "Renamed", visibility: "private" });
+
+    expect(updated.name).toBe("Renamed");
+    expect(updated.visibility).toBe("private");
+  });
+
+  it("rejects attempt to change key via body", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({
+        name: "X",
+        description: "X",
+        repo: null,
+        stack: [],
+        metadata: {},
+        visibility: "public",
+        key: "HACK",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("clears repo when set to null", async () => {
+    await createProject(cookies, { key: "PROJ", repo: "https://github.com/x/y" });
+
+    const updated = await updateProject(cookies, "PROJ", { repo: null });
+
+    expect(updated.repo).toBeNull();
+  });
+
+  it("uppercases key param for lookup", async () => {
+    await createProject(cookies, { key: "UP" });
+
+    const updated = await updateProject(cookies, "up", { name: "Changed" });
+
+    expect(updated.key).toBe("UP");
+    expect(updated.name).toBe("Changed");
   });
 });
