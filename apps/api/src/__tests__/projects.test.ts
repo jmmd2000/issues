@@ -470,3 +470,105 @@ describe("PATCH /api/projects/:key", () => {
     expect(updated.name).toBe("Changed");
   });
 });
+
+describe("DELETE /api/projects/:key", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+  });
+
+  it("deletes project as owner", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(204);
+
+    const getRes = await app.request("/api/projects/PROJ", {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+    expect(getRes.status).toBe(404);
+  });
+
+  it("cascades deletion to statuses, labels, and members", async () => {
+    const project = await createProject(cookies, { key: "PROJ" });
+
+    await app.request("/api/projects/PROJ", {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    const remainingStatuses = await db.select().from(statuses).where(eq(statuses.projectID, project.id));
+    const remainingLabels = await db.select().from(labels).where(eq(labels.projectID, project.id));
+    const remainingMembers = await db.select().from(projectMembers).where(eq(projectMembers.projectID, project.id));
+    expect(remainingStatuses).toHaveLength(0);
+    expect(remainingLabels).toHaveLength(0);
+    expect(remainingMembers).toHaveLength(0);
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const res = await app.request("/api/projects/PROJ", { method: "DELETE" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 for non-existent project", async () => {
+    const res = await app.request("/api/projects/NOPE", {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when authed user is not a member", async () => {
+    await createProject(cookies, { key: "PROJ" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "DELETE",
+      headers: { Cookie: otherCookies },
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when authed member is not owner", async () => {
+    const project = await createProject(cookies, { key: "PROJ" });
+    const { user: otherUser, cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    await db.insert(projectMembers).values({ projectID: project.id, userID: otherUser.id, role: "member" });
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "DELETE",
+      headers: { Cookie: otherCookies },
+    });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("uppercases key param for lookup", async () => {
+    await createProject(cookies, { key: "UP" });
+
+    const res = await app.request("/api/projects/up", {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(204);
+  });
+
+  it("returns 400 for key shorter than 2 characters", async () => {
+    const res = await app.request("/api/projects/A", {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(400);
+  });
+});
