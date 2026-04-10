@@ -5,15 +5,20 @@ import { validationHook } from "../lib/validation";
 import { ProjectService } from "../services/projectService";
 import { optionalAuth, requireAuth } from "../middleware/auth";
 
+const projectKeySchema = z
+  .string()
+  .min(2)
+  .max(6)
+  .transform((v) => v.toUpperCase());
+
 const createProjectSchema = z.object({
-  key: z
-    .string()
-    .min(2)
-    .max(6)
-    .transform((v) => v.toUpperCase()),
+  key: projectKeySchema,
   name: z.string(),
   description: z.string(),
   visibility: z.enum(["public", "private"]),
+});
+const getProjectByKeySchema = z.object({
+  key: projectKeySchema,
 });
 
 export const projects = new Hono()
@@ -29,4 +34,11 @@ export const projects = new Hono()
     const projects = await ProjectService.getAllProjects(userID);
 
     return c.json({ projects }, 200);
+  })
+  .get("/api/projects/:key", optionalAuth, zValidator("param", getProjectByKeySchema, validationHook), async (c) => {
+    const userID = c.get("userID");
+    const { key } = c.req.valid("param");
+    const project = await ProjectService.getProjectByKey(userID, key);
+
+    return c.json({ project }, 200);
   });

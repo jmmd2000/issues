@@ -2,7 +2,8 @@ import { db } from "../db";
 import { eq, inArray, or } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
-import { projectMembers, projects } from "../db/schema";
+import { projectMembers, projects, safeUserColumns } from "../db/schema";
+import { HTTPException } from "hono/http-exception";
 
 export class ProjectService {
   /**
@@ -38,5 +39,51 @@ export class ProjectService {
     } else {
       return await db.select().from(projects).where(eq(projects.visibility, "public"));
     }
+  }
+
+  /**
+   * Gets a specific project by its key
+   * @param userID The ID of the current user, if there is one
+   * @param key The key of the project to get
+   * @returns A project, including it's statuses, labels and members
+   */
+  static async getProjectByKey(userID: string | undefined, key: string) {
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.key, key),
+      with: {
+        statuses: true,
+        labels: true,
+        members: {
+          columns: { projectID: false },
+          with: { user: { columns: safeUserColumns } },
+        },
+      },
+    });
+
+    const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
+    if (!project) throw notFound;
+
+    // Hide private projects from non-members behind a 404 rather than 403
+    const isMember = userID && project.members.some((m) => m.userID === userID);
+    if (project.visibility === "private" && !isMember) throw notFound;
+
+    // Hide member emails from anonymous viewers of public projects
+    if (!userID) {
+      return {
+        ...project,
+        members: project.members.map((m) => ({
+          ...m,
+          user: {
+            id: m.user.id,
+            name: m.user.name,
+            avatarURL: m.user.avatarURL,
+            createdAt: m.user.createdAt,
+            updatedAt: m.user.updatedAt,
+          },
+        })),
+      };
+    }
+
+    return project;
   }
 }

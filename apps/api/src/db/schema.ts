@@ -1,4 +1,14 @@
+import { relations } from "drizzle-orm";
 import { pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index } from "drizzle-orm/pg-core";
+
+export const safeUserColumns = {
+  id: true,
+  name: true,
+  email: true,
+  avatarURL: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -33,6 +43,13 @@ export const projects = pgTable("projects", {
   (table) => [index("idx_projects_key").on(table.key)]
 );
 
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  owner: one(users, { fields: [projects.ownerID], references: [users.id] }),
+  members: many(projectMembers),
+  statuses: many(statuses),
+  labels: many(labels),
+}));
+
 // prettier-ignore
 export const projectMembers = pgTable("project_members", {
   projectID: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
@@ -42,6 +59,11 @@ export const projectMembers = pgTable("project_members", {
 },
   (table) => [primaryKey({ columns: [table.projectID, table.userID] })]
 );
+
+export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
+  project: one(projects, { fields: [projectMembers.projectID], references: [projects.id] }),
+  user: one(users, { fields: [projectMembers.userID], references: [users.id] }),
+}));
 
 // prettier-ignore
 export const statuses = pgTable("statuses", {
@@ -56,6 +78,10 @@ export const statuses = pgTable("statuses", {
   (table) => [unique("uq_statuses_project_slug").on(table.projectID, table.slug)]
 );
 
+export const statusesRelations = relations(statuses, ({ one }) => ({
+  project: one(projects, { fields: [statuses.projectID], references: [projects.id] }),
+}));
+
 // prettier-ignore
 export const labels = pgTable("labels", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -65,3 +91,7 @@ export const labels = pgTable("labels", {
 },
   (table) => [unique("uq_labels_project_name").on(table.projectID, table.name)]
 );
+
+export const labelsRelations = relations(labels, ({ one }) => ({
+  project: one(projects, { fields: [labels.projectID], references: [projects.id] }),
+}));
