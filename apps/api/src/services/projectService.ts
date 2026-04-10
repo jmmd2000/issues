@@ -8,18 +8,14 @@ import { HTTPException } from "hono/http-exception";
 export class ProjectService {
   /**
    * Creates a new project, seeds statuses and labels, and assigns the creator as the owner
-   * @param key The key for the project, used in ticket references etc.
-   * @param name The project's name
-   * @param description The project's description
-   * @param visibility `public` or `private`
-   * @param ownerID The ID of the user that created this project
+   * @param data The project fields plus the creator's userID as `ownerID`
    * @returns The created project
    */
-  static async createProject(key: string, name: string, description: string, visibility: "public" | "private", ownerID: string) {
+  static async createProject(data: { key: string; name: string; description: string; visibility: "public" | "private"; repo: string | null; stack: string[]; ownerID: string }) {
     return await db.transaction(async (tx) => {
-      const [project] = await tx.insert(projects).values({ key, name, description, visibility, ownerID }).returning();
+      const [project] = await tx.insert(projects).values(data).returning();
       await Promise.all([StatusService.seedDefaults(tx, project.id), LabelService.seedDefaults(tx, project.id)]);
-      await tx.insert(projectMembers).values({ projectID: project.id, userID: ownerID, role: "owner" });
+      await tx.insert(projectMembers).values({ projectID: project.id, userID: data.ownerID, role: "owner" });
       return project;
     });
   }
@@ -85,5 +81,49 @@ export class ProjectService {
     }
 
     return project;
+  }
+
+  /**
+   * Updates a project's data
+   * @param userID The ID of the current user (must be a member)
+   * @param data The project key plus the fields to update
+   * @returns The updated project in the same shape as getProjectByKey
+   */
+  static async patchProject(
+    userID: string,
+    data: {
+      key: string;
+      name: string;
+      description: string;
+      repo: string | null;
+      stack: string[];
+      metadata: Record<string, unknown>;
+      visibility: "public" | "private";
+    }
+  ) {
+    const existing = await db.query.projects.findFirst({
+      where: eq(projects.key, data.key),
+      columns: { id: true },
+      with: { members: { columns: { userID: true } } },
+    });
+
+    // Hide private projects from non-members behind a 404 rather than 403
+    const notFound = new HTTPException(404, { message: `Project with key ${data.key} not found.` });
+    if (!existing) throw notFound;
+    if (!existing.members.some((m) => m.userID === userID)) throw notFound;
+
+    await db
+      .update(projects)
+      .set({
+        name: data.name,
+        description: data.description,
+        repo: data.repo,
+        stack: data.stack,
+        metadata: data.metadata,
+        visibility: data.visibility,
+      })
+      .where(eq(projects.id, existing.id));
+
+    return await this.getProjectByKey(userID, data.key);
   }
 }

@@ -11,21 +11,37 @@ const projectKeySchema = z
   .max(6)
   .transform((v) => v.toUpperCase());
 
-const createProjectSchema = z.object({
-  key: projectKeySchema,
+const projectBaseSchema = z.object({
   name: z.string(),
   description: z.string(),
   visibility: z.enum(["public", "private"]),
 });
-const getProjectByKeySchema = z.object({
+
+const createProjectSchema = projectBaseSchema
+  .extend({
+    key: projectKeySchema,
+    repo: z.url().nullable().default(null),
+    stack: z.array(z.string()).default([]),
+  })
+  .strict();
+
+const patchProjectSchema = projectBaseSchema
+  .extend({
+    repo: z.url().nullable(),
+    stack: z.array(z.string()),
+    metadata: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
+const projectKeyParamSchema = z.object({
   key: projectKeySchema,
 });
 
 export const projects = new Hono()
   .post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async (c) => {
-    const { key, name, description, visibility } = c.req.valid("json");
+    const data = c.req.valid("json");
     const userID = c.get("userID");
-    const project = await ProjectService.createProject(key, name, description, visibility, userID);
+    const project = await ProjectService.createProject({ ...data, ownerID: userID });
 
     return c.json({ project }, 201);
   })
@@ -35,10 +51,18 @@ export const projects = new Hono()
 
     return c.json({ projects }, 200);
   })
-  .get("/api/projects/:key", optionalAuth, zValidator("param", getProjectByKeySchema, validationHook), async (c) => {
+  .get("/api/projects/:key", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
     const userID = c.get("userID");
     const { key } = c.req.valid("param");
     const project = await ProjectService.getProjectByKey(userID, key);
+
+    return c.json({ project }, 200);
+  })
+  .patch("/api/projects/:key", requireAuth, zValidator("json", patchProjectSchema, validationHook), zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
+    const userID = c.get("userID");
+    const data = c.req.valid("json");
+    const { key } = c.req.valid("param");
+    const project = await ProjectService.patchProject(userID, { key, ...data });
 
     return c.json({ project }, 200);
   });
