@@ -65,4 +65,11 @@ export const projects = new Hono()
     const project = await ProjectService.patchProject(userID, { key, ...data });
 
     return c.json({ project }, 200);
+  })
+  .delete("/api/projects/:key", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
+    const userID = c.get("userID");
+    const { key } = c.req.valid("param");
+    await ProjectService.deleteProject(userID, key);
+
+    return c.body(null, 204);
   });

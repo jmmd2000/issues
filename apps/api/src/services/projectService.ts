@@ -107,7 +107,6 @@ export class ProjectService {
       with: { members: { columns: { userID: true } } },
     });
 
-    // Hide private projects from non-members behind a 404 rather than 403
     const notFound = new HTTPException(404, { message: `Project with key ${data.key} not found.` });
     if (!existing) throw notFound;
     if (!existing.members.some((m) => m.userID === userID)) throw notFound;
@@ -125,5 +124,27 @@ export class ProjectService {
       .where(eq(projects.id, existing.id));
 
     return await this.getProjectByKey(userID, data.key);
+  }
+
+  /**
+   * Deletes a project by it's key, cascading to all associated data
+   * @param userID The ID of the current user (must be the owner)
+   * @param key The key of the project to delete
+   */
+  static async deleteProject(userID: string, key: string) {
+    const existing = await db.query.projects.findFirst({
+      where: eq(projects.key, key),
+      columns: { id: true },
+      with: { members: { columns: { userID: true, role: true } } },
+    });
+
+    const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
+    if (!existing) throw notFound;
+
+    const membership = existing.members.find((m) => m.userID === userID);
+    if (!membership) throw notFound;
+    if (membership.role !== "owner") throw new HTTPException(403, { message: "Only the project owner can delete this project." });
+
+    await db.delete(projects).where(eq(projects.id, existing.id));
   }
 }
