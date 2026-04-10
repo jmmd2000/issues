@@ -187,3 +187,105 @@ describe("GET /api/projects/", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("GET /api/projects/:key", () => {
+  let cookies: string;
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+  });
+
+  it("returns project with statuses, labels, and members", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const res = await app.request("/api/projects/PROJ", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.project.key).toBe("PROJ");
+    expect(body.project.statuses).toHaveLength(4);
+    expect(body.project.labels).toHaveLength(5);
+    expect(body.project.members).toHaveLength(1);
+  });
+
+  it("returns member user details", async () => {
+    await createProject(cookies, { key: "PROJ" });
+
+    const res = await app.request("/api/projects/PROJ", {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+
+    const body = await res.json();
+    const member = body.project.members[0];
+    expect(member.role).toBe("owner");
+    expect(member.user.name).toBe("Test User");
+    expect(member.user.email).toBe("test@test.com");
+    expect(member.user).not.toHaveProperty("passwordHash");
+  });
+
+  it("hides member email from anonymous viewers", async () => {
+    await createProject(cookies, { key: "PUB", visibility: "public" });
+
+    const res = await app.request("/api/projects/PUB", { method: "GET" });
+
+    const body = await res.json();
+    const member = body.project.members[0];
+    expect(member.user.name).toBe("Test User");
+    expect(member.user).not.toHaveProperty("email");
+  });
+
+  it("returns public project for anonymous users", async () => {
+    await createProject(cookies, { key: "PUB", visibility: "public" });
+
+    const res = await app.request("/api/projects/PUB", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.project.key).toBe("PUB");
+  });
+
+  it("returns private project for authenticated member", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const res = await app.request("/api/projects/PRIV", {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.project.key).toBe("PRIV");
+  });
+
+  it("returns 404 for private project when anonymous", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const res = await app.request("/api/projects/PRIV", { method: "GET" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for non-existent project", async () => {
+    const res = await app.request("/api/projects/NOPE", { method: "GET" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("uppercases key param for lookup", async () => {
+    await createProject(cookies, { key: "UP" });
+
+    const res = await app.request("/api/projects/up", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.project.key).toBe("UP");
+  });
+
+  it("returns 400 for key shorter than 2 characters", async () => {
+    const res = await app.request("/api/projects/A", { method: "GET" });
+
+    expect(res.status).toBe(400);
+  });
+});
