@@ -38,10 +38,11 @@ export class ProjectService {
   }
 
   /**
-   * Gets a specific project by its key
+   * Gets a specific project by its key, enforcing visibility rules for the caller.
+   * Strips member emails for anonymous viewers.
    * @param userID The ID of the current user, if there is one
    * @param key The key of the project to get
-   * @returns A project, including it's statuses, labels and members
+   * @returns A project, including its statuses, labels and members
    */
   static async getProjectByKey(userID: string | undefined, key: string) {
     const project = await db.query.projects.findFirst({
@@ -59,11 +60,9 @@ export class ProjectService {
     const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
     if (!project) throw notFound;
 
-    // Hide private projects from non-members behind a 404 rather than 403
     const isMember = userID && project.members.some((m) => m.userID === userID);
     if (project.visibility === "private" && !isMember) throw notFound;
 
-    // Hide member emails from anonymous viewers of public projects
     if (!userID) {
       return {
         ...project,
@@ -84,15 +83,14 @@ export class ProjectService {
   }
 
   /**
-   * Updates a project's data
-   * @param userID The ID of the current user (must be a member)
-   * @param data The project key plus the fields to update
-   * @returns The updated project in the same shape as getProjectByKey
+   * Updates a project's data. Caller must have verified member access via requireProjectAccess.
+   * @param projectID The resolved project ID from middleware
+   * @param data The fields to update
+   * @returns The updated project row
    */
   static async patchProject(
-    userID: string,
+    projectID: string,
     data: {
-      key: string;
       name: string;
       description: string;
       repo: string | null;
@@ -101,50 +99,15 @@ export class ProjectService {
       visibility: "public" | "private";
     }
   ) {
-    const existing = await db.query.projects.findFirst({
-      where: eq(projects.key, data.key),
-      columns: { id: true },
-      with: { members: { columns: { userID: true } } },
-    });
-
-    const notFound = new HTTPException(404, { message: `Project with key ${data.key} not found.` });
-    if (!existing) throw notFound;
-    if (!existing.members.some((m) => m.userID === userID)) throw notFound;
-
-    await db
-      .update(projects)
-      .set({
-        name: data.name,
-        description: data.description,
-        repo: data.repo,
-        stack: data.stack,
-        metadata: data.metadata,
-        visibility: data.visibility,
-      })
-      .where(eq(projects.id, existing.id));
-
-    return await this.getProjectByKey(userID, data.key);
+    const [project] = await db.update(projects).set(data).where(eq(projects.id, projectID)).returning();
+    return project;
   }
 
   /**
-   * Deletes a project by it's key, cascading to all associated data
-   * @param userID The ID of the current user (must be the owner)
-   * @param key The key of the project to delete
+   * Deletes a project, cascading to all associated data. Caller must have verified owner access via requireProjectAccess.
+   * @param projectID The resolved project ID from middleware
    */
-  static async deleteProject(userID: string, key: string) {
-    const existing = await db.query.projects.findFirst({
-      where: eq(projects.key, key),
-      columns: { id: true },
-      with: { members: { columns: { userID: true, role: true } } },
-    });
-
-    const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
-    if (!existing) throw notFound;
-
-    const membership = existing.members.find((m) => m.userID === userID);
-    if (!membership) throw notFound;
-    if (membership.role !== "owner") throw new HTTPException(403, { message: "Only the project owner can delete this project." });
-
-    await db.delete(projects).where(eq(projects.id, existing.id));
+  static async deleteProject(projectID: string) {
+    await db.delete(projects).where(eq(projects.id, projectID));
   }
 }

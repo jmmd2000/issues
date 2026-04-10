@@ -1,9 +1,10 @@
+import { z } from "zod";
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { validationHook } from "../lib/validation";
 import { ProjectService } from "../services/projectService";
 import { optionalAuth, requireAuth } from "../middleware/auth";
+import { requireProjectAccess } from "../middleware/projectAccess";
 
 const projectKeySchema = z
   .string()
@@ -58,18 +59,23 @@ export const projects = new Hono()
 
     return c.json({ project }, 200);
   })
-  .patch("/api/projects/:key", requireAuth, zValidator("json", patchProjectSchema, validationHook), zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
-    const data = c.req.valid("json");
-    const { key } = c.req.valid("param");
-    const project = await ProjectService.patchProject(userID, { key, ...data });
+  .patch(
+    "/api/projects/:key",
+    requireAuth,
+    zValidator("json", patchProjectSchema, validationHook),
+    zValidator("param", projectKeyParamSchema, validationHook),
+    requireProjectAccess("member"),
+    async (c) => {
+      const data = c.req.valid("json");
+      const { id } = c.get("project");
+      const project = await ProjectService.patchProject(id, data);
 
-    return c.json({ project }, 200);
-  })
-  .delete("/api/projects/:key", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
-    const { key } = c.req.valid("param");
-    await ProjectService.deleteProject(userID, key);
+      return c.json({ project }, 200);
+    }
+  )
+  .delete("/api/projects/:key", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("owner"), async (c) => {
+    const { id } = c.get("project");
+    await ProjectService.deleteProject(id);
 
     return c.body(null, 204);
   });

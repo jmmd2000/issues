@@ -366,16 +366,6 @@ describe("PATCH /api/projects/:key", () => {
     expect(body.project.visibility).toBe("private");
   });
 
-  it("returns full project shape with statuses, labels, and members", async () => {
-    await createProject(cookies, { key: "PROJ" });
-
-    const updated = await updateProject(cookies, "PROJ", { name: "Changed" });
-
-    expect(updated.statuses).toHaveLength(4);
-    expect(updated.labels).toHaveLength(5);
-    expect(updated.members).toHaveLength(1);
-  });
-
   it("returns 401 when not authenticated", async () => {
     await createProject(cookies, { key: "PROJ" });
 
