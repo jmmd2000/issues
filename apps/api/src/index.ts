@@ -8,6 +8,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
 import { auth } from "./routes/auth";
 import { projects } from "./routes/projects";
+import { labels } from "./routes/labels";
 
 const app = new Hono();
 
@@ -29,7 +30,8 @@ const routes = app
     return c.json({ status: "ok", timestamp: new Date().toISOString() });
   })
   .route("", auth)
-  .route("", projects);
+  .route("", projects)
+  .route("", labels);
 
 export type AppType = typeof routes;
 

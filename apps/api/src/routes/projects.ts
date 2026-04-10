@@ -34,7 +34,7 @@ const patchProjectSchema = projectBaseSchema
   })
   .strict();
 
-const projectKeyParamSchema = z.object({
+export const projectKeyParamSchema = z.object({
   key: projectKeySchema,
 });
 
