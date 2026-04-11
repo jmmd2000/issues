@@ -99,7 +99,7 @@ describe("POST /api/projects/create", () => {
     const projectID = body.project.id;
 
     const seededStatuses = await db.select().from(statuses).where(eq(statuses.projectID, projectID));
-    expect(seededStatuses).toHaveLength(4);
+    expect(seededStatuses).toHaveLength(5);
 
     const seededLabels = await db.select().from(labels).where(eq(labels.projectID, projectID));
     expect(seededLabels).toHaveLength(5);
@@ -248,7 +248,7 @@ describe("GET /api/projects/:key", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.project.key).toBe("PROJ");
-    expect(body.project.statuses).toHaveLength(4);
+    expect(body.project.statuses).toHaveLength(5);
     expect(body.project.labels).toHaveLength(5);
     expect(body.project.members).toHaveLength(1);
   });
