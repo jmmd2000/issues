@@ -9,6 +9,7 @@ import { db } from "./db";
 import { auth } from "./routes/auth";
 import { projects } from "./routes/projects";
 import { labels } from "./routes/labels";
+import { statuses } from "./routes/statuses";
 
 const app = new Hono();
 
@@ -31,7 +32,8 @@ const routes = app
   })
   .route("", auth)
   .route("", projects)
-  .route("", labels);
+  .route("", labels)
+  .route("", statuses);
 
 export type AppType = typeof routes;
 

@@ -1,5 +1,8 @@
 import { relations } from "drizzle-orm";
-import { pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index } from "drizzle-orm/pg-core";
+
+export const STATUS_CATEGORIES = ["backlog", "active", "done"] as const;
+export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);
 
 export const safeUserColumns = {
   id: true,
@@ -74,7 +77,7 @@ export const statuses = pgTable("statuses", {
   name: text("name").notNull(),
   slug: text("slug").notNull(),
   position: integer("position").notNull(),
-  category: text("category", { enum: ["backlog", "active", "done"] }).notNull().default("active"),
+  category: statusCategoryEnum("category").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 },
   (table) => [unique("uq_statuses_project_slug").on(table.projectID, table.slug)]
