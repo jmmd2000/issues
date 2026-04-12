@@ -1,21 +1,11 @@
 <script lang="ts">
   import "$lib/styles/authForm.css";
-  import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
+  import { goto } from "$app/navigation";
   import { client } from "$lib/api/client";
-  import { onMount } from "svelte";
+  import type { PageProps } from "./$types";
 
-  let registrationOpen: boolean | null = $state(null);
-
-  async function checkRegistration() {
-    const res = await client.api.auth["registration-status"].$get();
-    const data = await res.json();
-    registrationOpen = data.open;
-  }
-
-  onMount(() => {
-    checkRegistration();
-  });
+  let { data }: PageProps = $props();
 
   let name: string = $state("");
   let email: string = $state("");
@@ -46,9 +36,7 @@
 </script>
 
 <div class="form-container">
-  {#if registrationOpen === null}
-    <p>Loading...</p>
-  {:else if registrationOpen === false}
+  {#if !data.open}
     <div class="closed-message">
       <p>Registration is currently closed.</p>
     </div>

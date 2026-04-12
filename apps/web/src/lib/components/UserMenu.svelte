@@ -1,11 +1,23 @@
 <script lang="ts">
-  import { isLoaded, getUser, logout } from "$lib/stores/user.svelte";
   import { resolve } from "$app/paths";
+  import { invalidateAll } from "$app/navigation";
+  import { client } from "$lib/api/client";
 
-  const user = $derived(getUser());
-  const loaded = $derived(isLoaded());
+  interface User {
+    name: string;
+    email: string;
+    avatarURL: string | null;
+    createdAt: string;
+  }
+
+  let { user }: { user: User | null } = $props();
 
   let detailsEl: HTMLDetailsElement = $state(null!);
+
+  async function handleLogout() {
+    await client.api.auth.logout.$post();
+    await invalidateAll();
+  }
 
   $effect(() => {
     function handleClick(e: MouseEvent) {
@@ -16,29 +28,25 @@
   });
 </script>
 
-{#if loaded}
-  {#if user}
-    <details bind:this={detailsEl} class="dropdown">
-      <summary>
-        <div class="user-info">
-          {#if user.avatarURL}
-            <img src={user.avatarURL} alt={user.name} />
-          {:else}
-            <span class="avatar-fallback">{user.name?.[0]?.toUpperCase() ?? "?"}</span>
-          {/if}
-          <span class="user-name">{user.name}</span>
-        </div>
-      </summary>
-      <div class="dropdown-menu">
-        <p>Settings</p>
-        <button onclick={logout}>Logout</button>
+{#if user}
+  <details bind:this={detailsEl} class="dropdown">
+    <summary>
+      <div class="user-info">
+        {#if user.avatarURL}
+          <img src={user.avatarURL} alt={user.name} />
+        {:else}
+          <span class="avatar-fallback">{user.name?.[0]?.toUpperCase() ?? "?"}</span>
+        {/if}
+        <span class="user-name">{user.name}</span>
       </div>
-    </details>
-  {:else}
-    <a href={resolve("/login")} class="login-link">Login</a>
-  {/if}
+    </summary>
+    <div class="dropdown-menu">
+      <p>Settings</p>
+      <button onclick={handleLogout}>Logout</button>
+    </div>
+  </details>
 {:else}
-  <p>Loading...</p>
+  <a href={resolve("/login")} class="login-link">Login</a>
 {/if}
 
 <style>

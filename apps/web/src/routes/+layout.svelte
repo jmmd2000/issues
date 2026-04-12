@@ -1,16 +1,12 @@
+<!-- Root level layout -->
 <script lang="ts">
   import "$lib/../app.css";
-  import { onMount } from "svelte";
   import { resolve } from "$app/paths";
   import type { Snippet } from "svelte";
-  import { fetchUser } from "$lib/stores/user.svelte";
+  import type { LayoutProps } from "./$types";
   import UserMenu from "$lib/components/UserMenu.svelte";
 
-  onMount(() => {
-    fetchUser();
-  });
-
-  let { children }: { children: Snippet } = $props();
+  let { data, children }: LayoutProps & { children: Snippet } = $props();
 </script>
 
 <svelte:head>
@@ -21,7 +17,7 @@
 
 <nav>
   <a href={resolve("/")}>Issues</a>
-  <div class="user-menu-container"><UserMenu /></div>
+  <div class="user-menu-container"><UserMenu user={data.user} /></div>
 </nav>
 
 <main>

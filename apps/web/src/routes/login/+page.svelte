@@ -1,8 +1,8 @@
 <script lang="ts">
   import "$lib/styles/authForm.css";
-  import { goto } from "$app/navigation";
-  import { login } from "$lib/stores/user.svelte";
+  import { goto, invalidateAll } from "$app/navigation";
   import { resolve } from "$app/paths";
+  import { client } from "$lib/api/client";
 
   let email: string = $state("");
   let password: string = $state("");
@@ -13,8 +13,15 @@
     submitting = true;
     formMessage = null;
     try {
-      await login(email, password);
+      const res = await client.api.auth.login.$post({
+        json: { email, password },
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { message?: string };
+        throw new Error(data.message || "Login failed");
+      }
       formMessage = { text: "Login successful!", error: false };
+      await invalidateAll();
       setTimeout(() => goto(resolve("/")), 1500);
     } catch (err) {
       formMessage = { text: err instanceof Error ? err.message : "Login failed", error: true };
