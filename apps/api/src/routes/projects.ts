@@ -46,7 +46,7 @@ export const projects = new Hono()
 
     return c.json({ project }, 201);
   })
-  .get("/api/projects/", optionalAuth, async (c) => {
+  .get("/api/projects", optionalAuth, async (c) => {
     const userID = c.get("userID");
     const projects = await ProjectService.getAllProjects(userID);
 

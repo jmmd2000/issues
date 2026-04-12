@@ -4,12 +4,12 @@ import { users } from "../db/schema";
 import { AuthService } from "../services/authService";
 import { ProjectService } from "../services/projectService";
 
-const DEV_USER = { name: "James", email: "james@test.com", password: "test123" };
+const DEV_USER = { name: "James", email: "james@test.com", password: "password123" };
 
 const DEV_PROJECTS = [
   { key: "WEB", name: "Website", description: "Personal website", visibility: "public" as const, repo: "github.com/acme/web", stack: ["SvelteKit", "TypeScript"] },
   { key: "API", name: "API", description: "Core backend API.", visibility: "public" as const, repo: "github.com/acme/api", stack: ["Hono", "Postgres"] },
-  { key: "BLOG", name: "Blog", description: "Music blog.", visibility: "private" as const, repo: null, stack: ["React, Express.js"] },
+  { key: "BLOG", name: "Blog", description: "Music blog.", visibility: "private" as const, repo: null, stack: ["React", "Express.js"] },
   { key: "OPS", name: "Infrastructure", description: "Deployment and tooling.", visibility: "private" as const, repo: "github.com/acme/ops", stack: ["Jenkins", "Docker"] },
 ];
 

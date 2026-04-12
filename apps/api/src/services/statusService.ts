@@ -2,7 +2,7 @@ import { and, eq, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { statuses } from "../db/schema";
-import { StatusCategory, Transaction } from "../lib/types";
+import type { StatusCategory, Transaction } from "../lib/types";
 
 const DEFAULT_STATUSES = [
   { name: "Backlog", slug: "backlog", category: "backlog" as const, position: 10 },

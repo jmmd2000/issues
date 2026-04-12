@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { labels } from "../db/schema";
-import { Transaction } from "../lib/types";
+import type { Transaction } from "../lib/types";
 
 const DEFAULT_LABELS = [
   { name: "Bug", colour: "#e11d48" },

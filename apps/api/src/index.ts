@@ -17,7 +17,7 @@ if (process.env.NODE_ENV !== "test") {
   app.use("*", logger());
 }
 
-app.use("*", cors());
+app.use("*", cors({ origin: process.env.WEB_ORIGIN ?? "http://localhost:5173", credentials: true }));
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
