@@ -91,6 +91,7 @@
     background-color: var(--colour-bg-hover);
     color: var(--colour-text-secondary);
     font-weight: 600;
+    font-size: 0.875rem;
     text-align: left;
     padding: 0.75em 1em;
     border-bottom: 1px solid var(--colour-border);

@@ -6,7 +6,7 @@
   min-height: calc(100vh - 9rem);
 }
 
-.auth-form {
+.form-card {
   width: 550px;
   margin: 0 auto;
   padding: 2em;
@@ -19,7 +19,7 @@
   box-shadow: var(--box-shadow);
 }
 
-.auth-form-header {
+.form-header {
   font-size: 1.3em;
   color: var(--colour-text);
   margin-bottom: 0.3em;
@@ -28,7 +28,7 @@
   border-bottom: var(--border);
 }
 
-.auth-form .input-label {
+.form-card .form-label {
   display: block;
   margin-bottom: 0.5em;
   font-weight: 500;
@@ -38,7 +38,7 @@
   color: var(--colour-muted);
 }
 
-.auth-form-input {
+.form-input {
   width: 100%;
   padding: 0.4em 0.6em;
   border: var(--border);
@@ -51,7 +51,7 @@
   }
 }
 
-.auth-form-button {
+.form-button {
   width: 100%;
   padding: 0.75em;
   background-color: var(--accent-base);
@@ -87,7 +87,7 @@
 }
 
 @media (min-width: 1921px) {
-  .auth-form {
+  .form-card {
     font-size: 1.25rem;
     width: clamp(550px, 40vw, 800px);
   }

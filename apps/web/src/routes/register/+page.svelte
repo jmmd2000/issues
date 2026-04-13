@@ -1,5 +1,5 @@
 <script lang="ts">
-  import "$lib/styles/authForm.css";
+  import "$lib/styles/form.css";
   import { resolve } from "$app/paths";
   import { goto } from "$app/navigation";
   import { client } from "$lib/api/client";
@@ -46,27 +46,27 @@
         e.preventDefault();
         handleSubmit();
       }}
-      class="auth-form"
+      class="form-card"
     >
-      <h1 class="auth-form-header">Register user</h1>
+      <h1 class="form-header">Register user</h1>
       <div class="input-row">
-        <label for="name" class="input-label">Name</label>
-        <input type="text" id="name" class="auth-form-input" bind:value={name} placeholder="Enter name..." required maxlength="25" />
+        <label for="name" class="form-label">Name</label>
+        <input type="text" id="name" class="form-input" bind:value={name} placeholder="Enter name..." required maxlength="25" />
       </div>
       <div class="input-row">
-        <label for="email" class="input-label">Email</label>
-        <input type="email" id="email" class="auth-form-input" bind:value={email} placeholder="Enter email..." required maxlength="120" />
+        <label for="email" class="form-label">Email</label>
+        <input type="email" id="email" class="form-input" bind:value={email} placeholder="Enter email..." required maxlength="120" />
       </div>
       <div class="input-row">
-        <label for="password" class="input-label">Password</label>
-        <input type="password" id="password" class="auth-form-input" minlength="8" bind:value={password} placeholder="Enter password..." required />
+        <label for="password" class="form-label">Password</label>
+        <input type="password" id="password" class="form-input" minlength="8" bind:value={password} placeholder="Enter password..." required />
       </div>
       {#if formMessage}
         <div class="form-feedback" class:error={formMessage.error}>
           {formMessage.text}
         </div>
       {/if}
-      <button type="submit" disabled={submitting} class="auth-form-button">
+      <button type="submit" disabled={submitting} class="form-button">
         {submitting ? "Registering..." : "Register"}
       </button>
     </form>
