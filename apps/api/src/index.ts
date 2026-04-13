@@ -10,6 +10,7 @@ import { auth } from "./routes/auth";
 import { projects } from "./routes/projects";
 import { labels } from "./routes/labels";
 import { statuses } from "./routes/statuses";
+export type { Jsonified, UserRow, ProjectRow, ProjectMemberRow, StatusRow, LabelRow, User, Project, CurrentUser, Status, Label, ProjectMemberUser, ProjectMember, ProjectDetail } from "./db/schema";
 
 const app = new Hono();
 

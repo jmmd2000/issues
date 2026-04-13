@@ -100,3 +100,24 @@ export const labels = pgTable("labels", {
 export const labelsRelations = relations(labels, ({ one }) => ({
   project: one(projects, { fields: [labels.projectID], references: [projects.id] }),
 }));
+
+export type Jsonified<T> = T extends Date ? string : T extends (infer U)[] ? Jsonified<U>[] : T extends object ? { [K in keyof T]: Jsonified<T[K]> } : T;
+
+export type UserRow = typeof users.$inferSelect;
+export type ProjectRow = typeof projects.$inferSelect;
+export type ProjectMemberRow = typeof projectMembers.$inferSelect;
+export type StatusRow = typeof statuses.$inferSelect;
+export type LabelRow = typeof labels.$inferSelect;
+
+export type User = Jsonified<UserRow>;
+export type Project = Jsonified<ProjectRow>;
+export type CurrentUser = Jsonified<Pick<UserRow, "name" | "email" | "avatarURL" | "createdAt">>;
+export type Status = Jsonified<StatusRow>;
+export type Label = Jsonified<LabelRow>;
+export type ProjectMemberUser = Jsonified<Pick<UserRow, "id" | "name" | "avatarURL" | "createdAt" | "updatedAt">>;
+export type ProjectMember = Jsonified<Omit<ProjectMemberRow, "projectID">> & { user: ProjectMemberUser };
+export type ProjectDetail = Project & {
+  statuses: Status[];
+  labels: Label[];
+  members: ProjectMember[];
+};
