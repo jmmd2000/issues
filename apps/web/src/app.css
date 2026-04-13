@@ -11,8 +11,25 @@
   --colour-text: #1e2229;
   --colour-text-secondary: #6a7181;
   --colour-muted: #9ca3af;
-  --accent: #355dd4;
-  --accent-hover: #2f53c0;
+  --accent-base: #355dd4;
+  --accent-shade-100: #3054bf;
+  --accent-shade-200: #2a4aaa;
+  --accent-shade-300: #254194;
+  --accent-shade-400: #20387f;
+  --accent-shade-500: #1b2f6a;
+  --accent-shade-600: #152555;
+  --accent-shade-700: #101c40;
+  --accent-shade-800: #0b132a;
+  --accent-shade-900: #050915;
+  --accent-tint-100: #496dd8;
+  --accent-tint-200: #5d7ddd;
+  --accent-tint-300: #728ee1;
+  --accent-tint-400: #869ee5;
+  --accent-tint-500: #9aaeea;
+  --accent-tint-600: #aebeee;
+  --accent-tint-700: #c2cef2;
+  --accent-tint-800: #d7dff6;
+  --accent-tint-900: #f5f7fd;
   --colour-border: #e5e7eb;
   --colour-accent-border: #2f53c0;
   --border-radius-outer: 8px;
@@ -49,6 +66,6 @@ select {
 }
 
 *:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-base);
   outline-offset: 1px;
 }

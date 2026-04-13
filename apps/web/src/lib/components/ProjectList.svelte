@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import type { Project } from "@issues/api";
+  import type { Project, CurrentUser } from "@issues/api";
 
-  let { projects }: { projects: Project[] } = $props();
+  let { projects, user }: { projects: Project[]; user: CurrentUser | null } = $props();
 </script>
 
 <section class="projects">
@@ -12,7 +12,9 @@
       <h1>Projects</h1>
       <p>All of your tracked projects.</p>
     </div>
-    <a href={resolve("/projects/new")} class="new-project-link">New Project</a>
+    {#if user}
+      <a href={resolve("/projects/new")} class="new-project-link">New Project</a>
+    {/if}
   </div>
   <table>
     <thead>
@@ -27,8 +29,8 @@
         <tr
           role="link"
           tabindex="0"
-          onclick={() => goto(resolve("/(app)/projects/[key]", { key: project.key }))}
-          onkeydown={(e) => (e.key === "Enter" ? goto(resolve("/(app)/projects/[key]", { key: project.key })) : null)}
+          onclick={() => goto(resolve("/projects/[key]", { key: project.key }))}
+          onkeydown={(e) => (e.key === "Enter" ? goto(resolve("/projects/[key]", { key: project.key })) : null)}
         >
           <td class="project-key">{project.key}</td>
           <td>{project.name}</td>
@@ -64,13 +66,13 @@
     padding: 0.5rem 1rem;
     border: var(--border-accent);
     border-radius: var(--border-radius-outer);
-    background-color: var(--accent);
+    background-color: var(--accent-base);
     text-decoration: none;
     color: white;
     font-weight: 500;
 
     &:hover {
-      background-color: var(--accent-hover);
+      background-color: var(--accent-shade-200);
     }
   }
 
@@ -87,7 +89,7 @@
 
   thead th {
     background-color: var(--colour-bg-hover);
-    color: var(--colour-muted);
+    color: var(--colour-text-secondary);
     font-weight: 600;
     text-align: left;
     padding: 0.75em 1em;
@@ -106,16 +108,17 @@
 
   tbody tr {
     transition: background-color 0.15s ease;
+    background-color: var(--colour-bg-lighter);
   }
 
   tbody tr:hover {
-    background-color: var(--colour-bg-hover);
+    background-color: var(--accent-tint-900);
     cursor: pointer;
   }
 
   .project-key {
     font-family: var(--font-mono);
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-base);
   }
 </style>

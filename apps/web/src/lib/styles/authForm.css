@@ -54,7 +54,7 @@
 .auth-form-button {
   width: 100%;
   padding: 0.75em;
-  background-color: var(--accent);
+  background-color: var(--accent-base);
   color: white;
   border: none;
   border-radius: var(--border-radius-inner);
@@ -67,7 +67,7 @@
   }
 
   &:not([disabled]):hover {
-    background-color: var(--accent-hover);
+    background-color: var(--accent-shade-200);
   }
 }
 

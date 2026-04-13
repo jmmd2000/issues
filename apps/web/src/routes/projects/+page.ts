@@ -1,3 +1,4 @@
+// Load function for projects page
 import { error } from "@sveltejs/kit";
 import type { Project } from "@issues/api";
 import { createClient } from "$lib/api/client";

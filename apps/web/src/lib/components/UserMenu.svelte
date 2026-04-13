@@ -110,7 +110,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: var(--accent);
+    background-color: var(--accent-base);
     color: white;
     display: flex;
     align-items: center;
@@ -122,13 +122,13 @@
     padding: 0.5rem 1rem;
     border: var(--border-accent);
     border-radius: var(--border-radius-outer);
-    background-color: var(--accent);
+    background-color: var(--accent-base);
     text-decoration: none;
     color: white;
     font-weight: 500;
 
     &:hover {
-      background-color: var(--accent-hover);
+      background-color: var(--accent-shade-200);
     }
   }
 </style>

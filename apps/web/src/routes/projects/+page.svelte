@@ -1,13 +1,13 @@
 <script lang="ts">
   import ProjectList from "$lib/components/ProjectList.svelte";
-  import type { Project } from "@issues/api";
+  import type { Project, CurrentUser } from "@issues/api";
 
-  let { data }: { data: { projects: Project[] } } = $props();
+  let { data }: { data: { projects: Project[]; user: CurrentUser | null } } = $props();
 </script>
 
 <section class="container">
   {#if data.projects.length > 0}
-    <ProjectList projects={data.projects} />
+    <ProjectList projects={data.projects} user={data.user} />
   {:else}
     <p>No projects found.</p>
   {/if}
