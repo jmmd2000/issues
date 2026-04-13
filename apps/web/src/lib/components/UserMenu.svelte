@@ -1,16 +1,10 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import { invalidateAll } from "$app/navigation";
+  import type { CurrentUser } from "@issues/api";
   import { client } from "$lib/api/client";
 
-  interface User {
-    name: string;
-    email: string;
-    avatarURL: string | null;
-    createdAt: string;
-  }
-
-  let { user }: { user: User | null } = $props();
+  let { user }: { user: CurrentUser | null } = $props();
 
   let detailsEl: HTMLDetailsElement = $state(null!);
 

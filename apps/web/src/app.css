@@ -6,6 +6,7 @@
 
 :root {
   --colour-bg: #f8f9fa;
+  --colour-bg-hover: #f4f4f4;
   --colour-bg-lighter: #ffffff;
   --colour-text: #1e2229;
   --colour-text-secondary: #6a7181;
@@ -19,6 +20,7 @@
   --border: 1px solid var(--colour-border);
   --border-accent: 1px solid var(--colour-accent-border);
   --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   --box-shadow: rgba(30, 34, 41, 0.06) 0px 1px 3px 0px, rgba(30, 34, 41, 0.06) 0px 1px 2px -1px;
   --colour-success: hsl(140 60% 35%);
   --colour-success-bg: hsl(140 60% 93%);
