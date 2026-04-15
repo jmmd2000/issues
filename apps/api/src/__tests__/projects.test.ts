@@ -160,7 +160,7 @@ describe("GET /api/projects/", () => {
     await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
     await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private" });
 
-    const res = await app.request("/api/projects/", { method: "GET" });
+    const res = await app.request("/api/projects", { method: "GET" });
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -172,7 +172,7 @@ describe("GET /api/projects/", () => {
     await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
     await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private" });
 
-    const res = await app.request("/api/projects/", {
+    const res = await app.request("/api/projects", {
       method: "GET",
       headers: { Cookie: cookies },
     });
@@ -186,7 +186,7 @@ describe("GET /api/projects/", () => {
     await createProject(cookies, { key: "PRIV", visibility: "private" });
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
 
-    const res = await app.request("/api/projects/", {
+    const res = await app.request("/api/projects", {
       method: "GET",
       headers: { Cookie: otherCookies },
     });
@@ -201,7 +201,7 @@ describe("GET /api/projects/", () => {
     await createProject(cookies, { key: "PRIV", visibility: "private" });
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
 
-    const res = await app.request("/api/projects/", {
+    const res = await app.request("/api/projects", {
       method: "GET",
       headers: { Cookie: otherCookies },
     });
@@ -213,7 +213,7 @@ describe("GET /api/projects/", () => {
   });
 
   it("returns empty array when no projects exist", async () => {
-    const res = await app.request("/api/projects/", { method: "GET" });
+    const res = await app.request("/api/projects", { method: "GET" });
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -223,7 +223,7 @@ describe("GET /api/projects/", () => {
   it("returns 401 for expired session cookie", async () => {
     await db.delete(sessions);
 
-    const res = await app.request("/api/projects/", {
+    const res = await app.request("/api/projects", {
       method: "GET",
       headers: { Cookie: cookies },
     });

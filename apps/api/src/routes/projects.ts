@@ -13,7 +13,7 @@ const projectKeySchema = z
   .transform((v) => v.toUpperCase());
 
 const projectBaseSchema = z.object({
-  name: z.string(),
+  name: z.string().trim().min(1, "Name is required").max(25),
   description: z.string(),
   visibility: z.enum(["public", "private"]),
 });
