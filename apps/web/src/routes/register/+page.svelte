@@ -2,8 +2,10 @@
   import "$lib/styles/form.css";
   import { resolve } from "$app/paths";
   import { goto } from "$app/navigation";
+  import { onDestroy } from "svelte";
   import { client } from "$lib/api/client";
   import type { PageProps } from "./$types";
+  import FormMessage, { type FormMessage as FormMessageType } from "$lib/components/forms/FormMessage.svelte";
 
   let { data }: PageProps = $props();
 
@@ -11,24 +13,34 @@
   let email: string = $state("");
   let password: string = $state("");
   let submitting = $state(false);
-  let formMessage: { text: string; error: boolean } | null = $state(null);
+  let message: FormMessageType | null = $state(null);
+  let fieldErrors: Record<string, string> = $state({});
+  let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onDestroy(() => {
+    if (redirectTimer) clearTimeout(redirectTimer);
+  });
 
   async function handleSubmit() {
+    if (submitting) return;
+
     submitting = true;
-    formMessage = null;
+    message = null;
+    fieldErrors = {};
     try {
       const res = await client.api.auth.register.$post({
         json: { name, email, password },
       });
-      if (res.ok) {
-        formMessage = { text: "Registration successful!", error: false };
-        setTimeout(() => goto(resolve("/login")), 1500);
-      } else {
-        const errorData = (await res.json()) as { message?: string };
-        formMessage = { text: errorData.message || "Registration failed", error: true };
+      if (!res.ok) {
+        const errorData = (await res.json()) as { message?: string; fieldErrors?: Record<string, string> };
+        message = { type: "error", text: errorData.message ?? "Registration failed" };
+        fieldErrors = errorData.fieldErrors ?? {};
+        return;
       }
+      message = { type: "success", text: "Registration successful!" };
+      redirectTimer = setTimeout(() => goto(resolve("/login")), 1500);
     } catch {
-      formMessage = { text: "An error occurred during registration", error: true };
+      message = { type: "error", text: "Network error. Please try again." };
     } finally {
       submitting = false;
     }
@@ -47,25 +59,31 @@
         handleSubmit();
       }}
       class="form-card"
+      novalidate
     >
       <h1 class="form-header">Register user</h1>
       <div class="input-row">
         <label for="name" class="form-label">Name</label>
         <input type="text" id="name" class="form-input" bind:value={name} placeholder="Enter name..." required maxlength="25" />
+        {#if fieldErrors.name}
+          <span id="name-error" class="field-error">{fieldErrors.name}</span>
+        {/if}
       </div>
       <div class="input-row">
         <label for="email" class="form-label">Email</label>
         <input type="email" id="email" class="form-input" bind:value={email} placeholder="Enter email..." required maxlength="120" />
+        {#if fieldErrors.email}
+          <span id="email-error" class="field-error">{fieldErrors.email}</span>
+        {/if}
       </div>
       <div class="input-row">
         <label for="password" class="form-label">Password</label>
         <input type="password" id="password" class="form-input" minlength="8" bind:value={password} placeholder="Enter password..." required />
+        {#if fieldErrors.password}
+          <span id="password-error" class="field-error">{fieldErrors.password}</span>
+        {/if}
       </div>
-      {#if formMessage}
-        <div class="form-feedback" class:error={formMessage.error}>
-          {formMessage.text}
-        </div>
-      {/if}
+      <FormMessage {message} />
       <button type="submit" disabled={submitting} class="form-button">
         {submitting ? "Registering..." : "Register"}
       </button>

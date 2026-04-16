@@ -39,12 +39,14 @@
   --font-body: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --box-shadow: rgba(30, 34, 41, 0.06) 0px 1px 3px 0px, rgba(30, 34, 41, 0.06) 0px 1px 2px -1px;
-  --colour-success: hsl(140 60% 35%);
-  --colour-success-bg: hsl(140 60% 93%);
-  --colour-success-border: hsl(140 45% 70%);
-  --colour-error: hsl(0 60% 40%);
-  --colour-error-bg: hsl(0 60% 93%);
-  --colour-error-border: hsl(0 45% 70%);
+  --colour-success: #248f47;
+  --colour-success-bg: #d3e9da;
+  --colour-success-bg-hover: #bdddc8;
+  --colour-success-border: #7cbc91;
+  --colour-error: #cc3333;
+  --colour-error-bg: #f5d6d6;
+  --colour-error-bg-hover: #f0c2c2;
+  --colour-error-border: #e08585;
 }
 
 html {
