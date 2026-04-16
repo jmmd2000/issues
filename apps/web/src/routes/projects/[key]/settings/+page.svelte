@@ -5,6 +5,7 @@
   import "$lib/styles/form.css";
   import GeneralSettingsForm from "$lib/components/forms/GeneralSettingsForm.svelte";
   import LabelForm from "$lib/components/forms/LabelForm.svelte";
+  import StatusForm from "$lib/components/forms/StatusForm.svelte";
 
   let { data }: PageProps = $props();
 </script>
@@ -32,6 +33,7 @@
   </section>
   <section class="settings-card-container">
     <h2>Statuses</h2>
+    <StatusForm statuses={data.project.statuses} projectKey={data.project.key} />
   </section>
 </div>
 
@@ -55,7 +57,7 @@
     text-decoration: none;
     color: var(--accent-base);
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.9em;
     transition: color 0.4s ease;
 
     & span {
