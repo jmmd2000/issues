@@ -1,8 +1,9 @@
-import { and, eq, max } from "drizzle-orm";
+import { and, eq, max, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { statuses } from "../db/schema";
 import type { StatusCategory, Transaction } from "../lib/types";
+import { slugify } from "../lib/slugify";
 
 const DEFAULT_STATUSES = [
   { name: "Backlog", slug: "backlog", category: "backlog" as const, position: 10 },
@@ -10,6 +11,7 @@ const DEFAULT_STATUSES = [
   { name: "In Progress", slug: "in-progress", category: "active" as const, position: 10 },
   { name: "In Review", slug: "in-review", category: "active" as const, position: 20 },
   { name: "Done", slug: "done", category: "done" as const, position: 10 },
+  { name: "Cancelled", slug: "cancelled", category: "cancelled" as const, position: 10 },
 ] as const;
 
 export class StatusService {
@@ -25,12 +27,20 @@ export class StatusService {
   /**
    * Creates a new status on a given project
    * @param name The name of the status
-   * @param slug The slug of the status
+   * @param slug The slug of the status, optional, auto-derived from `name`
    * @param category The workflow category
    * @param projectID The ID of the project this status belongs to
    * @returns The created status
    */
-  static async createStatus(name: string, slug: string, category: StatusCategory, projectID: string) {
+  static async createStatus(name: string, category: StatusCategory, projectID: string, slug?: string) {
+    const finalSlug = slug ?? slugify(name);
+    if (!finalSlug) throw new HTTPException(400, { message: "Name must contain at least one alphanumeric character" });
+
+    const existing = await db.query.statuses.findFirst({
+      where: and(eq(statuses.projectID, projectID), eq(statuses.slug, finalSlug)),
+    });
+    if (existing) throw new HTTPException(409, { message: "A status with this name already exists in this project." });
+
     const maxPos = await db
       .select({ max: max(statuses.position) })
       .from(statuses)
@@ -38,7 +48,7 @@ export class StatusService {
 
     const position = (maxPos[0]?.max ?? 0) + 10;
 
-    const [status] = await db.insert(statuses).values({ name, slug, category, position, projectID }).returning();
+    const [status] = await db.insert(statuses).values({ name, slug: finalSlug, category, position, projectID }).returning();
     return status;
   }
 
@@ -64,9 +74,23 @@ export class StatusService {
    * @returns The updated status row
    */
   static async patchStatus(statusID: string, projectID: string, patch: { name?: string; slug?: string }) {
+    const finalPatch: { name?: string; slug?: string } = { ...patch };
+    if (patch.name !== undefined && patch.slug === undefined) {
+      const derivedSlug = slugify(patch.name);
+      if (!derivedSlug) throw new HTTPException(400, { message: "Name must contain at least one alphanumeric character" });
+      finalPatch.slug = derivedSlug;
+    }
+
+    if (finalPatch.slug !== undefined) {
+      const clash = await db.query.statuses.findFirst({
+        where: and(eq(statuses.projectID, projectID), eq(statuses.slug, finalPatch.slug), ne(statuses.id, statusID)),
+      });
+      if (clash) throw new HTTPException(409, { message: "A status with this name already exists in this project." });
+    }
+
     const [status] = await db
       .update(statuses)
-      .set(patch)
+      .set(finalPatch)
       .where(and(eq(statuses.id, statusID), eq(statuses.projectID, projectID)))
       .returning();
     if (!status) throw new HTTPException(404, { message: `Status with id ${statusID} not found.` });

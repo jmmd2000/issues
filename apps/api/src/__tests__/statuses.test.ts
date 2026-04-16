@@ -93,7 +93,7 @@ describe("POST /api/projects/:key/statuses", () => {
       headers: { "Content-Type": "application/json", Cookie: cookies },
       body: JSON.stringify({ name: "Staging V2", slug: "staging", category: "active" }),
     });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(409);
   });
 });
 
@@ -105,14 +105,14 @@ describe("GET /api/projects/:key/statuses", () => {
     projectID = project.id;
   });
 
-  it("returns the 5 seeded default statuses", async () => {
+  it("returns the 6 seeded default statuses", async () => {
     const res = await app.request("/api/projects/TEST/statuses", { headers: { Cookie: cookies } });
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.statuses).toHaveLength(5);
+    expect(body.statuses).toHaveLength(6);
     const names = body.statuses.map((s: { name: string }) => s.name).sort();
-    expect(names).toEqual(["Backlog", "Done", "In Progress", "In Review", "Todo"]);
+    expect(names).toEqual(["Backlog", "Cancelled", "Done", "In Progress", "In Review", "Todo"]);
   });
 
   it("returns statuses ordered by category then position", async () => {
@@ -121,7 +121,7 @@ describe("GET /api/projects/:key/statuses", () => {
     const body = await res.json();
     const statuses = body.statuses;
     expect(statuses[0].category).toBe("backlog");
-    expect(statuses[statuses.length - 1].category).toBe("done");
+    expect(statuses[statuses.length - 1].category).toBe("cancelled");
   });
 
   it("returns 401 for non-authenticated requests", async () => {
@@ -232,7 +232,7 @@ describe("PATCH /api/projects/:key/statuses/:id", () => {
     expect(body.status.slug).toBe("renamed");
   });
 
-  it("patches only provided fields", async () => {
+  it("auto-derives slug from name when slug is omitted", async () => {
     const res = await app.request(`/api/projects/TEST/statuses/${statusID}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -242,7 +242,7 @@ describe("PATCH /api/projects/:key/statuses/:id", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status.name).toBe("Renamed");
-    expect(body.status.slug).not.toBe("renamed");
+    expect(body.status.slug).toBe("renamed");
   });
 
   it("returns 401 for non-authenticated requests", async () => {

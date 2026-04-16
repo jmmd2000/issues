@@ -10,8 +10,8 @@ import { requireAuth } from "../middleware/auth";
 
 const statusMutationSchema = z
   .object({
-    name: z.string(),
-    slug: z.string(),
+    name: z.string().min(1),
+    slug: z.string().optional(),
     category: z.enum(STATUS_CATEGORIES).default("backlog"),
   })
   .strict();
@@ -56,7 +56,7 @@ export const statuses = new Hono()
     async (c) => {
       const { id } = c.get("project");
       const { name, slug, category } = c.req.valid("json");
-      const status = await StatusService.createStatus(name, slug, category, id);
+      const status = await StatusService.createStatus(name, category, id, slug);
 
       return c.json({ status }, 201);
     }
