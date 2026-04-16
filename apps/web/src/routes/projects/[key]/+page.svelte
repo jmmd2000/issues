@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from "$app/paths";
+  import { Settings } from "@lucide/svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -17,6 +19,9 @@
           <span class:private={data.project.visibility === "private"} class="visibility-pill">
             {data.project.visibility}
           </span>
+          <a href={resolve("/projects/[key]/settings", { key: data.project.key })} class="settings-link" title="Project settings">
+            <Settings size={16} strokeWidth={2} />
+          </a>
         </div>
         <h1>{data.project.name}</h1>
         <p class="description">{data.project.description || "No project description yet."}</p>
@@ -121,6 +126,37 @@
   .visibility-pill.private {
     background-color: var(--accent-tint-800);
     color: var(--colour-text);
+  }
+
+  .settings-link {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--colour-text-secondary);
+    background-color: var(--colour-bg);
+    border: var(--border);
+    border-radius: 999px;
+    text-decoration: none;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease;
+
+    &:hover {
+      color: var(--accent-base);
+      background-color: var(--accent-tint-800);
+      border-color: var(--accent-tint-300);
+      transform: rotate(20deg);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-base);
+      outline-offset: 2px;
+    }
   }
 
   h1,
