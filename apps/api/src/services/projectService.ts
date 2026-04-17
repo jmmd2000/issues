@@ -2,7 +2,7 @@ import { db } from "../db";
 import { eq, inArray, or } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
-import { projectMembers, projects, safeUserColumns } from "../db/schema";
+import { projectMembers, projects, safeUserColumns, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 
 export class ProjectService {
@@ -16,6 +16,7 @@ export class ProjectService {
       const [project] = await tx.insert(projects).values(data).returning();
       await Promise.all([StatusService.seedDefaults(tx, project.id), LabelService.seedDefaults(tx, project.id)]);
       await tx.insert(projectMembers).values({ projectID: project.id, userID: data.ownerID, role: "owner" });
+      await tx.insert(ticketCounters).values({ projectID: project.id, lastNumber: 0 });
       return project;
     });
   }
