@@ -1,8 +1,11 @@
-import { relations } from "drizzle-orm";
-import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 export const STATUS_CATEGORIES = ["backlog", "active", "done", "cancelled"] as const;
 export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);
+
+export const PRIORITIES = ["critical", "high", "medium", "low", "none"] as const;
+export const priorityEnum = pgEnum("priority", PRIORITIES);
 
 export const safeUserColumns = {
   id: true,
@@ -20,7 +23,10 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   avatarURL: text("avatar_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 // prettier-ignore
@@ -43,7 +49,7 @@ export const projects = pgTable("projects", {
   visibility: text("visibility", { enum: ["public", "private"] }).notNull().default("public"),
   ownerID: uuid("owner_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 },
   (table) => [index("idx_projects_key").on(table.key)]
 );
@@ -101,23 +107,67 @@ export const labelsRelations = relations(labels, ({ one }) => ({
   project: one(projects, { fields: [labels.projectID], references: [projects.id] }),
 }));
 
-export type Jsonified<T> = T extends Date ? string : T extends (infer U)[] ? Jsonified<U>[] : T extends object ? { [K in keyof T]: Jsonified<T[K]> } : T;
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectID: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description").notNull().default(""),
+    statusID: uuid("status_id")
+      .notNull()
+      .references(() => statuses.id),
+    priority: priorityEnum("priority").notNull().default("medium"),
+    position: text("position").notNull(),
+    parentTicketID: uuid("parent_ticket_id").references((): AnyPgColumn => tickets.id, { onDelete: "set null" }),
+    reporterID: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    assigneeID: uuid("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    unique("uq_tickets_project_number").on(table.projectID, table.number),
+    index("idx_tickets_project_active")
+      .on(table.projectID)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_tickets_kanban")
+      .on(table.projectID, table.statusID, table.position)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_tickets_assignee")
+      .on(table.assigneeID)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_tickets_parent").on(table.parentTicketID),
+    index("idx_tickets_project_number").on(table.projectID, table.number),
+    check("ck_tickets_title_nonempty", sql`length(trim(${table.title})) > 0`),
+  ]
+);
 
-export type UserRow = typeof users.$inferSelect;
-export type ProjectRow = typeof projects.$inferSelect;
-export type ProjectMemberRow = typeof projectMembers.$inferSelect;
-export type StatusRow = typeof statuses.$inferSelect;
-export type LabelRow = typeof labels.$inferSelect;
+export const ticketCounters = pgTable("ticket_counters", {
+  projectID: uuid("project_id")
+    .primaryKey()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  lastNumber: integer("last_number").notNull().default(0),
+});
 
-export type User = Jsonified<UserRow>;
-export type Project = Jsonified<ProjectRow>;
-export type CurrentUser = Jsonified<Pick<UserRow, "name" | "email" | "avatarURL" | "createdAt">>;
-export type Status = Jsonified<StatusRow>;
-export type Label = Jsonified<LabelRow>;
-export type ProjectMemberUser = Jsonified<Pick<UserRow, "id" | "name" | "avatarURL" | "createdAt" | "updatedAt">>;
-export type ProjectMember = Jsonified<Omit<ProjectMemberRow, "projectID">> & { user: ProjectMemberUser };
-export type ProjectDetail = Project & {
-  statuses: Status[];
-  labels: Label[];
-  members: ProjectMember[];
-};
+export const ticketLabels = pgTable(
+  "ticket_labels",
+  {
+    ticketID: uuid("ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    labelID: uuid("label_id")
+      .notNull()
+      .references(() => labels.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.ticketID, table.labelID] })]
+);
