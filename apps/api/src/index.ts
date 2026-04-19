@@ -10,7 +10,8 @@ import { auth } from "./routes/auth";
 import { projects } from "./routes/projects";
 import { labels } from "./routes/labels";
 import { statuses } from "./routes/statuses";
-export type { Jsonified, UserRow, ProjectRow, ProjectMemberRow, StatusRow, LabelRow, User, Project, CurrentUser, Status, Label, ProjectMemberUser, ProjectMember, ProjectDetail } from "./db/schema";
+import { tickets } from "./routes/tickets";
+export type { Jsonified, UserRow, ProjectRow, ProjectMemberRow, StatusRow, LabelRow, User, Project, CurrentUser, Status, Label, ProjectMemberUser, ProjectMember, ProjectDetail } from "./lib/types";
 
 const app = new Hono();
 
@@ -34,7 +35,8 @@ const routes = app
   .route("", auth)
   .route("", projects)
   .route("", labels)
-  .route("", statuses);
+  .route("", statuses)
+  .route("", tickets);
 
 export type AppType = typeof routes;
 

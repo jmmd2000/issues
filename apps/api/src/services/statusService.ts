@@ -1,7 +1,7 @@
 import { and, eq, max, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { statuses } from "../db/schema";
+import { statuses, tickets } from "../db/schema";
 import type { StatusCategory, Transaction } from "../lib/types";
 import { slugify } from "../lib/slugify";
 
@@ -138,8 +138,10 @@ export class StatusService {
     if (!reassignStatus) throw new HTTPException(404, { message: `Status with id ${reassignToID} not found.` });
 
     await db.transaction(async (tx) => {
-      // TODO: bulk reassign tickets when tickets table exists
-      // await tx.update(tickets).set({ statusID: reassignToID }).where(eq(tickets.statusID, statusID));
+      await tx
+        .update(tickets)
+        .set({ statusID: reassignToID })
+        .where(and(eq(tickets.projectID, projectID), eq(tickets.statusID, statusID)));
       await tx.delete(statuses).where(and(eq(statuses.id, statusID), eq(statuses.projectID, projectID)));
     });
   }

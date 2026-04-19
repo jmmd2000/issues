@@ -171,3 +171,18 @@ export const ticketLabels = pgTable(
   },
   (table) => [primaryKey({ columns: [table.ticketID, table.labelID] })]
 );
+
+export const ticketsRelations = relations(tickets, ({ one, many }) => ({
+  project: one(projects, { fields: [tickets.projectID], references: [projects.id] }),
+  status: one(statuses, { fields: [tickets.statusID], references: [statuses.id] }),
+  reporter: one(users, { fields: [tickets.reporterID], references: [users.id], relationName: "ticket_reporter" }),
+  assignee: one(users, { fields: [tickets.assigneeID], references: [users.id], relationName: "ticket_assignee" }),
+  parent: one(tickets, { fields: [tickets.parentTicketID], references: [tickets.id], relationName: "ticket_parent" }),
+  children: many(tickets, { relationName: "ticket_parent" }),
+  labels: many(ticketLabels),
+}));
+
+export const ticketLabelsRelations = relations(ticketLabels, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketLabels.ticketID], references: [tickets.id] }),
+  label: one(labels, { fields: [ticketLabels.labelID], references: [labels.id] }),
+}));

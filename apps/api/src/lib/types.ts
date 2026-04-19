@@ -1,9 +1,10 @@
 import { db } from "../db";
-import { labels, projectMembers, projects, STATUS_CATEGORIES, statuses, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
+import { labels, PRIORITIES, projectMembers, projects, STATUS_CATEGORIES, statuses, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
+export type Priority = (typeof PRIORITIES)[number];
 
 export type Jsonified<T> = T extends Date ? string : T extends (infer U)[] ? Jsonified<U>[] : T extends object ? { [K in keyof T]: Jsonified<T[K]> } : T;
 
