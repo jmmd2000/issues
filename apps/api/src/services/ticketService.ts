@@ -3,11 +3,14 @@ import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { tickets, ticketCounters, ticketLabels } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
-import type { Priority } from "../lib/types";
+import type { Priority, TicketSnapshot, Transaction } from "../lib/types";
+import { ActivityService } from "./activityService";
 
 export class TicketService {
   /**
-   * Create a ticket in a project. Increments the project's ticket counter and attaches any labels.
+   * Create a ticket in a project. Increments the project's ticket counter,
+   * attaches any labels, and writes a `created` activity row. All work runs in
+   * a single transaction.
    * @param data The ticket fields plus `projectID` and `reporterID` from the route.
    * @throws HTTPException 500
    * @returns The created ticket
@@ -58,6 +61,8 @@ export class TicketService {
       if (data.labelIDs?.length) {
         await tx.insert(ticketLabels).values(data.labelIDs.map((labelID) => ({ ticketID: ticket.id, labelID })));
       }
+
+      await ActivityService.logCreate(tx, data.reporterID, ticket);
 
       return ticket;
     });
@@ -133,9 +138,12 @@ export class TicketService {
   }
 
   /**
-   * Updates a ticket's data. Caller must have verified member access via requireProjectAccess.
+   * Updates a ticket's data. Caller must have verified
+   * member access via requireProjectAccess. Runs in a single transaction and
+   * writes one activity row per change.
    * @param ticketID The ID of the ticket to update
    * @param projectID The ID of the project that the ticket belongs to
+   * @param userID The ID of the user performing the update
    * @param data The fields to update
    * @throws HTTPException 404
    * @returns The updated ticket
@@ -143,6 +151,7 @@ export class TicketService {
   static async patchTicket(
     ticketID: string,
     projectID: string,
+    userID: string,
     data: {
       title?: string;
       description?: string;
@@ -150,22 +159,48 @@ export class TicketService {
       priority?: Priority;
       assigneeID?: string | null;
       parentTicketID?: string | null;
+      labelIDs?: string[];
     }
   ) {
-    const [ticket] = await db
-      .update(tickets)
-      .set(data)
-      .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
-      .returning();
-    if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
-    return ticket;
+    return await db.transaction(async (tx) => {
+      const before = await this.loadSnapshot(tx, { ticketID });
+
+      const { labelIDs, ...fields } = data;
+      let ticket: typeof tickets.$inferSelect | undefined;
+
+      if (Object.keys(fields).length) {
+        [ticket] = await tx
+          .update(tickets)
+          .set(fields)
+          .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
+          .returning();
+        if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
+      }
+
+      if (labelIDs !== undefined) {
+        await tx.delete(ticketLabels).where(eq(ticketLabels.ticketID, ticketID));
+        if (labelIDs.length) {
+          await tx.insert(ticketLabels).values(labelIDs.map((labelID) => ({ ticketID, labelID })));
+        }
+      }
+
+      const after = await this.loadSnapshot(tx, { ticketID });
+      await ActivityService.logUpdate(tx, userID, before, after);
+
+      if (!ticket) {
+        [ticket] = await tx.select().from(tickets).where(eq(tickets.id, ticketID));
+      }
+      return ticket;
+    });
   }
 
   /**
    * Moves a ticket within a kanban column, optionally changing status.
-   * Computes a new fractional-index position between the given neighbours.
+   * Computes a new fractional-index position between the given neighbours and
+   * writes an activity row when status changes.
    * @param ticketID The ID of the ticket to move
    * @param projectID The ID of the project that the ticket belongs to
+   * @param userID The ID of the user performing the move (attributed on activity rows)
    * @param data The target status (optional) and neighbour ticket IDs (beforeID, afterID)
    * @throws HTTPException 404
    * @returns The updated ticket
@@ -173,41 +208,58 @@ export class TicketService {
   static async moveTicket(
     ticketID: string,
     projectID: string,
+    userID: string,
     data: {
       statusID?: string;
       beforeID?: string | null;
       afterID?: string | null;
     }
   ) {
-    const [before, after] = await Promise.all([data.beforeID ? this.getTicketByID(data.beforeID) : null, data.afterID ? this.getTicketByID(data.afterID) : null]);
-    const newPosition = positionBetween(before?.position ?? null, after?.position ?? null);
+    return await db.transaction(async (tx) => {
+      const before = await this.loadSnapshot(tx, { ticketID });
 
-    const update: { position: string; statusID?: string } = { position: newPosition };
-    if (data.statusID) update.statusID = data.statusID;
+      const [beforeNeighbour, afterNeighbour] = await Promise.all([
+        data.beforeID ? tx.query.tickets.findFirst({ where: eq(tickets.id, data.beforeID), columns: { position: true } }) : null,
+        data.afterID ? tx.query.tickets.findFirst({ where: eq(tickets.id, data.afterID), columns: { position: true } }) : null,
+      ]);
+      const newPosition = positionBetween(beforeNeighbour?.position ?? null, afterNeighbour?.position ?? null);
 
-    const [ticket] = await db
-      .update(tickets)
-      .set(update)
-      .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
-      .returning();
+      const update: { position: string; statusID?: string } = { position: newPosition };
+      if (data.statusID) update.statusID = data.statusID;
 
-    if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
-    return ticket;
+      const [ticket] = await tx
+        .update(tickets)
+        .set(update)
+        .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
+        .returning();
+
+      if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
+
+      const after = await this.loadSnapshot(tx, { ticketID });
+      await ActivityService.logUpdate(tx, userID, before, after);
+
+      return ticket;
+    });
   }
 
   /**
-   * Soft deletes a ticket by setting `deletedAt`.
+   * Soft deletes a ticket by setting `deletedAt` and writes a `deleted` activity row.
    * @param ticketID The ID of the ticket to delete
    * @param projectID The ID of the project the ticket belongs to
+   * @param userID The ID of the user performing the delete (attributed on the activity row)
    * @throws HTTPException 404
    */
-  static async softDeleteTicket(ticketID: string, projectID: string) {
-    const [ticket] = await db
-      .update(tickets)
-      .set({ deletedAt: new Date() })
-      .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
-      .returning();
-    if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
+  static async softDeleteTicket(ticketID: string, projectID: string, userID: string) {
+    await db.transaction(async (tx) => {
+      const [ticket] = await tx
+        .update(tickets)
+        .set({ deletedAt: new Date() })
+        .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
+        .returning({ id: tickets.id, title: tickets.title });
+      if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
+
+      await ActivityService.logDelete(tx, userID, ticket);
+    });
   }
 
   /**
@@ -220,19 +272,69 @@ export class TicketService {
   }
 
   /**
-   * Restores a soft deleted ticket.
+   * Restores a soft deleted ticket and writes a `restored` activity row.
    * @param ticketID The ID of the ticket to restore
    * @param projectID The ID of the project the ticket belongs to
+   * @param userID The ID of the user performing the restore (attributed on the activity row)
    * @throws HTTPException 404
    * @returns The restored ticket
    */
-  static async restoreTicket(ticketID: string, projectID: string) {
-    const [ticket] = await db
-      .update(tickets)
-      .set({ deletedAt: null })
-      .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID)))
-      .returning();
-    if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
-    return ticket;
+  static async restoreTicket(ticketID: string, projectID: string, userID: string) {
+    return await db.transaction(async (tx) => {
+      const [ticket] = await tx
+        .update(tickets)
+        .set({ deletedAt: null })
+        .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID)))
+        .returning();
+      if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
+
+      await ActivityService.logRestore(tx, userID, ticket);
+      return ticket;
+    });
+  }
+
+  /**
+   * Loads a {@link TicketSnapshot} from the DB or active transaction.
+   * Accepts either `{ ticketID }` or `{ projectID, number }` as locator. Normalises FK
+   * references to `{ id, name }` pairs so the activity differ can compare them directly
+   * without a separate resolver.
+   * @param handle The db or transaction to query through
+   * @param locator Either the ticketID or the (projectID, number) pair
+   * @returns The snapshot
+   */
+  static async loadSnapshot(handle: typeof db | Transaction, locator: { ticketID: string } | { projectID: string; number: number }): Promise<TicketSnapshot> {
+    const where =
+      "ticketID" in locator
+        ? and(eq(tickets.id, locator.ticketID), isNull(tickets.deletedAt))
+        : and(eq(tickets.projectID, locator.projectID), eq(tickets.number, locator.number), isNull(tickets.deletedAt));
+
+    const row = await handle.query.tickets.findFirst({
+      where,
+      with: {
+        status: { columns: { id: true, name: true } },
+        reporter: { columns: { id: true, name: true } },
+        assignee: { columns: { id: true, name: true } },
+        parent: { columns: { id: true, title: true } },
+        labels: { with: { label: { columns: { id: true, name: true } } } },
+      },
+    });
+
+    if (!row) {
+      const errorMessage = "ticketID" in locator ? `with id ${locator.ticketID}` : `#${locator.number}`;
+      throw new HTTPException(404, { message: `Ticket ${errorMessage} not found.` });
+    }
+
+    return {
+      id: row.id,
+      number: row.number,
+      title: row.title,
+      description: row.description,
+      priority: row.priority,
+      status: { id: row.status.id, name: row.status.name },
+      reporter: { id: row.reporter.id, name: row.reporter.name },
+      assignee: row.assignee ? { id: row.assignee.id, name: row.assignee.name } : null,
+      parent: row.parent ? { id: row.parent.id, name: row.parent.title } : null,
+      labels: row.labels.map((l) => ({ id: l.label.id, name: l.label.name })),
+    };
   }
 }

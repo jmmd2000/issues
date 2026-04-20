@@ -91,11 +91,12 @@ export const tickets = new Hono()
     requireProjectAccess("member"),
     async (c) => {
       const project = c.get("project");
+      const userID = c.get("userID");
       const { num } = c.req.valid("param");
       const body = c.req.valid("json");
 
       const existing = await TicketService.getTicketByNumber(project.id, num);
-      const ticket = await TicketService.patchTicket(existing.id, project.id, body);
+      const ticket = await TicketService.patchTicket(existing.id, project.id, userID, body);
       return c.json({ ticket });
     }
   )
@@ -107,19 +108,21 @@ export const tickets = new Hono()
     requireProjectAccess("member"),
     async (c) => {
       const project = c.get("project");
+      const userID = c.get("userID");
       const { num } = c.req.valid("param");
       const body = c.req.valid("json");
 
       const existing = await TicketService.getTicketByNumber(project.id, num);
-      const ticket = await TicketService.moveTicket(existing.id, project.id, body);
+      const ticket = await TicketService.moveTicket(existing.id, project.id, userID, body);
       return c.json({ ticket });
     }
   )
   .delete("/api/projects/:key/tickets/:num", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
     const project = c.get("project");
+    const userID = c.get("userID");
     const { num } = c.req.valid("param");
 
     const existing = await TicketService.getTicketByNumber(project.id, num);
-    await TicketService.softDeleteTicket(existing.id, project.id);
+    await TicketService.softDeleteTicket(existing.id, project.id, userID);
     return c.body(null, 204);
   });

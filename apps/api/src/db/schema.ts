@@ -1,11 +1,29 @@
 import { relations, sql } from "drizzle-orm";
 import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { ActivityValue } from "../lib/types";
 
 export const STATUS_CATEGORIES = ["backlog", "active", "done", "cancelled"] as const;
 export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);
 
 export const PRIORITIES = ["critical", "high", "medium", "low", "none"] as const;
 export const priorityEnum = pgEnum("priority", PRIORITIES);
+
+export const ACTIVITY_ACTIONS = [
+  "created",
+  "updated",
+  "deleted",
+  "restored",
+  "label_added",
+  "label_removed",
+  "comment_added",
+  "comment_edited",
+  "comment_deleted",
+  "link_added",
+  "link_removed",
+  "attachment_added",
+  "attachment_removed",
+] as const;
+export const activityActionEnum = pgEnum("activity_action", ACTIVITY_ACTIONS);
 
 export const safeUserColumns = {
   id: true,
@@ -185,4 +203,28 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
 export const ticketLabelsRelations = relations(ticketLabels, ({ one }) => ({
   ticket: one(tickets, { fields: [ticketLabels.ticketID], references: [tickets.id] }),
   label: one(labels, { fields: [ticketLabels.labelID], references: [labels.id] }),
+}));
+
+export const ticketActivity = pgTable(
+  "ticket_activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketID: uuid("ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    userID: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    action: activityActionEnum("activity_action").notNull(),
+    fieldName: text("field_name"),
+    oldValue: jsonb("old_value").$type<ActivityValue | null>(),
+    newValue: jsonb("new_value").$type<ActivityValue | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_activity_ticket_time").on(table.ticketID, table.createdAt), index("idx_activity_project_time").on(table.createdAt)]
+);
+
+export const ticketActivityRelations = relations(ticketActivity, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketActivity.ticketID], references: [tickets.id] }),
+  user: one(users, { fields: [ticketActivity.userID], references: [users.id] }),
 }));
