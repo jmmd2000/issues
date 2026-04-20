@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { labels, statuses, ticketLabels, tickets } from "../db/schema";
+import { labels, statuses, ticketActivity, ticketLabels, tickets } from "../db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
 
@@ -62,6 +62,15 @@ describe("POST /api/projects/:key/tickets", () => {
     expect(body.ticket.statusID).toBe(statusID);
     expect(body.ticket.priority).toBe("medium");
     expect(body.ticket.number).toBe(1);
+  });
+
+  it("writes a created activity row", async () => {
+    const ticket = await createTicket({ title: "Audit me" });
+
+    const rows = await db.select().from(ticketActivity).where(eq(ticketActivity.ticketID, ticket.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].action).toBe("created");
+    expect(rows[0].newValue).toEqual({ value: "Audit me" });
   });
 
   it("increments ticket number per project", async () => {
@@ -346,6 +355,64 @@ describe("PATCH /api/projects/:key/tickets/:num", () => {
     expect(body.ticket.priority).toBe("high");
   });
 
+  it("writes one activity row per changed field", async () => {
+    const created = await createTicket({ title: "Before" });
+
+    await app.request(`/api/projects/TEST/tickets/${created.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "After", priority: "high" }),
+    });
+
+    const rows = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, created.id), eq(ticketActivity.action, "updated")));
+
+    const byField = new Map(rows.map((r) => [r.fieldName, r]));
+    expect(byField.get("title")?.oldValue).toEqual({ value: "Before" });
+    expect(byField.get("title")?.newValue).toEqual({ value: "After" });
+    expect(byField.get("priority")?.oldValue).toEqual({ value: "medium" });
+    expect(byField.get("priority")?.newValue).toEqual({ value: "high" });
+  });
+
+  it("replaces labels and writes label_added rows", async () => {
+    const created = await createTicket({ title: "Label me" });
+    const [label] = await db.select({ id: labels.id, name: labels.name }).from(labels).where(eq(labels.projectID, projectID)).limit(1);
+
+    await app.request(`/api/projects/TEST/tickets/${created.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ labelIDs: [label.id] }),
+    });
+
+    const joined = await db.select().from(ticketLabels).where(eq(ticketLabels.ticketID, created.id));
+    expect(joined).toHaveLength(1);
+
+    const added = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, created.id), eq(ticketActivity.action, "label_added")));
+    expect(added).toHaveLength(1);
+    expect(added[0].newValue).toEqual({ id: label.id, name: label.name });
+  });
+
+  it("writes no activity rows when the patch is a no-op", async () => {
+    const created = await createTicket({ title: "Stable" });
+
+    await app.request(`/api/projects/TEST/tickets/${created.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "Stable" }),
+    });
+
+    const rows = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, created.id), eq(ticketActivity.action, "updated")));
+    expect(rows).toHaveLength(0);
+  });
+
   it("returns 401 for non-authenticated requests", async () => {
     const created = await createTicket();
     const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, {
@@ -432,6 +499,31 @@ describe("PATCH /api/projects/:key/tickets/:num/move", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ticket.statusID).toBe(otherStatus.id);
+
+    const rows = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "updated"), eq(ticketActivity.fieldName, "statusID")));
+    expect(rows).toHaveLength(1);
+    expect((rows[0].newValue as { id: string }).id).toBe(otherStatus.id);
+  });
+
+  it("writes no activity rows for a position-only move", async () => {
+    const a = await createTicket({ title: "A" });
+    const b = await createTicket({ title: "B" });
+    const c = await createTicket({ title: "C" });
+
+    await app.request(`/api/projects/TEST/tickets/${c.number}/move`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ beforeID: a.id, afterID: b.id }),
+    });
+
+    const rows = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, c.id), eq(ticketActivity.action, "updated")));
+    expect(rows).toHaveLength(0);
   });
 
   it("returns 401 for non-authenticated requests", async () => {
@@ -493,6 +585,22 @@ describe("DELETE /api/projects/:key/tickets/:num", () => {
       .from(tickets)
       .where(and(eq(tickets.id, ticket.id), isNull(tickets.deletedAt)));
     expect(activeRow).toBeUndefined();
+  });
+
+  it("writes a deleted activity row", async () => {
+    const ticket = await createTicket({ title: "Gone" });
+
+    await app.request(`/api/projects/TEST/tickets/${ticket.number}`, {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    const rows = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "deleted")));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].newValue).toEqual({ value: "Gone" });
   });
 
   it("returns 401 for non-authenticated requests", async () => {
