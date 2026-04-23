@@ -272,6 +272,60 @@ describe("GET /api/projects/:key/tickets", () => {
   });
 });
 
+describe("GET /api/projects/:key/tickets/board", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  it("returns board tickets in raw fractional-position order", async () => {
+    const top = await createTicket({ title: "Top" });
+    const middle = await createTicket({ title: "Middle" });
+    const bottom = await createTicket({ title: "Bottom" });
+
+    await db.update(tickets).set({ position: "Zz" }).where(eq(tickets.id, top.id));
+    await db.update(tickets).set({ position: "a0" }).where(eq(tickets.id, middle.id));
+    await db.update(tickets).set({ position: "a1" }).where(eq(tickets.id, bottom.id));
+
+    const res = await app.request("/api/projects/TEST/tickets/board", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Top", "Middle", "Bottom"]);
+  });
+
+  it("does not apply the list endpoint's default pagination", async () => {
+    for (let i = 1; i <= 26; i += 1) {
+      await createTicket({ title: `Ticket ${i}` });
+    }
+
+    const res = await app.request("/api/projects/TEST/tickets/board", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.tickets).toHaveLength(26);
+  });
+
+  it("filters board tickets", async () => {
+    const backlogStatusID = await getStatusIDBySlug("backlog");
+    const doneStatusID = await getStatusIDBySlug("done");
+
+    await createTicket({ title: "Backlog high", statusID: backlogStatusID, priority: "high" });
+    await createTicket({ title: "Done high", statusID: doneStatusID, priority: "high" });
+    await createTicket({ title: "Done low", statusID: doneStatusID, priority: "low" });
+
+    const res = await app.request(`/api/projects/TEST/tickets/board?statusID=${doneStatusID}&priority=high`, { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.tickets).toHaveLength(1);
+    expect(body.tickets[0].title).toBe("Done high");
+  });
+});
+
 describe("GET /api/projects/:key/tickets/:num", () => {
   beforeEach(async () => {
     await resetDatabase();
