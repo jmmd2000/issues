@@ -3,7 +3,7 @@
   import type { Snippet } from "svelte";
 
   type CommonProps = {
-    variant?: "primary" | "danger";
+    variant?: "primary" | "secondary" | "danger";
     size?: "sm" | "md" | "lg";
     fullWidth?: boolean;
     children: Snippet;
@@ -76,26 +76,36 @@
     box-shadow:
       rgba(30, 34, 41, 0.2) 0px 1px 3px,
       rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(180deg, var(--accent-base), var(--accent-shade-200));
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow:
+        rgba(30, 34, 41, 0.25) 0px 0px 1px,
+        rgba(255, 255, 255, 0.08) 0px 1px 0px inset;
+    }
   }
 
-  .primary:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--accent-base), var(--accent-shade-200));
-  }
-
-  .primary:active:not(:disabled) {
-    transform: translateY(1px);
+  .secondary {
+    background: var(--colour-bg-lighter);
+    color: var(--colour-text);
+    border: 1px solid var(--colour-border);
     box-shadow:
-      rgba(30, 34, 41, 0.25) 0px 0px 1px,
-      rgba(255, 255, 255, 0.08) 0px 1px 0px inset;
-  }
+      0 1px 2px rgba(30, 34, 41, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
-  .danger {
-    background: var(--colour-error);
-    color: white;
-    border: 1px solid var(--colour-error-border);
-    box-shadow:
-      rgba(30, 34, 41, 0.2) 0px 1px 3px,
-      rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+    &:hover:not(:disabled) {
+      background: var(--colour-bg-hover);
+    }
+
+    &:active:not(:disabled) {
+      background: var(--colour-bg-hover);
+      box-shadow: none;
+      transform: translateY(1px);
+    }
   }
 
   .danger:hover:not(:disabled) {

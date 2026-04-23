@@ -2,6 +2,7 @@
   import { client } from "$lib/api/client";
   import type { Label } from "@issues/api";
   import { Plus } from "@lucide/svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
   import LabelRow from "./LabelRow.svelte";
 
@@ -72,10 +73,10 @@
         <input type="color" id="new-label-colour" aria-label="Choose label colour" bind:value={newLabel.colour} disabled={submitting} />
       </label>
       <input type="text" id="new-label-name" class="form-input" bind:value={newLabel.name} placeholder="Enter label name..." required maxlength="25" disabled={submitting} />
-      <button type="submit" class="add-button" disabled={submitting}>
+      <Button type="submit" size="md" disabled={submitting}>
         <Plus size="14" />
         {submitting ? "Adding..." : "Add label"}
-      </button>
+      </Button>
     </div>
     <div class="field-errors">
       {#if fieldErrors.colour}
@@ -107,28 +108,5 @@
 
   .new-label-footer :global(.form-message) {
     margin-top: 0.5em;
-  }
-
-  .add-button {
-    display: flex;
-    align-items: center;
-    gap: 0.35em;
-    background-color: var(--accent-base);
-    color: white;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    padding: 0.5em 0.9em;
-    cursor: pointer;
-    font-size: 0.875em;
-    white-space: nowrap;
-
-    &:not([disabled]):hover {
-      background-color: var(--accent-shade-200);
-    }
-
-    &[disabled] {
-      background-color: var(--colour-muted);
-      cursor: not-allowed;
-    }
   }
 </style>

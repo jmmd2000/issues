@@ -4,6 +4,7 @@
   import { Check, GripVertical, Trash2 } from "@lucide/svelte";
   import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
+  import Button from "$lib/components/ui/Button.svelte";
 
   let {
     status,
@@ -143,10 +144,10 @@
         {/each}
       </select>
       <div class="confirm-actions">
-        <button type="button" class="confirm-delete" onclick={confirmDelete} disabled={deleting}>
+        <Button type="button" variant="danger" size="sm" onclick={confirmDelete} disabled={deleting}>
           {deleting ? "Deleting..." : "Confirm delete"}
-        </button>
-        <button type="button" class="confirm-cancel" onclick={() => (confirming = false)} disabled={deleting}>Cancel</button>
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onclick={() => (confirming = false)} disabled={deleting}>Cancel</Button>
       </div>
     </div>
   {/if}
@@ -243,28 +244,5 @@
   .confirm-actions {
     display: flex;
     gap: 0.4em;
-  }
-
-  .confirm-delete {
-    padding: 0.4em 0.7em;
-    background: var(--colour-error);
-    color: white;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    font-size: 0.8em;
-    cursor: pointer;
-    &[disabled] {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-  }
-
-  .confirm-cancel {
-    padding: 0.4em 0.7em;
-    background: transparent;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    font-size: 0.8em;
-    cursor: pointer;
   }
 </style>

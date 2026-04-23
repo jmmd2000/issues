@@ -3,6 +3,7 @@
   import { dndzone, type DndEvent } from "svelte-dnd-action";
   import { Plus } from "@lucide/svelte";
   import { client } from "$lib/api/client";
+  import Button from "$lib/components/ui/Button.svelte";
   import StatusRow from "./StatusRow.svelte";
 
   type Category = Status["category"];
@@ -91,17 +92,20 @@
     >
       <input type="text" class="form-input" bind:value={newName} placeholder="Status name..." maxlength="40" required disabled={submitting} />
       <div class="add-actions">
-        <button type="submit" class="add-button-primary" disabled={submitting}>{submitting ? "Adding..." : "Add"}</button>
-        <button
+        <Button type="submit" size="sm" disabled={submitting}>{submitting ? "Adding..." : "Add"}</Button>
+        <Button
           type="button"
-          class="add-button-secondary"
+          variant="secondary"
+          size="sm"
           onclick={() => {
             adding = false;
             newName = "";
             addError = null;
           }}
-          disabled={submitting}>Cancel</button
+          disabled={submitting}
         >
+          Cancel
+        </Button>
       </div>
       {#if addError}
         <span class="field-error">{addError}</span>
@@ -172,29 +176,5 @@
   .add-actions {
     display: flex;
     gap: 0.4em;
-  }
-
-  .add-button-primary {
-    padding: 0.4em 0.8em;
-    background: var(--accent-base);
-    color: white;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    font-size: 0.8em;
-    cursor: pointer;
-
-    &[disabled] {
-      background: var(--colour-muted);
-      cursor: not-allowed;
-    }
-  }
-
-  .add-button-secondary {
-    padding: 0.4em 0.8em;
-    background: transparent;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    font-size: 0.8em;
-    cursor: pointer;
   }
 </style>
