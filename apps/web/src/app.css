@@ -67,7 +67,7 @@ select {
   font-size: inherit;
 }
 
-*:focus {
-  outline: 2px solid var(--accent-base);
+*:focus-visible {
+  outline: 2px solid var(--accent-tint-700);
   outline-offset: 1px;
 }

@@ -1,10 +1,11 @@
 <script lang="ts">
   import "$lib/styles/form.css";
   import { resolve } from "$app/paths";
-  import { goto } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { onDestroy } from "svelte";
   import { client } from "$lib/api/client";
   import type { PageProps } from "./$types";
+  import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "$lib/components/forms/FormMessage.svelte";
 
   let { data }: PageProps = $props();
@@ -38,6 +39,7 @@
         return;
       }
       message = { type: "success", text: "Registration successful!" };
+      await invalidateAll();
       redirectTimer = setTimeout(() => goto(resolve("/login")), 1500);
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
@@ -84,9 +86,9 @@
         {/if}
       </div>
       <FormMessage {message} />
-      <button type="submit" disabled={submitting} class="form-button">
+      <Button type="submit" disabled={submitting} fullWidth>
         {submitting ? "Registering..." : "Register"}
-      </button>
+      </Button>
     </form>
   {/if}
 </div>

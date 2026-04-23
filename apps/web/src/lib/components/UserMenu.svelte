@@ -3,6 +3,7 @@
   import { invalidateAll } from "$app/navigation";
   import type { CurrentUser } from "@issues/api";
   import { client } from "$lib/api/client";
+  import Button from "$lib/components/ui/Button.svelte";
 
   let { user }: { user: CurrentUser | null } = $props();
 
@@ -40,7 +41,7 @@
     </div>
   </details>
 {:else}
-  <a href={resolve("/login")} class="login-link">Login</a>
+  <Button href={resolve("/login")} size="sm">Login</Button>
 {/if}
 
 <style>
@@ -118,17 +119,4 @@
     font-weight: bold;
   }
 
-  .login-link {
-    padding: 0.5rem 1rem;
-    border: var(--border-accent);
-    border-radius: var(--border-radius-outer);
-    background-color: var(--accent-base);
-    text-decoration: none;
-    color: white;
-    font-weight: 500;
-
-    &:hover {
-      background-color: var(--accent-shade-200);
-    }
-  }
 </style>

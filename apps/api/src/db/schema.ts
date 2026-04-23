@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
-import { ActivityValue } from "../lib/types";
+import type { ActivityValue } from "../lib/types";
 
 export const STATUS_CATEGORIES = ["backlog", "active", "done", "cancelled"] as const;
 export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);

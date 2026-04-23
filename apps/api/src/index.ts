@@ -11,7 +11,25 @@ import { projects } from "./routes/projects";
 import { labels } from "./routes/labels";
 import { statuses } from "./routes/statuses";
 import { tickets } from "./routes/tickets";
-export type { Jsonified, UserRow, ProjectRow, ProjectMemberRow, StatusRow, LabelRow, User, Project, CurrentUser, Status, Label, ProjectMemberUser, ProjectMember, ProjectDetail } from "./lib/types";
+export type {
+  Jsonified,
+  UserRow,
+  ProjectRow,
+  ProjectMemberRow,
+  StatusRow,
+  LabelRow,
+  User,
+  Project,
+  CurrentUser,
+  Status,
+  Label,
+  Priority,
+  ProjectMemberUser,
+  ProjectMember,
+  ProjectDetail,
+  Ticket,
+  TicketSummary,
+} from "./lib/types";
 
 const app = new Hono();
 

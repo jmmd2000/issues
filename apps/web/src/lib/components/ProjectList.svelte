@@ -2,6 +2,8 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import type { Project, CurrentUser } from "@issues/api";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Plus } from "@lucide/svelte";
 
   let { projects, user }: { projects: Project[]; user: CurrentUser | null } = $props();
 </script>
@@ -13,7 +15,9 @@
       <p>All of your tracked projects.</p>
     </div>
     {#if user}
-      <a href={resolve("/projects/new")} class="new-project-link">New Project</a>
+      <Button href={resolve("/projects/new")}>
+        <Plus size={13} strokeWidth={4} /> New project
+      </Button>
     {/if}
   </div>
   <table>
@@ -60,20 +64,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  .new-project-link {
-    padding: 0.5rem 1rem;
-    border: var(--border-accent);
-    border-radius: var(--border-radius-outer);
-    background-color: var(--accent-base);
-    text-decoration: none;
-    color: white;
-    font-weight: 500;
-
-    &:hover {
-      background-color: var(--accent-shade-200);
-    }
   }
 
   table {

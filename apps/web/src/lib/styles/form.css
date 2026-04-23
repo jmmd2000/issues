@@ -167,27 +167,6 @@
   border-radius: 999px;
 }
 
-.form-button {
-  width: 100%;
-  padding: 0.75em;
-  background-color: var(--accent-base);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius-inner);
-  cursor: pointer;
-  font-size: 1em;
-  letter-spacing: -0.05em;
-
-  &[disabled] {
-    background-color: var(--colour-muted);
-    cursor: not-allowed;
-  }
-
-  &:not([disabled]):hover {
-    background-color: var(--accent-shade-200);
-  }
-}
-
 @media (min-width: 1921px) {
   .form-card {
     font-size: 1.25rem;

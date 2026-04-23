@@ -1,9 +1,10 @@
 <script lang="ts">
   import "$lib/styles/form.css";
-  import { goto } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { onDestroy } from "svelte";
   import { client } from "$lib/api/client";
+  import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "$lib/components/forms/FormMessage.svelte";
 
   let email: string = $state("");
@@ -34,6 +35,7 @@
         return;
       }
       message = { type: "success", text: "Login successful!" };
+      await invalidateAll();
       redirectTimer = setTimeout(() => goto(resolve("/")), 1500);
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
@@ -68,8 +70,8 @@
       {/if}
     </div>
     <FormMessage {message} />
-    <button type="submit" disabled={submitting} class="form-button">
+    <Button type="submit" disabled={submitting} fullWidth>
       {submitting ? "Logging in..." : "Login"}
-    </button>
+    </Button>
   </form>
 </div>

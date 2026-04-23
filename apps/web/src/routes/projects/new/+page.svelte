@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { client } from "$lib/api/client";
+  import Button from "$lib/components/ui/Button.svelte";
 
   let key: string = $state("");
   let name: string = $state("");
@@ -114,9 +115,9 @@
       </div>
     {/if}
 
-    <button type="submit" disabled={submitting} class="form-button">
+    <Button type="submit" disabled={submitting} fullWidth>
       {submitting ? "Creating project..." : "Create project"}
-    </button>
+    </Button>
   </form>
 </div>
 

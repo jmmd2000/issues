@@ -1,6 +1,7 @@
 <script lang="ts">
   import { client } from "$lib/api/client";
   import type { Project } from "@issues/api";
+  import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
 
   let { project }: { project: Project } = $props();
@@ -102,9 +103,9 @@
 
   <div class="settings-card-footer">
     <FormMessage {message} />
-    <button type="submit" class="form-button" disabled={submitting}>
+    <Button type="submit" disabled={submitting}>
       {submitting ? "Saving..." : "Save changes"}
-    </button>
+    </Button>
   </div>
 </form>
 
@@ -116,11 +117,6 @@
     gap: 1em;
     padding-top: 1em;
     border-top: var(--border);
-  }
-
-  .settings-card-footer :global(.form-button) {
-    width: auto;
-    padding: 0.5em 1.25em;
   }
 
   .settings-card-footer :global(.form-message) {
