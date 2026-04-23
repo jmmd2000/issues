@@ -34,10 +34,13 @@ const moveSchema = z
   })
   .strict();
 
-const listQuerySchema = z.object({
+const ticketFilterQuerySchema = z.object({
   statusID: z.uuid().optional(),
   priority: z.enum(PRIORITIES).optional(),
   assigneeID: z.uuid().optional(),
+});
+
+const listQuerySchema = ticketFilterQuerySchema.extend({
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
 });
@@ -73,6 +76,20 @@ export const tickets = new Hono()
       const query = c.req.valid("query");
 
       const tickets = await TicketService.listForProject(project.id, query);
+      return c.json({ tickets });
+    }
+  )
+  .get(
+    "/api/projects/:key/tickets/board",
+    requireAuth,
+    zValidator("param", projectKeyParamSchema, validationHook),
+    zValidator("query", ticketFilterQuerySchema, validationHook),
+    requireProjectAccess("member"),
+    async (c) => {
+      const project = c.get("project");
+      const query = c.req.valid("query");
+
+      const tickets = await TicketService.listBoardForProject(project.id, query);
       return c.json({ tickets });
     }
   )

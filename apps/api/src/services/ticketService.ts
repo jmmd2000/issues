@@ -138,6 +138,32 @@ export class TicketService {
   }
 
   /**
+   * Lists the full kanban board for a project, ordered by column and position.
+   * Excludes soft-deleted tickets.
+   * @param projectID The ID of the project
+   * @param filters Optional board filters
+   * @returns The board tickets
+   */
+  static async listBoardForProject(
+    projectID: string,
+    filters: {
+      statusID?: string;
+      priority?: Priority;
+      assigneeID?: string;
+    }
+  ) {
+    const where = [eq(tickets.projectID, projectID), isNull(tickets.deletedAt)];
+    if (filters.statusID) where.push(eq(tickets.statusID, filters.statusID));
+    if (filters.priority) where.push(eq(tickets.priority, filters.priority));
+    if (filters.assigneeID) where.push(eq(tickets.assigneeID, filters.assigneeID));
+
+    return await db.query.tickets.findMany({
+      where: and(...where),
+      orderBy: [tickets.statusID, sql`${tickets.position} COLLATE "C"`],
+    });
+  }
+
+  /**
    * Updates a ticket's data. Caller must have verified
    * member access via requireProjectAccess. Runs in a single transaction and
    * writes one activity row per change.
