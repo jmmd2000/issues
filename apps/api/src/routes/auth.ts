@@ -40,8 +40,8 @@ export const auth = new Hono()
   .get("/api/auth/me", async (c) => {
     const sessionID = getCookie(c, "session_id");
     if (!sessionID) throw new HTTPException(401, { message: "Not authenticated." });
-    const { name, email, avatarURL, createdAt } = await AuthService.getUserFromSession(sessionID);
-    return c.json({ user: { name, email, avatarURL, createdAt } }, 200);
+    const { id, name, email, avatarURL, createdAt } = await AuthService.getUserFromSession(sessionID);
+    return c.json({ user: { id, name, email, avatarURL, createdAt } }, 200);
   })
   .get("/api/auth/registration-status", async (c) => {
     const open = await AuthService.checkRegistrationStatus();

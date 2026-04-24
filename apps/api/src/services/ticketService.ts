@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { tickets, ticketCounters, ticketLabels } from "../db/schema";
@@ -117,6 +117,7 @@ export class TicketService {
       statusID?: string;
       priority?: Priority;
       assigneeID?: string;
+      titleSearch?: string;
       page?: number;
       perPage?: number;
     }
@@ -128,6 +129,7 @@ export class TicketService {
     if (filters.statusID) where.push(eq(tickets.statusID, filters.statusID));
     if (filters.priority) where.push(eq(tickets.priority, filters.priority));
     if (filters.assigneeID) where.push(eq(tickets.assigneeID, filters.assigneeID));
+    if (filters.titleSearch) where.push(ilike(tickets.title, `%${filters.titleSearch}%`));
 
     return await db.query.tickets.findMany({
       where: and(...where),

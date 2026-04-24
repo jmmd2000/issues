@@ -23,7 +23,7 @@ export type ActivityInsert = typeof ticketActivity.$inferInsert;
 
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
-export type CurrentUser = Jsonified<Pick<UserRow, "name" | "email" | "avatarURL" | "createdAt">>;
+export type CurrentUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type Status = Jsonified<StatusRow>;
 export type Label = Jsonified<LabelRow>;
 export type Ticket = Jsonified<TicketRow>;

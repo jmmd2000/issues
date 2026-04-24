@@ -41,6 +41,7 @@ const ticketFilterQuerySchema = z.object({
 });
 
 const listQuerySchema = ticketFilterQuerySchema.extend({
+  titleSearch: z.string().trim().min(1).max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
 });
