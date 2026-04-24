@@ -1,28 +1,10 @@
 import { relations, sql } from "drizzle-orm";
 import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { ACTIVITY_ACTIONS, PRIORITIES, STATUS_CATEGORIES } from "../lib/constants";
 import type { ActivityValue } from "../lib/types";
 
-export const STATUS_CATEGORIES = ["backlog", "active", "done", "cancelled"] as const;
 export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);
-
-export const PRIORITIES = ["critical", "high", "medium", "low", "none"] as const;
 export const priorityEnum = pgEnum("priority", PRIORITIES);
-
-export const ACTIVITY_ACTIONS = [
-  "created",
-  "updated",
-  "deleted",
-  "restored",
-  "label_added",
-  "label_removed",
-  "comment_added",
-  "comment_edited",
-  "comment_deleted",
-  "link_added",
-  "link_removed",
-  "attachment_added",
-  "attachment_removed",
-] as const;
 export const activityActionEnum = pgEnum("activity_action", ACTIVITY_ACTIONS);
 
 export const safeUserColumns = {

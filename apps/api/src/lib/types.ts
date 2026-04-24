@@ -1,5 +1,6 @@
 import { db } from "../db";
-import { ACTIVITY_ACTIONS, labels, PRIORITIES, projectMembers, projects, STATUS_CATEGORIES, statuses, ticketActivity, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
+import { labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
+import { ACTIVITY_ACTIONS, PRIORITIES, STATUS_CATEGORIES } from "./constants";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

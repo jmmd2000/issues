@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { PRIORITIES } from "../db/schema";
+import { PRIORITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
 import { requireAuth } from "../middleware/auth";
 import { requireProjectAccess } from "../middleware/projectAccess";

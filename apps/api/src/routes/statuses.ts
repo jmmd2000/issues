@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { validationHook } from "../lib/validation";
 import { projectKeyParamSchema } from "./projects";
-import { STATUS_CATEGORIES } from "../db/schema";
+import { STATUS_CATEGORIES } from "../lib/constants";
 import { StatusService } from "../services/statusService";
 import { requireProjectAccess } from "../middleware/projectAccess";
 import { requireAuth } from "../middleware/auth";
