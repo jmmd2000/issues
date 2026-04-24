@@ -4,6 +4,7 @@
   import { resolve } from "$app/paths";
   import type { Snippet } from "svelte";
   import type { LayoutProps } from "./$types";
+  import favicon from "$lib/assets/favicon.svg";
   import UserMenu from "$lib/components/UserMenu.svelte";
 
   let { data, children }: LayoutProps & { children: Snippet } = $props();
@@ -13,10 +14,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
+  <link rel="icon" href={favicon} type="image/svg+xml" />
 </svelte:head>
 
 <nav>
-  <a href={resolve("/")}>Issues</a>
+  <span class="icon-title">
+    <img src={favicon} alt="" width="24" height="24" />
+    <a href={resolve("/")}>Issues</a>
+  </span>
+
   <div class="user-menu-container"><UserMenu user={data.user} /></div>
 </nav>
 
@@ -26,16 +32,16 @@
 
 <style>
   nav {
-    min-height: 65px;
+    min-height: 55px;
     display: flex;
     align-items: center;
-    padding: 1rem 2rem;
+    padding: 0 2rem;
     border-bottom: var(--border);
     background-color: var(--colour-bg-lighter);
 
     a {
       font-weight: 700;
-      font-size: 1.25rem;
+      font-size: 1rem;
       text-decoration: none;
       color: var(--colour-text);
     }
@@ -46,8 +52,15 @@
   }
 
   main {
-    max-width: 1200px;
+    max-width: 95em;
     margin: 2rem auto;
     padding: 0 2rem;
+    font-size: clamp(1rem, 0.18vw + 0.85rem, 1.25rem);
+  }
+
+  .icon-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
   }
 </style>

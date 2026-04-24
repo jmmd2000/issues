@@ -33,6 +33,7 @@
     "@issues/shared": "workspace:*",
     "@lucide/svelte": "^1.3.0",
     "hono": "^4.12.11",
-    "svelte-dnd-action": "^0.9.69"
+    "svelte-dnd-action": "^0.9.69",
+    "zod": "^4.3.6"
   }
 }

@@ -1,9 +1,14 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import { Settings } from "@lucide/svelte";
+  import { Info, Plus, Settings, Ticket as TicketIcon, UsersRound } from "@lucide/svelte";
   import type { PageProps } from "./$types";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Tabs from "$lib/components/ui/Tabs.svelte";
+  import TicketsView from "$lib/components/tickets/TicketsView.svelte";
 
   let { data }: PageProps = $props();
+  let project = $derived(data.project);
+  let statuses = $derived(data.statuses);
 </script>
 
 <svelte:head>
@@ -11,266 +16,139 @@
 </svelte:head>
 
 <section class="project-page">
-  <section class="workspace">
-    <aside class="project-rail">
-      <div class="rail-card project-summary">
-        <div class="eyebrow-row">
-          <span class="project-key">{data.project.key}</span>
-          <span class:private={data.project.visibility === "private"} class="visibility-pill">
-            {data.project.visibility}
-          </span>
-          <a href={resolve("/projects/[key]/settings", { key: data.project.key })} class="settings-link" title="Project settings">
-            <Settings size={16} strokeWidth={2} />
-          </a>
-        </div>
-        <h1>{data.project.name}</h1>
-        <p class="description">{data.project.description || "No project description yet."}</p>
-
-        <dl class="project-info">
-          <div>
-            <dt>Members</dt>
-            <dd>{data.project.members.length}</dd>
-          </div>
-          <div>
-            <dt>Repository</dt>
-            <dd>
-              {#if data.project.repo}
-                <a href={data.project.repo} target="_blank" rel="external">{data.project.repo}</a>
-              {:else}
-                <span>Not linked</span>
-              {/if}
-            </dd>
-          </div>
-        </dl>
+  <div class="project-header">
+    <div class="project-info">
+      <div class="project-topline">
+        <p>{project.key}</p>
+        <span class="visibility">{project.visibility}</span>
       </div>
 
-      {#if data.project.stack.length > 0}
-        <div class="rail-card">
-          <h2>Stack</h2>
-          <div class="stack-list" aria-label="Project stack">
-            {#each data.project.stack as item (item)}
-              <span>{item}</span>
-            {/each}
-          </div>
+      <div class="project-headline">
+        <h1>{project.name}</h1>
+        <p>{project.description || "No project description yet."}</p>
+      </div>
+
+      {#if project.stack.length > 0}
+        <div class="stack">
+          {#each project.stack as item (item)}
+            <span class="stack-item">{item}</span>
+          {/each}
         </div>
       {/if}
-    </aside>
-
-    <div class="tickets-panel">
-      <div class="panel-header">
-        <h2>Tickets</h2>
-      </div>
     </div>
-  </section>
+
+    <div class="supplemental-info">
+      <Button size="md" variant="secondary" href={resolve("/projects/[key]/settings", { key: project.key })} aria-label="Project settings"><Settings size={14} /> Settings</Button>
+      <Button><Plus size={13} strokeWidth={4} /> New ticket</Button>
+    </div>
+  </div>
+
+  <div class="project-content">
+    {#snippet ticketsPanel()}
+      <TicketsView project={data.project} {statuses} members={data.members} view={data.ticketView} ticketData={data.ticketData} />
+    {/snippet}
+    {#snippet overviewPanel()}Overview content{/snippet}
+    {#snippet membersPanel()}Members content{/snippet}
+
+    <Tabs
+      tabs={[
+        { id: "tickets", label: "Tickets", icon: TicketIcon },
+        { id: "overview", label: "Overview", icon: Info },
+        { id: "members", label: "Members", icon: UsersRound },
+      ]}
+      panels={{ tickets: ticketsPanel, overview: overviewPanel, members: membersPanel }}
+    />
+  </div>
 </section>
 
 <style>
   .project-page {
-    padding-top: 0.5rem;
+    padding-top: 0.5em;
   }
 
-  .workspace {
-    display: grid;
-    grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
-    gap: 1.25rem;
-    align-items: start;
-  }
-
-  .project-rail {
+  .project-header {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    position: sticky;
-    top: 1rem;
-  }
-
-  .rail-card,
-  .tickets-panel {
-    padding: 1.25rem;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
-  }
-
-  .project-summary {
-    padding: 1.5rem 1.75rem;
-  }
-
-  .eyebrow-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .project-key {
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--accent-base);
-    text-transform: uppercase;
-  }
-
-  .visibility-pill {
-    padding: 0.3rem 0.65rem;
-    border-radius: 999px;
-    background-color: var(--accent-tint-800);
-    color: var(--accent-shade-200);
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: capitalize;
-  }
-
-  .visibility-pill.private {
-    background-color: var(--accent-tint-800);
-    color: var(--colour-text);
-  }
-
-  .settings-link {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    color: var(--colour-text-secondary);
-    background-color: var(--colour-bg);
-    border: var(--border);
-    border-radius: 999px;
-    text-decoration: none;
-    transition:
-      color 0.2s ease,
-      background-color 0.2s ease,
-      border-color 0.2s ease,
-      transform 0.2s ease;
-
-    &:hover {
-      color: var(--accent-base);
-      background-color: var(--accent-tint-800);
-      border-color: var(--accent-tint-300);
-      transform: rotate(20deg);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--accent-base);
-      outline-offset: 2px;
-    }
-  }
-
-  h1,
-  h2,
-  p {
-    margin: 0;
-  }
-
-  h1 {
-    max-width: 14ch;
-    font-size: clamp(2rem, 3vw, 2.7rem);
-    line-height: 0.98;
-    letter-spacing: -0.04em;
-  }
-
-  h2 {
-    font-size: 1.1rem;
-    letter-spacing: -0.03em;
-  }
-
-  .description {
-    max-width: 58ch;
-    margin-top: 1rem;
-    color: var(--colour-text-secondary);
-    line-height: 1.6;
-    font-size: 1rem;
-  }
-
-  .stack-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-    margin-top: 1.25rem;
-  }
-
-  .stack-list span {
-    padding: 0.45rem 0.7rem;
-    border-radius: 999px;
-    background-color: var(--colour-bg);
-    border: var(--border);
-    color: var(--colour-text-secondary);
-    font-size: 0.82rem;
-    font-weight: 600;
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 1rem;
+    justify-content: space-between;
   }
 
   .project-info {
-    margin: 1.5rem 0 0;
-    display: grid;
-    gap: 0.9rem;
+    display: flex;
+    flex-direction: column;
   }
 
-  .project-info div {
-    display: grid;
-    gap: 0.2rem;
-    padding-top: 0.9rem;
-    border-top: var(--border);
+  .project-topline {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    margin-bottom: 0.4em;
+
+    & p {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent-base);
+      font-size: 0.85em;
+      letter-spacing: 0.01em;
+    }
+
+    & .visibility {
+      color: var(--accent-shade-200);
+      padding: 0.2em 0.6em;
+      border-radius: 999px;
+      background: var(--accent-tint-800);
+      text-transform: capitalize;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
   }
 
-  .project-info dt {
-    color: var(--colour-muted);
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+  .project-headline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    margin-bottom: 0.65em;
+
+    & h1 {
+      font-size: 2.2em;
+      letter-spacing: -0.01em;
+    }
+
+    & p {
+      font-size: 0.9em;
+      color: var(--colour-text-secondary);
+      max-width: 65ch;
+      line-height: 1.5;
+      letter-spacing: 0.01em;
+    }
   }
 
-  .project-info dd {
-    margin: 0;
-    color: var(--colour-text);
+  .stack {
+    display: flex;
+    gap: 0.4em;
+  }
+
+  .stack-item {
+    font-size: 0.8em;
     font-weight: 600;
-    letter-spacing: -0.02em;
+    color: var(--colour-text-secondary);
+    padding: 0.3em 0.7em;
+    border-radius: 999px;
+    border: var(--border);
   }
 
-  .project-info a {
-    color: var(--accent-base);
-    text-decoration: none;
+  .project-content {
+    margin-top: 1.2em;
   }
 
-  .rail-card h2 {
-    margin-bottom: 1rem;
-    font-size: 0.95rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--colour-muted);
-  }
-
-  .tickets-panel {
-    min-height: 38rem;
-  }
-
-  @media (max-width: 820px) {
-    .workspace {
-      grid-template-columns: 1fr;
-    }
-
-    .project-rail {
-      position: static;
-    }
+  .supplemental-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
   }
 
   @media (max-width: 640px) {
-    .rail-card,
-    .tickets-panel,
-    .project-summary {
-      padding: 1rem;
-    }
-
-    h1 {
-      max-width: none;
+    .project-header {
+      flex-direction: column;
+      gap: 1em;
     }
   }
 </style>
