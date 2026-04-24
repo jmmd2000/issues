@@ -39,7 +39,7 @@
 
     <div class="supplemental-info">
       <Button size="md" variant="secondary" href={resolve("/projects/[key]/settings", { key: project.key })} aria-label="Project settings"><Settings size={14} /> Settings</Button>
-      <Button><Plus size={13} strokeWidth={4} /> New ticket</Button>
+      <Button href={resolve("/projects/[key]/tickets/new", { key: project.key })}><Plus size={13} strokeWidth={4} /> New ticket</Button>
     </div>
   </div>
 
