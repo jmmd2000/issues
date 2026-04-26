@@ -2,44 +2,19 @@
   import type { Status, Ticket } from "@issues/api";
   import type { DndEvent } from "svelte-dnd-action";
   import { onDestroy } from "svelte";
-  import { SvelteMap, SvelteSet } from "svelte/reactivity";
+  import { SvelteMap } from "svelte/reactivity";
   import { client } from "$lib/api/client";
-  import ColumnPicker from "./ColumnPicker.svelte";
   import TicketKanbanColumn from "./TicketKanbanColumn.svelte";
 
   let {
     projectKey,
-    projectID,
     statuses,
     tickets,
   }: {
     projectKey: string;
-    projectID: string;
     statuses: Status[];
     tickets: Ticket[];
   } = $props();
-
-  const STATUS_CATEGORY_ORDER: Record<Status["category"], number> = {
-    backlog: 0,
-    active: 1,
-    done: 2,
-    cancelled: 3,
-  };
-  const storageKey = $derived(`kanban-columns-${projectID}`);
-
-  function readVisible(): SvelteSet<string> {
-    const allIDs = new Set(statuses.map((s) => s.id));
-    if (typeof localStorage === "undefined") return new SvelteSet(allIDs);
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return new SvelteSet(allIDs);
-    try {
-      const arr: unknown = JSON.parse(raw);
-      if (!Array.isArray(arr)) return new SvelteSet(allIDs);
-      return new SvelteSet(arr.filter((id): id is string => typeof id === "string" && allIDs.has(id)));
-    } catch {
-      return new SvelteSet(allIDs);
-    }
-  }
 
   function comparePosition(a: string, b: string) {
     if (a === b) return 0;
@@ -50,34 +25,17 @@
     return [...ts].sort((a, b) => comparePosition(a.position, b.position));
   }
 
-  let visible = $state<SvelteSet<string>>(readVisible());
   let localTickets: Ticket[] = $derived(sortByPosition(tickets));
-
-  let orderedStatuses = $derived([...statuses].sort((a, b) => STATUS_CATEGORY_ORDER[a.category] - STATUS_CATEGORY_ORDER[b.category] || a.position - b.position));
-  let visibleStatuses = $derived(orderedStatuses.filter((s) => visible.has(s.id)));
 
   let ticketsByStatus = $derived.by(() => {
     const map = new SvelteMap<string, Ticket[]>();
-    for (const s of visibleStatuses) map.set(s.id, []);
+    for (const s of statuses) map.set(s.id, []);
     for (const t of localTickets) {
       const col = map.get(t.statusID);
       if (col) col.push(t);
     }
     return map;
   });
-
-  function persistVisible(next: SvelteSet<string>) {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(storageKey, JSON.stringify([...next]));
-  }
-
-  function toggleColumn(id: string) {
-    const next = new SvelteSet(visible);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    visible = next;
-    persistVisible(next);
-  }
 
   function handleConsider(statusID: string, items: Ticket[]) {
     const incomingIDs = new Set(items.map((i) => i.id));
@@ -128,14 +86,11 @@
 </script>
 
 <div class="kanban">
-  <div class="toolbar">
-    <ColumnPicker statuses={orderedStatuses} {visible} onToggle={toggleColumn} />
-  </div>
   <div class="columns">
-    {#each visibleStatuses as status (status.id)}
+    {#each statuses as status (status.id)}
       <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} onConsider={handleConsider} onFinalize={handleFinalize} />
     {/each}
-    {#if visibleStatuses.length === 0}
+    {#if statuses.length === 0}
       <div class="no-columns">No columns selected. Click "Columns" to choose.</div>
     {/if}
   </div>
@@ -145,13 +100,7 @@
   .kanban {
     display: flex;
     flex-direction: column;
-    gap: 0.8em;
     min-height: 0;
-  }
-
-  .toolbar {
-    display: flex;
-    justify-content: flex-end;
   }
 
   .columns {

@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Status } from "@issues/api";
   import { Check, Columns3 } from "@lucide/svelte";
-  import Button from "../ui/Button.svelte";
 
   let {
     statuses,
@@ -20,14 +19,18 @@
     const target = e.target as HTMLElement;
     if (!target.closest(".column-picker")) open = false;
   }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (open && e.key === "Escape") open = false;
+  }
 </script>
 
-<svelte:window onclick={handleOutside} />
+<svelte:window onclick={handleOutside} onkeydown={handleKeydown} />
 
 <div class="column-picker">
-  <Button variant="secondary" type="button" class="trigger" onclick={() => (open = !open)} aria-expanded={open} aria-haspopup="menu">
+  <button type="button" class="trigger" onclick={() => (open = !open)} aria-expanded={open} aria-haspopup="menu">
     <Columns3 size={14} /> Columns
-  </Button>
+  </button>
   {#if open}
     <div class="menu" role="menu">
       {#each statuses as s (s.id)}
@@ -45,7 +48,28 @@
 <style>
   .column-picker {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+  }
+
+  .trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.4em 0.65em;
+    border: none;
+    border-radius: var(--border-radius-inner);
+    background: transparent;
+    color: var(--colour-text-secondary);
+    font-family: inherit;
+    font-size: 0.78em;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .trigger:hover,
+  .trigger[aria-expanded="true"] {
+    color: var(--colour-text);
+    background: var(--colour-bg-hover);
   }
 
   .menu {
