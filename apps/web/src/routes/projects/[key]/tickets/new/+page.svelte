@@ -11,6 +11,8 @@
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
   import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
   import ParentTicketCombobox from "$lib/components/tickets/ParentTicketCombobox.svelte";
+  import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
+  import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -136,30 +138,31 @@
 
     <div class="form-grid">
       <div class="input-row">
-        <label class="form-label" for="status">Status</label>
-        <select id="status" class="form-input" bind:value={statusID}>
-          {#each data.statuses as status (status.id)}
-            <option value={status.id}>{status.name}</option>
-          {/each}
-        </select>
+        <span class="form-label">Status</span>
+        <StatusPicker statuses={data.statuses} bind:value={statusID} />
         {#if fieldErrors.statusID}<span class="field-error">{fieldErrors.statusID}</span>{/if}
       </div>
 
       <div class="input-row">
-        <label class="form-label" for="priority">Priority</label>
-        <select id="priority" class="form-input" bind:value={priority}>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-          <option value="none">None</option>
-        </select>
+        <span class="form-label">Priority</span>
+        <PriorityPicker bind:value={priority} />
       </div>
     </div>
 
-    <AssigneePicker members={data.members} currentUserID={data.user.id} bind:value={assigneeID} />
-    <LabelsPicker labels={data.labels} bind:value={labelIDs} />
-    <ParentTicketCombobox projectKey={data.project.key} bind:value={parentTicketID} />
+    <div class="input-row">
+      <span class="form-label">Assignee</span>
+      <AssigneePicker members={data.members} currentUserID={data.user.id} bind:value={assigneeID} />
+    </div>
+
+    <div class="input-row">
+      <span class="form-label">Labels</span>
+      <LabelsPicker labels={data.labels} bind:value={labelIDs} />
+    </div>
+
+    <div class="input-row">
+      <label class="form-label" for="parent-ticket">Parent ticket</label>
+      <ParentTicketCombobox projectKey={data.project.key} inputID="parent-ticket" bind:value={parentTicketID} />
+    </div>
 
     <div class="ticket-form-footer">
       <FormMessage message={formMessage} />

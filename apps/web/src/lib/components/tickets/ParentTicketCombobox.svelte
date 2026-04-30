@@ -5,9 +5,11 @@
   let {
     projectKey,
     value = $bindable<string | undefined>(undefined),
+    inputID = "parent-ticket",
   }: {
     projectKey: string;
     value?: string;
+    inputID?: string;
   } = $props();
 
   let query = $state("");
@@ -68,40 +70,36 @@
   }
 </script>
 
-<div class="input-row">
-  <label class="form-label" for="parent-ticket">Parent ticket</label>
+{#if selected}
+  <div class="selected-pill">
+    <span class="selected-key">{projectKey}-{selected.number}</span>
+    <span class="selected-title">{selected.title}</span>
+    <button type="button" class="clear" onclick={clear} aria-label="Remove parent ticket">
+      <X size={14} strokeWidth={2} />
+    </button>
+  </div>
+{:else}
+  <input id={inputID} class="form-input" type="text" bind:value={query} placeholder="Search tickets by title..." autocomplete="off" />
 
-  {#if selected}
-    <div class="selected-pill">
-      <span class="selected-key">{projectKey}-{selected.number}</span>
-      <span class="selected-title">{selected.title}</span>
-      <button type="button" class="clear" onclick={clear} aria-label="Remove parent ticket">
-        <X size={14} strokeWidth={2} />
-      </button>
-    </div>
-  {:else}
-    <input id="parent-ticket" class="form-input" type="text" bind:value={query} placeholder="Search tickets by title..." autocomplete="off" />
-
-    {#if query.trim().length >= 2}
-      {#if loading}
-        <span class="combobox-hint">Searching...</span>
-      {:else if results.length}
-        <ul class="combobox-results" role="listbox" aria-label="Matching tickets">
-          {#each results as ticket (ticket.id)}
-            <li>
-              <button type="button" onclick={() => pick(ticket)}>
-                <span class="result-key">{projectKey}-{ticket.number}</span>
-                <span class="result-title">{ticket.title}</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <span class="combobox-hint">No matches.</span>
-      {/if}
+  {#if query.trim().length >= 2}
+    {#if loading}
+      <span class="combobox-hint">Searching...</span>
+    {:else if results.length}
+      <ul class="combobox-results" role="listbox" aria-label="Matching tickets">
+        {#each results as ticket (ticket.id)}
+          <li>
+            <button type="button" onclick={() => pick(ticket)}>
+              <span class="result-key">{projectKey}-{ticket.number}</span>
+              <span class="result-title">{ticket.title}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <span class="combobox-hint">No matches.</span>
     {/if}
   {/if}
-</div>
+{/if}
 
 <style>
   .selected-pill {

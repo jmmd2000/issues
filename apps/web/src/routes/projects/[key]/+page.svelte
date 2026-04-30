@@ -71,6 +71,14 @@
     justify-content: space-between;
   }
 
+  .project-headline h1 {
+    max-width: 20em;
+    color: var(--colour-text);
+    font-size: clamp(1.8rem, 1.6vw + 1.3rem, 3rem);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
   .project-info {
     display: flex;
     flex-direction: column;

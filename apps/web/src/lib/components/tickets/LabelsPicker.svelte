@@ -21,26 +21,22 @@
   }
 </script>
 
-<div class="input-row">
-  <span class="form-label">Labels</span>
-
-  {#if labels.length === 0}
-    <p class="picker-empty">This project has no labels yet.</p>
-  {:else}
-    <div class="label-chips" role="group" aria-label="Ticket labels">
-      {#each labels as label (label.id)}
-        {@const selected = selectedSet.has(label.id)}
-        <button type="button" class="label-chip" style={`--chip-colour: ${label.colour};`} data-selected={selected} aria-pressed={selected} onclick={() => toggle(label.id)}>
-          <span class="chip-swatch"></span>
-          <span>{label.name}</span>
-          {#if selected}
-            <Check size={12} strokeWidth={3} />
-          {/if}
-        </button>
-      {/each}
-    </div>
-  {/if}
-</div>
+{#if labels.length === 0}
+  <p class="picker-empty">This project has no labels yet.</p>
+{:else}
+  <div class="label-chips" role="group" aria-label="Ticket labels">
+    {#each labels as label (label.id)}
+      {@const selected = selectedSet.has(label.id)}
+      <button type="button" class="label-chip" style={`--chip-colour: ${label.colour};`} data-selected={selected} aria-pressed={selected} onclick={() => toggle(label.id)}>
+        <span class="chip-swatch"></span>
+        <span>{label.name}</span>
+        {#if selected}
+          <Check size={12} strokeWidth={3} />
+        {/if}
+      </button>
+    {/each}
+  </div>
+{/if}
 
 <style>
   .label-chips {
