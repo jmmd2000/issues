@@ -28,6 +28,7 @@ export type {
   ProjectMember,
   ProjectDetail,
   Ticket,
+  TicketDetail,
   TicketSummary,
 } from "./lib/types";
 

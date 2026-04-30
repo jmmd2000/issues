@@ -97,12 +97,16 @@ export class TicketService {
         status: true,
         reporter: { columns: { id: true, name: true, avatarURL: true } },
         assignee: { columns: { id: true, name: true, avatarURL: true } },
+        parent: { columns: { id: true, number: true, title: true } },
         labels: { with: { label: true } },
       },
     });
 
     if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found` });
-    return ticket;
+    return {
+      ...ticket,
+      labels: ticket.labels.map(({ label }) => label),
+    };
   }
 
   /**

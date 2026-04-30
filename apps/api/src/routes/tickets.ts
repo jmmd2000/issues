@@ -24,7 +24,13 @@ const createSchema = z
   })
   .strict();
 
-const patchSchema = createSchema.partial().strict();
+const patchSchema = createSchema
+  .partial()
+  .extend({
+    assigneeID: z.uuid().nullable().optional(),
+    parentTicketID: z.uuid().nullable().optional(),
+  })
+  .strict();
 
 const moveSchema = z
   .object({
