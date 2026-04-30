@@ -3,6 +3,7 @@
   import { invalidateAll } from "$app/navigation";
   import type { CurrentUser } from "@issues/api";
   import { client } from "$lib/api/client";
+  import UserAvatar from "$lib/components/UserAvatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
 
   let { user }: { user: CurrentUser | null } = $props();
@@ -27,11 +28,7 @@
   <details bind:this={detailsEl} class="dropdown">
     <summary>
       <div class="user-info">
-        {#if user.avatarURL}
-          <img src={user.avatarURL} alt={user.name} />
-        {:else}
-          <span class="avatar-fallback">{user.name?.[0]?.toUpperCase() ?? "?"}</span>
-        {/if}
+        <UserAvatar name={user.name} avatarURL={user.avatarURL} />
         <span class="user-name">{user.name}</span>
       </div>
     </summary>
@@ -96,26 +93,7 @@
     gap: 0.5rem;
   }
 
-  .user-info img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
   .user-name {
     font-weight: 500;
-  }
-
-  .avatar-fallback {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: var(--accent-base);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
   }
 </style>
