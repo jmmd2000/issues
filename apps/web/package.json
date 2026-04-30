@@ -32,8 +32,8 @@
     "@issues/api": "workspace:*",
     "@issues/shared": "workspace:*",
     "@lucide/svelte": "^1.3.0",
-    "dompurify": "^3.2.6",
     "hono": "^4.12.11",
+    "isomorphic-dompurify": "^3.11.0",
     "marked": "^16.0.0",
     "svelte-dnd-action": "^0.9.69",
     "zod": "^4.3.6"

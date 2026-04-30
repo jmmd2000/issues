@@ -1,4 +1,4 @@
-import DOMPurify from "dompurify";
+import DOMPurify from "isomorphic-dompurify";
 import { marked } from "marked";
 
 // Matches ticket refs like `PROJ-123`. Project key: 2–6 uppercase letters, `\b` avoids matching inside words.
