@@ -6,34 +6,34 @@
 
 :root {
   --colour-bg: #f8f9fa;
-  --colour-bg-hover: #f4f4f4;
-  --colour-bg-lighter: #ffffff;
+  --colour-bg-hover: color-mix(in oklch, var(--colour-bg) 95%, black 5%);
+  --colour-bg-lighter: color-mix(in oklch, var(--colour-bg) 10%, white 90%);
   --colour-text: #1e2229;
-  --colour-text-secondary: #6a7181;
-  --colour-muted: #9ca3af;
+  --colour-text-secondary: color-mix(in oklch, var(--colour-text) 62%, white 38%);
+  --colour-muted: color-mix(in oklch, var(--colour-text) 42%, white 58%);
 
   --accent-base: #355dd4;
-  --accent-shade-100: #3054bf;
-  --accent-shade-200: #2a4aaa;
-  --accent-shade-300: #254194;
-  --accent-shade-400: #20387f;
-  --accent-shade-500: #1b2f6a;
-  --accent-shade-600: #152555;
-  --accent-shade-700: #101c40;
-  --accent-shade-800: #0b132a;
-  --accent-shade-900: #050915;
-  --accent-tint-100: #496dd8;
-  --accent-tint-200: #5d7ddd;
-  --accent-tint-300: #728ee1;
-  --accent-tint-400: #869ee5;
-  --accent-tint-500: #9aaeea;
-  --accent-tint-600: #aebeee;
-  --accent-tint-700: #c2cef2;
-  --accent-tint-800: #d7dff6;
-  --accent-tint-900: #f5f7fd;
+  --accent-shade-100: color-mix(in oklch, var(--accent-base) 90%, black 10%);
+  --accent-shade-200: color-mix(in oklch, var(--accent-base) 80%, black 20%);
+  --accent-shade-300: color-mix(in oklch, var(--accent-base) 70%, black 30%);
+  --accent-shade-400: color-mix(in oklch, var(--accent-base) 60%, black 40%);
+  --accent-shade-500: color-mix(in oklch, var(--accent-base) 50%, black 50%);
+  --accent-shade-600: color-mix(in oklch, var(--accent-base) 40%, black 60%);
+  --accent-shade-700: color-mix(in oklch, var(--accent-base) 30%, black 70%);
+  --accent-shade-800: color-mix(in oklch, var(--accent-base) 20%, black 80%);
+  --accent-shade-900: color-mix(in oklch, var(--accent-base) 10%, black 90%);
+  --accent-tint-100: color-mix(in oklch, var(--accent-base) 90%, white 10%);
+  --accent-tint-200: color-mix(in oklch, var(--accent-base) 80%, white 20%);
+  --accent-tint-300: color-mix(in oklch, var(--accent-base) 70%, white 30%);
+  --accent-tint-400: color-mix(in oklch, var(--accent-base) 60%, white 40%);
+  --accent-tint-500: color-mix(in oklch, var(--accent-base) 50%, white 50%);
+  --accent-tint-600: color-mix(in oklch, var(--accent-base) 40%, white 60%);
+  --accent-tint-700: color-mix(in oklch, var(--accent-base) 30%, white 70%);
+  --accent-tint-800: color-mix(in oklch, var(--accent-base) 20%, white 80%);
+  --accent-tint-900: color-mix(in oklch, var(--accent-base) 10%, white 90%);
 
-  --colour-border: #e5e7eb;
-  --colour-accent-border: #2f53c0;
+  --colour-border: color-mix(in oklch, var(--colour-text) 10%, white 90%);
+  --colour-accent-border: var(--accent-shade-100);
   --border-radius-outer: 8px;
   --border-radius-inner: 4px;
   --border: 1px solid var(--colour-border);
@@ -42,22 +42,27 @@
   --font-body: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  --box-shadow: rgba(30, 34, 41, 0.06) 0px 1px 3px 0px, rgba(30, 34, 41, 0.06) 0px 1px 2px -1px;
+  --box-shadow: rgb(from var(--colour-text) r g b / 0.06) 0px 1px 3px 0px, rgb(from var(--colour-text) r g b / 0.06) 0px 1px 2px -1px;
 
   --colour-success: #248f47;
-  --colour-success-bg: #d3e9da;
-  --colour-success-bg-hover: #bdddc8;
-  --colour-success-border: #7cbc91;
+  --colour-success-bg: color-mix(in oklch, var(--colour-success) 20%, white 80%);
+  --colour-success-bg-hover: color-mix(in oklch, var(--colour-success) 25%, white 75%);
+  --colour-success-border: color-mix(in oklch, var(--colour-success) 50%, white 50%);
   --colour-error: #cc3333;
-  --colour-error-bg: #f5d6d6;
-  --colour-error-bg-hover: #f0c2c2;
-  --colour-error-border: #e08585;
+  --colour-error-bg: color-mix(in oklch, var(--colour-error) 20%, white 80%);
+  --colour-error-bg-hover: color-mix(in oklch, var(--colour-error) 25%, white 75%);
+  --colour-error-border: color-mix(in oklch, var(--colour-error) 50%, white 50%);
+
+  --colour-status-backlog: var(--colour-muted);
+  --colour-status-active: var(--accent-base);
+  --colour-status-done: var(--colour-success);
+  --colour-status-cancelled: var(--colour-error);
 
   --colour-priority-none: #6b7280;
   --colour-priority-low: #22c55e;
-  --colour-priority-medium: #f59e0b;
-  --colour-priority-high: #f97316;
-  --colour-priority-critical: #ef4444;
+  --colour-priority-medium: #d79b00;
+  --colour-priority-high: #e65f00;
+  --colour-priority-critical: #d21f3c;
 }
 
 html {
