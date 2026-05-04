@@ -295,9 +295,10 @@ describe("GET /api/projects/:key/tickets/board", () => {
   });
 
   it("returns board tickets in raw fractional-position order", async () => {
-    const top = await createTicket({ title: "Top" });
-    const middle = await createTicket({ title: "Middle" });
-    const bottom = await createTicket({ title: "Bottom" });
+    const activeStatusID = await getStatusIDBySlug("in-progress");
+    const top = await createTicket({ title: "Top", statusID: activeStatusID });
+    const middle = await createTicket({ title: "Middle", statusID: activeStatusID });
+    const bottom = await createTicket({ title: "Bottom", statusID: activeStatusID });
 
     await db.update(tickets).set({ position: "Zz" }).where(eq(tickets.id, top.id));
     await db.update(tickets).set({ position: "a0" }).where(eq(tickets.id, middle.id));
@@ -311,8 +312,9 @@ describe("GET /api/projects/:key/tickets/board", () => {
   });
 
   it("does not apply the list endpoint's default pagination", async () => {
+    const activeStatusID = await getStatusIDBySlug("in-progress");
     for (let i = 1; i <= 26; i += 1) {
-      await createTicket({ title: `Ticket ${i}` });
+      await createTicket({ title: `Ticket ${i}`, statusID: activeStatusID });
     }
 
     const res = await app.request("/api/projects/TEST/tickets/board", { headers: { Cookie: cookies } });
