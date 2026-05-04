@@ -46,7 +46,18 @@
 
 <Popover bind:open {disabled} menuLabel="Ticket status">
   {#snippet trigger({ toggle, open })}
-    <button type="button" class="trigger" data-size={size} style:--option-colour={selectedColour} onclick={toggle} {disabled} aria-expanded={open} aria-haspopup="listbox" aria-label={ariaLabel}>
+    <button
+      type="button"
+      class="trigger"
+      data-size={size}
+      data-empty={selectedStatus?.category === "backlog"}
+      style:--option-colour={selectedColour}
+      onclick={toggle}
+      {disabled}
+      aria-expanded={open}
+      aria-haspopup="listbox"
+      aria-label={ariaLabel}
+    >
       {#if loading}
         <LoaderCircle size={14} strokeWidth={2} class="spinner" aria-label="Saving status" />
       {:else}
@@ -93,8 +104,22 @@
   }
 
   .trigger[data-size="md"] {
-    padding: 0.4em 0.6em;
-    font-size: 0.78rem;
+    min-height: 2.4em;
+    padding: 0.45em 0.7em;
+    font-size: 0.85em;
+  }
+
+  .trigger[data-empty="true"] {
+    border-color: var(--colour-border);
+    background: var(--colour-bg);
+    color: var(--colour-muted);
+    font-weight: 500;
+  }
+
+  .trigger[data-empty="true"]:hover,
+  .trigger[data-empty="true"]:focus-visible,
+  .trigger[data-empty="true"][aria-expanded="true"] {
+    background: var(--colour-bg-hover);
   }
 
   .trigger[data-size="sm"] {

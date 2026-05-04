@@ -8,6 +8,7 @@
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import TicketDescription from "$lib/components/tickets/TicketDescription.svelte";
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
+  import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
 
@@ -19,9 +20,11 @@
   let assigneeID = $derived<string | undefined>(ticket.assignee?.id ?? undefined);
   let statusID = $derived(ticket.status.id);
   let priority = $derived<Priority>(ticket.priority);
+  let labelIDs = $derived(ticket.labels.map((label) => label.id));
   let savingAssignee = $state(false);
   let savingStatus = $state(false);
   let savingPriority = $state(false);
+  let savingLabels = $state(false);
 
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -122,6 +125,29 @@
       priority = previousPriority;
     } finally {
       savingPriority = false;
+    }
+  }
+
+  async function saveLabels(nextLabelIDs: string[], previousLabelIDs: string[]) {
+    if (savingLabels) return;
+
+    savingLabels = true;
+    try {
+      const res = await client.api.projects[":key"].tickets[":num"].$patch({
+        param: { key: project.key, num: String(ticket.number) },
+        json: { labelIDs: nextLabelIDs },
+      });
+
+      if (!res.ok) {
+        labelIDs = previousLabelIDs;
+        return;
+      }
+
+      await invalidateAll();
+    } catch {
+      labelIDs = previousLabelIDs;
+    } finally {
+      savingLabels = false;
     }
   }
 </script>
@@ -227,15 +253,14 @@
           <div class="property-row">
             <dt>Labels</dt>
             <dd>
-              {#if ticket.labels.length}
-                <span class="label-list">
-                  {#each ticket.labels as label (label.id)}
-                    <span class="ticket-label" style:--label-colour={label.colour}>{label.name}</span>
-                  {/each}
-                </span>
-              {:else}
-                <span class="muted-value">None</span>
-              {/if}
+              <LabelsPicker
+                labels={project.labels}
+                bind:value={labelIDs}
+                disabled={savingLabels}
+                loading={savingLabels}
+                size="sm"
+                oncommit={(nextLabelIDs, previousLabelIDs) => void saveLabels(nextLabelIDs, previousLabelIDs)}
+              />
             </dd>
           </div>
         </dl>
@@ -406,25 +431,6 @@
 
   .ticket-link:hover {
     text-decoration: underline;
-  }
-
-  .label-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-
-  .ticket-label {
-    --label-colour: var(--colour-muted);
-
-    max-width: 100%;
-    padding: 0.2rem 0.4rem;
-    border: 1px solid color-mix(in oklch, var(--label-colour) 35%, white 65%);
-    border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--label-colour) 15%, white 85%);
-    color: color-mix(in oklch, var(--label-colour) 75%, black 25%);
-    font-size: 0.7rem;
-    font-weight: 700;
   }
 
   @media (max-width: 900px) {

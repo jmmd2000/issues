@@ -21,9 +21,8 @@
   let description = $state("");
   // svelte-ignore state_referenced_locally
   let statusID = $state<string>((data.statuses.find((status) => status.category === "backlog") ?? data.statuses[0])?.id ?? "");
-  let priority = $state<Priority>("medium");
-  // svelte-ignore state_referenced_locally
-  let assigneeID = $state<string | undefined>(data.user.id);
+  let priority = $state<Priority>("none");
+  let assigneeID = $state<string | undefined>(undefined);
   let labelIDs = $state<string[]>([]);
   let parentTicketID = $state<string | undefined>(undefined);
   let submitting = $state(false);
@@ -136,7 +135,7 @@
       {#if fieldErrors.description}<span class="field-error">{fieldErrors.description}</span>{/if}
     </div>
 
-    <div class="form-grid">
+    <div class="input-group" role="group" aria-label="Ticket metadata">
       <div class="input-row">
         <span class="form-label">Status</span>
         <StatusPicker statuses={data.statuses} bind:value={statusID} />
@@ -147,16 +146,16 @@
         <span class="form-label">Priority</span>
         <PriorityPicker bind:value={priority} />
       </div>
-    </div>
 
-    <div class="input-row">
-      <span class="form-label">Assignee</span>
-      <AssigneePicker members={data.members} currentUserID={data.user.id} bind:value={assigneeID} />
-    </div>
+      <div class="input-row">
+        <span class="form-label">Assignee</span>
+        <AssigneePicker members={data.members} currentUserID={data.user.id} bind:value={assigneeID} />
+      </div>
 
-    <div class="input-row">
-      <span class="form-label">Labels</span>
-      <LabelsPicker labels={data.labels} bind:value={labelIDs} />
+      <div class="input-row">
+        <span class="form-label">Labels</span>
+        <LabelsPicker labels={data.labels} bind:value={labelIDs} />
+      </div>
     </div>
 
     <div class="input-row">
@@ -228,15 +227,21 @@
     font-weight: 300;
   }
 
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+  .input-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.85rem 1rem;
   }
 
   .input-row {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+  }
+
+  .input-group .input-row {
+    flex: 0 0 auto;
   }
 
   .ticket-form-footer {
@@ -259,8 +264,8 @@
   }
 
   @media (max-width: 640px) {
-    .form-grid {
-      grid-template-columns: 1fr;
+    .input-group .input-row {
+      width: 100%;
     }
 
     .form-actions {

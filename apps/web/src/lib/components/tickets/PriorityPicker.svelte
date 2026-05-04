@@ -54,6 +54,7 @@
       type="button"
       class="trigger"
       data-size={size}
+      data-empty={value === "none"}
       style:--option-colour={selectedOption.colour}
       onclick={toggle}
       {disabled}
@@ -114,8 +115,22 @@
   }
 
   .trigger[data-size="md"] {
-    padding: 0.4em 0.6em;
-    font-size: 0.8rem;
+    min-height: 2.4em;
+    padding: 0.45em 0.7em;
+    font-size: 0.85em;
+  }
+
+  .trigger[data-empty="true"] {
+    border-color: var(--colour-border);
+    background: var(--colour-bg);
+    color: var(--colour-muted);
+    font-weight: 500;
+  }
+
+  .trigger[data-empty="true"]:hover,
+  .trigger[data-empty="true"]:focus-visible,
+  .trigger[data-empty="true"][aria-expanded="true"] {
+    background: var(--colour-bg-hover);
   }
 
   .trigger[data-size="sm"] {

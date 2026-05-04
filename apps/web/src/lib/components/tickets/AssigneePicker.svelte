@@ -57,7 +57,7 @@
 
 <Popover bind:open {disabled} menuLabel="Project members">
   {#snippet trigger({ toggle, open })}
-    <button type="button" class="trigger" data-size={size} onclick={toggle} aria-expanded={open} aria-haspopup="listbox" aria-label={ariaLabel} {disabled}>
+    <button type="button" class="trigger" data-size={size} data-empty={!selectedMember && !loading} onclick={toggle} aria-expanded={open} aria-haspopup="listbox" aria-label={ariaLabel} {disabled}>
       {#if loading}
         <LoaderCircle size={14} strokeWidth={2} class="spinner" aria-label="Saving assignee" />
       {:else if selectedMember}
@@ -130,10 +130,20 @@
   }
 
   .trigger[data-size="md"] {
+    min-height: 2.4em;
     padding: 0.45em 0.7em;
     border: var(--border);
     background: var(--colour-bg);
     font-size: 0.85em;
+  }
+
+  .trigger[data-size="md"][data-empty="true"] .label,
+  .trigger[data-size="md"][data-empty="true"] .placeholder {
+    color: var(--colour-muted);
+  }
+
+  .trigger[data-size="md"][data-empty="true"] {
+    font-weight: 500;
   }
 
   .trigger[data-size="md"]:hover,

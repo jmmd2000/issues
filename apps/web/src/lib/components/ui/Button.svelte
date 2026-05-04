@@ -15,16 +15,16 @@
 
   let { variant = "primary", size = "md", fullWidth = false, children, class: className, ...rest }: Props = $props();
 
-  const classes = $derived(["button", variant, size, { "full-width": fullWidth }, className]);
+  const classes = $derived(["button", className]);
 </script>
 
 {#if "href" in rest && rest.href !== undefined}
-  <a class={classes} {...rest as HTMLAnchorAttributes}>
+  <a class={classes} data-variant={variant} data-size={size} data-full-width={fullWidth} {...rest as HTMLAnchorAttributes}>
     {@render children()}
   </a>
 {:else}
   {@const buttonRest = rest as HTMLButtonAttributes}
-  <button type={buttonRest.type ?? "button"} class={classes} {...buttonRest}>
+  <button type={buttonRest.type ?? "button"} class={classes} data-variant={variant} data-size={size} data-full-width={fullWidth} {...buttonRest}>
     {@render children()}
   </button>
 {/if}
@@ -54,22 +54,26 @@
     }
   }
 
-  .sm {
+  .button[data-full-width="true"] {
+    width: 100%;
+  }
+
+  .button[data-size="sm"] {
     font-size: 0.75rem;
     padding: 0.45em 0.85em;
   }
 
-  .md {
+  .button[data-size="md"] {
     font-size: 0.85rem;
     padding: 0.6em 1.05em;
   }
 
-  .lg {
+  .button[data-size="lg"] {
     font-size: 0.95rem;
     padding: 0.75em 1.25em;
   }
 
-  .primary {
+  .button[data-variant="primary"] {
     background: linear-gradient(180deg, #4a6ee8, var(--accent-base));
     color: white;
     border: 1px solid var(--accent-shade-100);
@@ -89,7 +93,7 @@
     }
   }
 
-  .secondary {
+  .button[data-variant="secondary"] {
     background: var(--colour-bg-lighter);
     color: var(--colour-text);
     border: 1px solid var(--colour-border);
@@ -108,11 +112,20 @@
     }
   }
 
-  .danger:hover:not(:disabled) {
-    background: #b82929;
+  .button[data-variant="danger"] {
+    background: var(--colour-error);
+    color: white;
+    border: 1px solid color-mix(in oklch, var(--colour-error) 82%, black 18%);
+    box-shadow:
+      rgba(30, 34, 41, 0.2) 0px 1px 3px,
+      rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in oklch, var(--colour-error) 84%, black 16%);
+    }
   }
 
-  .danger:active:not(:disabled) {
+  .button[data-variant="danger"]:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow:
       rgba(30, 34, 41, 0.25) 0px 0px 1px,
