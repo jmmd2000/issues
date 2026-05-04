@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Status, Ticket } from "@issues/api";
+  import type { ProjectMember, Status, Ticket } from "@issues/api";
   import { dndzone, type DndEvent } from "svelte-dnd-action";
   import TicketCard from "./TicketCard.svelte";
 
@@ -7,12 +7,14 @@
     projectKey,
     status,
     tickets,
+    members,
     onConsider,
     onFinalize,
   }: {
     projectKey: string;
     status: Status;
     tickets: Ticket[];
+    members: ProjectMember[];
     onConsider: (statusID: string, items: Ticket[]) => void;
     onFinalize: (statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) => void;
   } = $props();
@@ -34,6 +36,7 @@
   <div class="cards-wrap">
     <div
       class="cards"
+      data-empty={tickets.length === 0}
       use:dndzone={{
         items: tickets,
         type: "ticket",
@@ -44,7 +47,7 @@
       onfinalize={handleFinalize}
     >
       {#each tickets as ticket (ticket.id)}
-        <TicketCard {projectKey} {ticket} />
+        <TicketCard {projectKey} {ticket} {members} />
       {/each}
     </div>
     {#if tickets.length === 0}
@@ -55,6 +58,8 @@
 
 <style>
   .column {
+    --ticket-drop-target-height: 4.25rem;
+
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -92,7 +97,6 @@
 
   .cards-wrap {
     position: relative;
-    min-height: 6em;
   }
 
   .cards {
@@ -100,17 +104,26 @@
     flex-direction: column;
     justify-content: start;
     gap: 0.45em;
-    min-height: 6em;
+  }
+
+  .cards[data-empty="true"] {
+    min-height: var(--ticket-drop-target-height);
   }
 
   .cards :global([data-is-dnd-shadow-item-internal="true"]) {
+    --priority-colour: transparent !important;
+
     visibility: visible !important;
-    box-shadow: inset 0 0 0 999px var(--accent-tint-800) !important;
+    min-height: var(--ticket-drop-target-height);
+    border: 1px dashed var(--colour-border) !important;
+    background: color-mix(in oklch, var(--accent-base) 5%, white 95%) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
     outline: none !important;
   }
 
-  .cards :global([data-is-dnd-shadow-item-internal="true"] > *) {
-    visibility: hidden;
+  .cards :global([data-is-dnd-shadow-item-internal="true"] *) {
+    visibility: hidden !important;
   }
 
   .empty {

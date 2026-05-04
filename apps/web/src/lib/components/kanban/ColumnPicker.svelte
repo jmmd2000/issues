@@ -1,15 +1,21 @@
 <script lang="ts">
-  import type { Status } from "@issues/api";
   import { Check, Columns3 } from "@lucide/svelte";
 
+  type ColumnPickerItem = {
+    id: string;
+    label: string;
+  };
+
   let {
-    statuses,
+    items,
     visible,
     onToggle,
+    triggerLabel = "Columns",
   }: {
-    statuses: Status[];
+    items: ColumnPickerItem[];
     visible: Set<string>;
     onToggle: (id: string) => void;
+    triggerLabel?: string;
   } = $props();
 
   let open = $state(false);
@@ -29,16 +35,16 @@
 
 <div class="column-picker">
   <button type="button" class="trigger" onclick={() => (open = !open)} aria-expanded={open} aria-haspopup="menu">
-    <Columns3 size={14} /> Columns
+    <Columns3 size={14} /> {triggerLabel}
   </button>
   {#if open}
     <div class="menu" role="menu">
-      {#each statuses as s (s.id)}
-        <button type="button" class="item" role="menuitemcheckbox" aria-checked={visible.has(s.id)} onclick={() => onToggle(s.id)}>
+      {#each items as item (item.id)}
+        <button type="button" class="item" role="menuitemcheckbox" aria-checked={visible.has(item.id)} onclick={() => onToggle(item.id)}>
           <span class="check"
-            >{#if visible.has(s.id)}<Check size={12} />{/if}</span
+            >{#if visible.has(item.id)}<Check size={12} />{/if}</span
           >
-          <span>{s.name}</span>
+          <span>{item.label}</span>
         </button>
       {/each}
     </div>

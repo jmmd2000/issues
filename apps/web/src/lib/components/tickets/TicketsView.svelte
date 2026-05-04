@@ -1,8 +1,11 @@
 <script module lang="ts">
   import type { Ticket } from "@issues/api";
+  import type { TicketListColumnID, TicketListSortDirection } from "./TicketList.svelte";
 
   export type TicketViewMode = "kanban" | "list";
-  export type TicketData = { kind: "kanban"; tickets: Ticket[] } | { kind: "list"; tickets: Ticket[]; page: number; perPage: number; hasNextPage: boolean };
+  export type TicketData =
+    | { kind: "kanban"; tickets: Ticket[] }
+    | { kind: "list"; tickets: Ticket[]; page: number; perPage: number; hasNextPage: boolean; sortColumn: TicketListColumnID; sortDirection: TicketListSortDirection };
 </script>
 
 <script lang="ts">
@@ -13,7 +16,11 @@
   import { SvelteSet } from "svelte/reactivity";
   import ColumnPicker from "$lib/components/kanban/ColumnPicker.svelte";
   import TicketKanban from "$lib/components/kanban/TicketKanban.svelte";
-  import TicketList from "./TicketList.svelte";
+  import TicketList, { LIST_COLUMNS } from "./TicketList.svelte";
+
+  type SearchUpdateOptions = {
+    scrollToList?: boolean;
+  };
 
   let {
     project,
@@ -35,14 +42,17 @@
     done: 2,
     cancelled: 3,
   };
-  const storageKey = $derived(`kanban-columns-${project.id}`);
+  const kanbanStorageKey = $derived(`kanban-columns-${project.id}`);
+  const listStorageKey = $derived(`ticket-list-columns-${project.id}`);
   const orderedStatuses = $derived([...statuses].sort((a, b) => STATUS_CATEGORY_ORDER[a.category] - STATUS_CATEGORY_ORDER[b.category] || a.position - b.position));
+  const kanbanColumnItems = $derived(orderedStatuses.map((status) => ({ id: status.id, label: status.name })));
+  const listColumnItems = LIST_COLUMNS.map((column) => ({ id: column.id, label: column.label }));
 
-  function readVisibleColumnIDs(): SvelteSet<string> {
+  function readVisibleKanbanColumnIDs(): SvelteSet<string> {
     const allIDs = new Set(statuses.map((status) => status.id));
     if (typeof localStorage === "undefined") return new SvelteSet(allIDs);
 
-    const raw = localStorage.getItem(storageKey);
+    const raw = localStorage.getItem(kanbanStorageKey);
     if (!raw) return new SvelteSet(allIDs);
 
     try {
@@ -54,23 +64,64 @@
     }
   }
 
-  let visibleColumnIDs = $state<SvelteSet<string>>(readVisibleColumnIDs());
-  const visibleStatuses = $derived(orderedStatuses.filter((status) => visibleColumnIDs.has(status.id)));
+  function readVisibleListColumnIDs(): SvelteSet<TicketListColumnID> {
+    const allIDs = new Set<TicketListColumnID>(LIST_COLUMNS.map((column) => column.id));
+    if (typeof localStorage === "undefined") return new SvelteSet(allIDs);
 
-  function persistVisibleColumnIDs(next: SvelteSet<string>) {
+    const raw = localStorage.getItem(listStorageKey);
+    if (!raw) return new SvelteSet(allIDs);
+
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new SvelteSet(allIDs);
+      const visible = parsed.filter((id): id is TicketListColumnID => typeof id === "string" && allIDs.has(id as TicketListColumnID));
+      return new SvelteSet(visible.length > 0 ? visible : [...allIDs]);
+    } catch {
+      return new SvelteSet(allIDs);
+    }
+  }
+
+  let visibleKanbanColumnIDs = $state<SvelteSet<string>>(readVisibleKanbanColumnIDs());
+  let visibleListColumnIDs = $state<SvelteSet<TicketListColumnID>>(readVisibleListColumnIDs());
+  let listScrollTarget = $state<HTMLDivElement | null>(null);
+  const visibleStatuses = $derived(orderedStatuses.filter((status) => visibleKanbanColumnIDs.has(status.id)));
+
+  function persistVisibleKanbanColumnIDs(next: SvelteSet<string>) {
     if (typeof localStorage === "undefined") return;
-    localStorage.setItem(storageKey, JSON.stringify([...next]));
+    localStorage.setItem(kanbanStorageKey, JSON.stringify([...next]));
+  }
+
+  function persistVisibleListColumnIDs(next: SvelteSet<TicketListColumnID>) {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(listStorageKey, JSON.stringify([...next]));
   }
 
   function toggleColumn(id: string) {
-    const next = new SvelteSet(visibleColumnIDs);
+    const next = new SvelteSet(visibleKanbanColumnIDs);
     if (next.has(id)) next.delete(id);
     else next.add(id);
-    visibleColumnIDs = next;
-    persistVisibleColumnIDs(next);
+    visibleKanbanColumnIDs = next;
+    persistVisibleKanbanColumnIDs(next);
   }
 
-  async function updateSearchParams(params: Record<string, string | null>) {
+  function toggleListColumn(id: string) {
+    const columnID = id as TicketListColumnID;
+    const next = new SvelteSet(visibleListColumnIDs);
+    if (next.has(columnID)) {
+      if (next.size === 1) return;
+      next.delete(columnID);
+    } else {
+      next.add(columnID);
+    }
+    visibleListColumnIDs = next;
+    persistVisibleListColumnIDs(next);
+  }
+
+  function scrollToListStart() {
+    listScrollTarget?.scrollIntoView({ block: "start" });
+  }
+
+  async function updateSearchParams(params: Record<string, string | null>, options: SearchUpdateOptions = {}) {
     const next = new URL(page.url);
     for (const [key, value] of Object.entries(params)) {
       if (value === null) next.searchParams.delete(key);
@@ -78,6 +129,7 @@
     }
     // eslint-disable-next-line svelte/no-navigation-without-resolve
     await goto(`${next.pathname}${next.search}`, { keepFocus: true, noScroll: true });
+    if (options.scrollToList) requestAnimationFrame(scrollToListStart);
   }
 
   function setView(nextView: TicketViewMode) {
@@ -85,11 +137,22 @@
       view: nextView === "kanban" ? null : nextView,
       page: null,
       perPage: nextView === "kanban" ? null : page.url.searchParams.get("perPage"),
+      sortBy: nextView === "kanban" ? null : page.url.searchParams.get("sortBy"),
+      sortDirection: nextView === "kanban" ? null : page.url.searchParams.get("sortDirection"),
     });
   }
 
   function setListPage(nextPage: number) {
-    void updateSearchParams({ view: "list", page: String(nextPage) });
+    void updateSearchParams({ view: "list", page: String(nextPage) }, { scrollToList: true });
+  }
+
+  function setListSort(sortColumn: TicketListColumnID, sortDirection: TicketListSortDirection) {
+    void updateSearchParams({
+      view: "list",
+      page: null,
+      sortBy: sortColumn,
+      sortDirection,
+    });
   }
 </script>
 
@@ -109,15 +172,32 @@
 
       {#if view === "kanban"}
         <span class="control-divider" aria-hidden="true"></span>
-        <ColumnPicker statuses={orderedStatuses} visible={visibleColumnIDs} onToggle={toggleColumn} />
+        <ColumnPicker items={kanbanColumnItems} visible={visibleKanbanColumnIDs} onToggle={toggleColumn} />
+      {:else}
+        <span class="control-divider" aria-hidden="true"></span>
+        <ColumnPicker items={listColumnItems} visible={visibleListColumnIDs} onToggle={toggleListColumn} />
       {/if}
     </div>
   </div>
 
   {#if ticketData.kind === "kanban"}
-    <TicketKanban projectKey={project.key} statuses={visibleStatuses} tickets={ticketData.tickets} />
+    <TicketKanban projectKey={project.key} statuses={visibleStatuses} tickets={ticketData.tickets} {members} />
   {:else}
-    <TicketList projectKey={project.key} {statuses} {members} tickets={ticketData.tickets} page={ticketData.page} hasNextPage={ticketData.hasNextPage} onPageChange={setListPage} />
+    <div class="ticket-list-scroll-target" bind:this={listScrollTarget}>
+      <TicketList
+        projectKey={project.key}
+        {statuses}
+        {members}
+        tickets={ticketData.tickets}
+        visibleColumnIDs={visibleListColumnIDs}
+        sortColumn={ticketData.sortColumn}
+        sortDirection={ticketData.sortDirection}
+        page={ticketData.page}
+        hasNextPage={ticketData.hasNextPage}
+        onSortChange={setListSort}
+        onPageChange={setListPage}
+      />
+    </div>
   {/if}
 </section>
 
@@ -130,6 +210,10 @@
   .tickets-toolbar {
     display: flex;
     justify-content: flex-end;
+  }
+
+  .ticket-list-scroll-target {
+    scroll-margin-top: 1rem;
   }
 
   .view-controls {

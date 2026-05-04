@@ -5,22 +5,30 @@ import type { ProjectDetail, Ticket } from "@issues/api";
 import { createClient } from "$lib/api/client";
 import type { PageLoad } from "./$types";
 
+const ticketListSortColumns = ["key", "title", "status", "priority", "assignee", "updatedAt"] as const;
+
 const searchSchema = z.object({
   view: z.enum(["kanban", "list"]).catch("kanban"),
   page: z.coerce.number().int().min(1).catch(1),
   perPage: z.coerce.number().int().min(1).max(100).catch(25),
+  sortBy: z.enum(ticketListSortColumns).catch("updatedAt"),
+  sortDirection: z.enum(["asc", "desc"]).catch("desc"),
 });
 
 export const load: PageLoad = async ({ fetch, params, url }) => {
   const api = createClient(fetch).api.projects[":key"];
-  const { view, page, perPage } = searchSchema.parse({
+  const { view, page, perPage, sortBy, sortDirection } = searchSchema.parse({
     view: url.searchParams.get("view"),
     page: url.searchParams.get("page"),
     perPage: url.searchParams.get("perPage"),
+    sortBy: url.searchParams.get("sortBy"),
+    sortDirection: url.searchParams.get("sortDirection"),
   });
 
   const ticketsRequest =
-    view === "list" ? api.tickets.$get({ param: { key: params.key }, query: { page: String(page), perPage: String(perPage) } }) : api.tickets.board.$get({ param: { key: params.key }, query: {} });
+    view === "list"
+      ? api.tickets.$get({ param: { key: params.key }, query: { page: String(page), perPage: String(perPage), sortBy, sortDirection } })
+      : api.tickets.board.$get({ param: { key: params.key }, query: {} });
 
   const [projectRes, ticketsRes] = await Promise.all([api.$get({ param: { key: params.key } }), ticketsRequest]);
 
@@ -39,7 +47,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
   return {
     project,
     ticketView: view,
-    ticketData: view === "list" ? { kind: "list" as const, tickets, page, perPage, hasNextPage: tickets.length === perPage } : { kind: "kanban" as const, tickets },
+    ticketData: view === "list" ? { kind: "list" as const, tickets, page, perPage, hasNextPage: tickets.length === perPage, sortColumn: sortBy, sortDirection } : { kind: "kanban" as const, tickets },
     statuses: project.statuses,
     labels: project.labels,
     members: project.members,

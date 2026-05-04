@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Status, Ticket } from "@issues/api";
+  import type { ProjectMember, Status, Ticket } from "@issues/api";
   import type { DndEvent } from "svelte-dnd-action";
   import { onDestroy } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
@@ -10,10 +10,12 @@
     projectKey,
     statuses,
     tickets,
+    members,
   }: {
     projectKey: string;
     statuses: Status[];
     tickets: Ticket[];
+    members: ProjectMember[];
   } = $props();
 
   function comparePosition(a: string, b: string) {
@@ -88,7 +90,7 @@
 <div class="kanban">
   <div class="columns">
     {#each statuses as status (status.id)}
-      <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} onConsider={handleConsider} onFinalize={handleFinalize} />
+      <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} {members} onConsider={handleConsider} onFinalize={handleFinalize} />
     {/each}
     {#if statuses.length === 0}
       <div class="no-columns">No columns selected. Click "Columns" to choose.</div>
