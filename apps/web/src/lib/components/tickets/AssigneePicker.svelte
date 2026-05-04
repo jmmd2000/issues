@@ -7,8 +7,12 @@
   let {
     members,
     currentUserID,
+    multi = false,
     value = $bindable<string | undefined>(undefined),
+    selected = [],
     onselect,
+    onChange,
+    placeholder = "Assignee",
     disabled = false,
     loading = false,
     size = "md",
@@ -16,8 +20,15 @@
   }: {
     members: ProjectMember[];
     currentUserID?: string;
+    multi?: boolean;
+    /** Single-mode value. Ignored when `multi` is true. */
     value?: string | undefined;
+    /** Multi-mode selection. Ignored when `multi` is false. */
+    selected?: string[];
     onselect?: (value: string | undefined, previousValue: string | undefined) => void;
+    onChange?: (next: string[]) => void;
+    /** Placeholder shown in multi mode when nothing is selected. */
+    placeholder?: string;
     disabled?: boolean;
     loading?: boolean;
     size?: "sm" | "md";
@@ -36,8 +47,11 @@
     return otherMembers.filter((member) => member.user.name.toLowerCase().includes(needle));
   });
 
-  const selectedMember = $derived(value ? (members.find((member) => member.userID === value) ?? null) : null);
-  const selectedName = $derived(selectedMember?.user.name ?? null);
+  const selectedSet = $derived(new Set(selected));
+  const selectedMembers = $derived(members.filter((member) => selectedSet.has(member.userID)));
+
+  const singleMember = $derived(value ? (members.find((member) => member.userID === value) ?? null) : null);
+  const singleName = $derived(singleMember?.user.name ?? null);
   const currentUserMember = $derived(currentUserID ? (members.find((member) => member.userID === currentUserID) ?? null) : null);
 
   $effect(() => {
@@ -45,29 +59,60 @@
     else query = "";
   });
 
-  function select(next: string | undefined) {
+  function selectSingle(next: string | undefined) {
     if (disabled) return;
-
     const previousValue = value;
     onselect?.(next, previousValue);
     value = next;
     open = false;
   }
+
+  function toggleMulti(next: string) {
+    if (disabled) return;
+    onChange?.(selectedSet.has(next) ? selected.filter((id) => id !== next) : [...selected, next]);
+  }
 </script>
 
 <Popover bind:open {disabled} menuLabel="Project members">
   {#snippet trigger({ toggle, open })}
-    <button type="button" class="trigger" data-size={size} data-empty={!selectedMember && !loading} onclick={toggle} aria-expanded={open} aria-haspopup="listbox" aria-label={ariaLabel} {disabled}>
+    <button
+      type="button"
+      class="trigger"
+      data-size={size}
+      data-empty={multi ? selectedMembers.length === 0 : !singleMember && !loading}
+      data-multi={multi}
+      onclick={toggle}
+      aria-expanded={open}
+      aria-haspopup="listbox"
+      aria-label={ariaLabel}
+      {disabled}
+    >
       {#if loading}
         <LoaderCircle size={14} strokeWidth={2} class="spinner" aria-label="Saving assignee" />
-      {:else if selectedMember}
-        <UserAvatar name={selectedMember.user.name} avatarURL={selectedMember.user.avatarURL} size="sm" />
+      {:else if multi}
+        {#if selectedMembers.length === 0}
+          <span class="placeholder-icon">
+            <UserRound size={14} strokeWidth={2} />
+          </span>
+          <span class="placeholder">{placeholder}</span>
+        {:else}
+          <span class="chip-row" aria-label={`${selectedMembers.length} ${selectedMembers.length === 1 ? "assignee" : "assignees"} selected`}>
+            {#each selectedMembers as member (member.userID)}
+              <span class="multi-chip" title={member.user.name}>
+                <UserAvatar name={member.user.name} avatarURL={member.user.avatarURL} size="sm" />
+              </span>
+            {/each}
+          </span>
+        {/if}
+      {:else if singleMember}
+        <UserAvatar name={singleMember.user.name} avatarURL={singleMember.user.avatarURL} size="sm" />
+        <span class="label">{singleName}</span>
       {:else}
-        <span class="placeholder">
+        <span class="placeholder-icon">
           <UserRound size={14} strokeWidth={2} />
         </span>
+        <span class="label">Unassigned</span>
       {/if}
-      <span class="label">{selectedName ?? "Unassigned"}</span>
       <ChevronDown size={14} strokeWidth={2} class="chevron" />
     </button>
   {/snippet}
@@ -75,25 +120,27 @@
   {#snippet menu()}
     <input bind:this={searchInput} class="search" type="text" placeholder="Search members..." bind:value={query} {disabled} />
 
-    <button type="button" class="option" role="option" aria-selected={value === undefined} onclick={() => select(undefined)} {disabled}>
-      <span class="check"
-        >{#if value === undefined}<Check size={12} strokeWidth={3} />{/if}</span
-      >
-      <span class="placeholder">
-        <UserRound size={14} strokeWidth={2} />
-      </span>
-      <span>Unassigned</span>
-    </button>
+    {#if !multi}
+      <button type="button" class="option" role="option" aria-selected={value === undefined} onclick={() => selectSingle(undefined)} {disabled}>
+        <span class="check">
+          {#if value === undefined}<Check size={12} strokeWidth={3} />{/if}
+        </span>
+        <span class="placeholder-icon">
+          <UserRound size={14} strokeWidth={2} />
+        </span>
+        <span>Unassigned</span>
+      </button>
+    {/if}
 
-    {#if currentUserID}
-      <button type="button" class="option" role="option" aria-selected={value === currentUserID} onclick={() => select(currentUserID)} {disabled}>
-        <span class="check"
-          >{#if value === currentUserID}<Check size={12} strokeWidth={3} />{/if}</span
-        >
+    {#if !multi && currentUserID}
+      <button type="button" class="option" role="option" aria-selected={value === currentUserID} onclick={() => selectSingle(currentUserID)} {disabled}>
+        <span class="check">
+          {#if value === currentUserID}<Check size={12} strokeWidth={3} />{/if}
+        </span>
         {#if currentUserMember}
           <UserAvatar name={currentUserMember.user.name} avatarURL={currentUserMember.user.avatarURL} size="sm" />
         {:else}
-          <span class="placeholder">
+          <span class="placeholder-icon">
             <UserRound size={14} strokeWidth={2} />
           </span>
         {/if}
@@ -101,13 +148,23 @@
       </button>
     {/if}
 
-    <div class="divider"></div>
+    {#if !multi}
+      <div class="divider"></div>
+    {/if}
 
     {#each filtered as member (member.userID)}
-      <button type="button" class="option" role="option" aria-selected={value === member.userID} onclick={() => select(member.userID)} {disabled}>
-        <span class="check"
-          >{#if value === member.userID}<Check size={12} strokeWidth={3} />{/if}</span
-        >
+      {@const isSelected = multi ? selectedSet.has(member.userID) : value === member.userID}
+      <button
+        type="button"
+        class="option"
+        role="option"
+        aria-selected={isSelected}
+        onclick={() => (multi ? toggleMulti(member.userID) : selectSingle(member.userID))}
+        {disabled}
+      >
+        <span class="check">
+          {#if isSelected}<Check size={12} strokeWidth={3} />{/if}
+        </span>
         <UserAvatar name={member.user.name} avatarURL={member.user.avatarURL} size="sm" />
         <span>{member.user.name}</span>
       </button>
@@ -138,18 +195,24 @@
   }
 
   .trigger[data-size="md"][data-empty="true"] .label,
-  .trigger[data-size="md"][data-empty="true"] .placeholder {
-    color: var(--colour-muted);
+  .trigger[data-size="md"][data-empty="true"] .placeholder,
+  .trigger[data-size="md"][data-empty="true"] .placeholder-icon {
+    color: var(--colour-text-secondary);
   }
 
   .trigger[data-size="md"][data-empty="true"] {
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .trigger[data-size="md"]:hover,
   .trigger[data-size="md"]:focus-visible,
   .trigger[data-size="md"][aria-expanded="true"] {
     background: var(--colour-bg-hover);
+  }
+
+  .trigger[data-multi="true"]:not([data-empty="true"]) {
+    flex-wrap: wrap;
+    row-gap: 0.3em;
   }
 
   .trigger[data-size="sm"] {
@@ -180,12 +243,31 @@
   }
 
   .placeholder {
+    color: var(--colour-text);
+  }
+
+  .placeholder-icon {
     display: inline-grid;
     place-items: center;
     flex: 0 0 auto;
     width: 1.35rem;
     height: 1.35rem;
     color: var(--colour-text-secondary);
+  }
+
+  .chip-row {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    row-gap: 0.3em;
+    max-width: 22em;
+  }
+
+  .multi-chip {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
   }
 
   .trigger :global(.chevron) {

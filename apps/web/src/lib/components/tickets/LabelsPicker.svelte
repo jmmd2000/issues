@@ -2,12 +2,15 @@
   import { Check, ChevronDown, LoaderCircle, Tag } from "@lucide/svelte";
   import { untrack } from "svelte";
   import type { Label } from "@issues/api";
+  import LabelChip from "./LabelChip.svelte";
   import Popover from "$lib/components/ui/Popover.svelte";
 
   let {
     labels,
     value = $bindable<string[]>([]),
     oncommit,
+    onChange,
+    placeholder = "Add labels",
     disabled = false,
     loading = false,
     size = "md",
@@ -16,6 +19,9 @@
     labels: Label[];
     value?: string[];
     oncommit?: (next: string[], previous: string[]) => void;
+    /** When provided, fires on every toggle and replaces the commit-on-close behaviour. Use for filter contexts where every change should apply immediately. */
+    onChange?: (next: string[]) => void;
+    placeholder?: string;
     disabled?: boolean;
     loading?: boolean;
     size?: "sm" | "md";
@@ -46,11 +52,13 @@
       queueMicrotask(() => searchInput?.focus());
     } else if (!isOpen && prevOpen) {
       query = "";
-      const current = untrack(() => value);
-      if (!arraysEqual(snapshot, current)) {
-        const previous = snapshot;
-        snapshot = [...current];
-        oncommit?.(current, previous);
+      if (!onChange) {
+        const current = untrack(() => value);
+        if (!arraysEqual(snapshot, current)) {
+          const previous = snapshot;
+          snapshot = [...current];
+          oncommit?.(current, previous);
+        }
       }
     }
 
@@ -65,10 +73,11 @@
 
   function toggle(labelID: string) {
     if (disabled) return;
-    if (selectedSet.has(labelID)) {
-      value = value.filter((id) => id !== labelID);
+    const next = selectedSet.has(labelID) ? value.filter((id) => id !== labelID) : [...value, labelID];
+    if (onChange) {
+      onChange(next);
     } else {
-      value = [...value, labelID];
+      value = next;
     }
   }
 </script>
@@ -81,12 +90,12 @@
       {:else if selectedLabels.length === 0}
         <span class="empty-state">
           <Tag size={13} strokeWidth={2} />
-          <span>Add labels</span>
+          <span>{placeholder}</span>
         </span>
       {:else}
         <span class="chip-row">
           {#each selectedLabels as label (label.id)}
-            <span class="ticket-label" style:--label-colour={label.colour}>{label.name}</span>
+            <LabelChip name={label.name} colour={label.colour} />
           {/each}
         </span>
       {/if}
@@ -182,21 +191,6 @@
     gap: 0.3rem;
     flex: 1;
     min-width: 0;
-  }
-
-  .ticket-label {
-    --label-colour: var(--colour-muted);
-
-    max-width: 100%;
-    padding: 0.2rem 0.4rem;
-    border: 1px solid color-mix(in oklch, var(--label-colour) 35%, white 65%);
-    border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--label-colour) 15%, white 85%);
-    color: color-mix(in oklch, var(--label-colour) 75%, black 25%);
-    font-size: 0.7rem;
-    font-weight: 700;
-    line-height: 1.1;
-    white-space: nowrap;
   }
 
   .trigger :global(.chevron) {

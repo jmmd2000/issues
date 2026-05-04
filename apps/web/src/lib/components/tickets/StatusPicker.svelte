@@ -1,20 +1,32 @@
 <script lang="ts">
   import { Check, ChevronDown, LoaderCircle } from "@lucide/svelte";
   import type { Status } from "@issues/api";
+  import StatusChip from "./StatusChip.svelte";
   import Popover from "$lib/components/ui/Popover.svelte";
 
   let {
     statuses,
+    multi = false,
     value = $bindable(""),
+    selected = [],
     onselect,
+    onChange,
+    placeholder = "Status",
     disabled = false,
     loading = false,
     size = "md",
     ariaLabel = "Status",
   }: {
     statuses: Status[];
+    multi?: boolean;
+    /** Single-mode value. Ignored when `multi` is true. */
     value?: string;
+    /** Multi-mode selection. Ignored when `multi` is false. */
+    selected?: string[];
     onselect?: (value: string, previousValue: string) => void;
+    onChange?: (next: string[]) => void;
+    /** Placeholder shown in multi mode when nothing is selected. */
+    placeholder?: string;
     disabled?: boolean;
     loading?: boolean;
     size?: "sm" | "md";
@@ -30,17 +42,22 @@
 
   let open = $state(false);
 
-  const selectedStatus = $derived(statuses.find((status) => status.id === value) ?? null);
-  const selectedName = $derived(selectedStatus?.name ?? "Unknown");
-  const selectedColour = $derived(selectedStatus ? categoryColours[selectedStatus.category] : "var(--colour-status-backlog)");
+  const selectedSet = $derived(new Set(selected));
+  const selectedStatuses = $derived(statuses.filter((status) => selectedSet.has(status.id)));
+  const singleStatus = $derived(statuses.find((status) => status.id === value) ?? null);
+  const singleColour = $derived(singleStatus ? categoryColours[singleStatus.category] : "var(--colour-status-backlog)");
 
-  function select(next: string) {
+  function selectSingle(next: string) {
     if (disabled) return;
-
     const previousValue = value;
     onselect?.(next, previousValue);
     value = next;
     open = false;
+  }
+
+  function toggleMulti(next: string) {
+    if (disabled) return;
+    onChange?.(selectedSet.has(next) ? selected.filter((id) => id !== next) : [...selected, next]);
   }
 </script>
 
@@ -50,8 +67,9 @@
       type="button"
       class="trigger"
       data-size={size}
-      data-empty={selectedStatus?.category === "backlog"}
-      style:--option-colour={selectedColour}
+      data-empty={multi ? selectedStatuses.length === 0 : singleStatus?.category === "backlog"}
+      data-multi={multi}
+      style:--option-colour={singleColour}
       onclick={toggle}
       {disabled}
       aria-expanded={open}
@@ -60,8 +78,18 @@
     >
       {#if loading}
         <LoaderCircle size={14} strokeWidth={2} class="spinner" aria-label="Saving status" />
+      {:else if multi}
+        {#if selectedStatuses.length === 0}
+          <span class="placeholder">{placeholder}</span>
+        {:else}
+          <span class="chip-row">
+            {#each selectedStatuses as status (status.id)}
+              <StatusChip name={status.name} category={status.category} />
+            {/each}
+          </span>
+        {/if}
       {:else}
-        <span>{selectedName}</span>
+        <span>{singleStatus?.name ?? "Unknown"}</span>
       {/if}
       <ChevronDown size={14} strokeWidth={2} class="chevron" />
     </button>
@@ -69,10 +97,19 @@
 
   {#snippet menu()}
     {#each statuses as status (status.id)}
-      <button type="button" class="option" style:--option-colour={categoryColours[status.category]} role="option" aria-selected={value === status.id} onclick={() => select(status.id)} {disabled}>
-        <span class="check"
-          >{#if value === status.id}<Check size={12} strokeWidth={3} />{/if}</span
-        >
+      {@const isSelected = multi ? selectedSet.has(status.id) : value === status.id}
+      <button
+        type="button"
+        class="option"
+        style:--option-colour={categoryColours[status.category]}
+        role="option"
+        aria-selected={isSelected}
+        onclick={() => (multi ? toggleMulti(status.id) : selectSingle(status.id))}
+        {disabled}
+      >
+        <span class="check">
+          {#if isSelected}<Check size={12} strokeWidth={3} />{/if}
+        </span>
         <span>{status.name}</span>
       </button>
     {/each}
@@ -88,8 +125,8 @@
     gap: 0.4em;
     border: 1px solid color-mix(in oklch, var(--option-colour) 25%, white 75%);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--option-colour) 9%, white 91%);
-    color: color-mix(in oklch, var(--option-colour) 78%, black 22%);
+    background: color-mix(in oklch, var(--option-colour) 10%, white 90%);
+    color: color-mix(in oklch, var(--option-colour) 80%, black 20%);
     font: inherit;
     font-weight: 650;
     line-height: 1;
@@ -100,7 +137,7 @@
   .trigger:hover,
   .trigger:focus-visible,
   .trigger[aria-expanded="true"] {
-    background: color-mix(in oklch, var(--option-colour) 14%, white 86%);
+    background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
   }
 
   .trigger[data-size="md"] {
@@ -112,13 +149,28 @@
   .trigger[data-empty="true"] {
     border-color: var(--colour-border);
     background: var(--colour-bg);
-    color: var(--colour-muted);
-    font-weight: 500;
+    color: var(--colour-text-secondary);
+    font-weight: 600;
   }
 
   .trigger[data-empty="true"]:hover,
   .trigger[data-empty="true"]:focus-visible,
   .trigger[data-empty="true"][aria-expanded="true"] {
+    background: var(--colour-bg-hover);
+    color: var(--colour-text);
+  }
+
+  .trigger[data-multi="true"]:not([data-empty="true"]) {
+    border-color: var(--colour-border);
+    background: var(--colour-bg);
+    color: var(--colour-text);
+    flex-wrap: wrap;
+    row-gap: 0.3em;
+  }
+
+  .trigger[data-multi="true"]:not([data-empty="true"]):hover,
+  .trigger[data-multi="true"]:not([data-empty="true"]):focus-visible,
+  .trigger[data-multi="true"]:not([data-empty="true"])[aria-expanded="true"] {
     background: var(--colour-bg-hover);
   }
 
@@ -147,6 +199,19 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  .placeholder {
+    color: inherit;
+  }
+
+  .chip-row {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    row-gap: 0.3em;
+    max-width: 22em;
   }
 
   .option {
