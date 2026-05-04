@@ -6,16 +6,37 @@
   export type TicketData =
     | { kind: "kanban"; tickets: Ticket[] }
     | { kind: "list"; tickets: Ticket[]; page: number; perPage: number; hasNextPage: boolean; sortColumn: TicketListColumnID; sortDirection: TicketListSortDirection };
+
+  export type TicketsFilters = {
+    titleSearch: string | undefined;
+    statusID: string[];
+    priority: string[];
+    assigneeID: string[];
+    labelID: string[];
+    showClosed: boolean;
+  };
+
+  export type BacklogState = {
+    open: boolean;
+    tickets: Ticket[];
+  };
 </script>
 
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import type { ProjectDetail, ProjectMember, Status } from "@issues/api";
-  import { Columns3, List } from "@lucide/svelte";
+  import type { Label, Priority, ProjectDetail, ProjectMember, Status } from "@issues/api";
+  import { Columns3, Inbox, List } from "@lucide/svelte";
   import { SvelteSet } from "svelte/reactivity";
   import ColumnPicker from "$lib/components/kanban/ColumnPicker.svelte";
   import TicketKanban from "$lib/components/kanban/TicketKanban.svelte";
+  import SearchInput from "$lib/components/ui/SearchInput.svelte";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
+  import Tooltip from "$lib/components/ui/Tooltip.svelte";
+  import AssigneePicker from "./AssigneePicker.svelte";
+  import LabelsPicker from "./LabelsPicker.svelte";
+  import PriorityPicker from "./PriorityPicker.svelte";
+  import StatusPicker from "./StatusPicker.svelte";
   import TicketList, { LIST_COLUMNS } from "./TicketList.svelte";
 
   type SearchUpdateOptions = {
@@ -25,15 +46,21 @@
   let {
     project,
     statuses,
+    labels,
     members,
     view,
     ticketData,
+    backlog,
+    filters,
   }: {
     project: ProjectDetail;
     statuses: Status[];
+    labels: Label[];
     members: ProjectMember[];
     view: TicketViewMode;
     ticketData: TicketData;
+    backlog: BacklogState;
+    filters: TicketsFilters;
   } = $props();
 
   const STATUS_CATEGORY_ORDER: Record<Status["category"], number> = {
@@ -45,11 +72,19 @@
   const kanbanStorageKey = $derived(`kanban-columns-${project.id}`);
   const listStorageKey = $derived(`ticket-list-columns-${project.id}`);
   const orderedStatuses = $derived([...statuses].sort((a, b) => STATUS_CATEGORY_ORDER[a.category] - STATUS_CATEGORY_ORDER[b.category] || a.position - b.position));
-  const kanbanColumnItems = $derived(orderedStatuses.map((status) => ({ id: status.id, label: status.name })));
+  const activeStatuses = $derived(orderedStatuses.filter((status) => status.category !== "backlog" && (filters.showClosed || status.category !== "cancelled")));
+  const backlogStatuses = $derived(orderedStatuses.filter((status) => status.category === "backlog"));
+  const primaryBacklogStatusID = $derived(backlogStatuses[0]?.id ?? null);
+  const backlogStatusIDs = $derived(backlogStatuses.map((status) => status.id));
+  const kanbanColumnItems = $derived(activeStatuses.map((status) => ({ id: status.id, label: status.name })));
   const listColumnItems = LIST_COLUMNS.map((column) => ({ id: column.id, label: column.label }));
 
+  const filterPriority = $derived(filters.priority as Priority[]);
+
+  const closedTooltip = "Include cancelled tickets and Done tickets older than 14 days";
+
   function readVisibleKanbanColumnIDs(): SvelteSet<string> {
-    const allIDs = new Set(statuses.map((status) => status.id));
+    const allIDs = new Set(activeStatuses.map((status) => status.id));
     if (typeof localStorage === "undefined") return new SvelteSet(allIDs);
 
     const raw = localStorage.getItem(kanbanStorageKey);
@@ -84,7 +119,16 @@
   let visibleKanbanColumnIDs = $state<SvelteSet<string>>(readVisibleKanbanColumnIDs());
   let visibleListColumnIDs = $state<SvelteSet<TicketListColumnID>>(readVisibleListColumnIDs());
   let listScrollTarget = $state<HTMLDivElement | null>(null);
-  const visibleStatuses = $derived(orderedStatuses.filter((status) => visibleKanbanColumnIDs.has(status.id)));
+  const visibleStatuses = $derived(activeStatuses.filter((status) => visibleKanbanColumnIDs.has(status.id)));
+
+  let searchInput = $state("");
+  let searchDebounceID: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    const next = filters.titleSearch ?? "";
+    if (searchDebounceID !== null) return;
+    searchInput = next;
+  });
 
   function persistVisibleKanbanColumnIDs(next: SvelteSet<string>) {
     if (typeof localStorage === "undefined") return;
@@ -124,7 +168,7 @@
   async function updateSearchParams(params: Record<string, string | null>, options: SearchUpdateOptions = {}) {
     const next = new URL(page.url);
     for (const [key, value] of Object.entries(params)) {
-      if (value === null) next.searchParams.delete(key);
+      if (value === null || value === "") next.searchParams.delete(key);
       else next.searchParams.set(key, value);
     }
     // eslint-disable-next-line svelte/no-navigation-without-resolve
@@ -139,6 +183,7 @@
       perPage: nextView === "kanban" ? null : page.url.searchParams.get("perPage"),
       sortBy: nextView === "kanban" ? null : page.url.searchParams.get("sortBy"),
       sortDirection: nextView === "kanban" ? null : page.url.searchParams.get("sortDirection"),
+      backlog: nextView === "list" ? null : page.url.searchParams.get("backlog"),
     });
   }
 
@@ -154,11 +199,75 @@
       sortDirection,
     });
   }
+
+  function setFilter(name: "status" | "priority" | "assignee" | "label", values: string[]) {
+    void updateSearchParams({
+      page: null,
+      [name]: values.length ? values.join(",") : null,
+    });
+  }
+
+  function setSearch(value: string) {
+    void updateSearchParams({
+      page: null,
+      q: value.trim() ? value.trim() : null,
+    });
+  }
+
+  function handleSearchInput(value: string) {
+    if (searchDebounceID) clearTimeout(searchDebounceID);
+    searchDebounceID = setTimeout(() => {
+      searchDebounceID = null;
+      setSearch(value);
+    }, 250);
+  }
+
+  function toggleShowClosed(next: boolean) {
+    void updateSearchParams({
+      page: null,
+      showClosed: next ? "true" : null,
+    });
+  }
+
+  function toggleBacklog() {
+    void updateSearchParams({
+      backlog: backlog.open ? null : "true",
+    });
+  }
+
+  function closeBacklog() {
+    void updateSearchParams({ backlog: null });
+  }
 </script>
 
 <section class="tickets-view">
   <div class="tickets-toolbar">
+    <div class="filters" role="group" aria-label="Ticket filters">
+      {#if view === "list"}
+        <div class="search">
+          <SearchInput bind:value={searchInput} placeholder="Search by title…" ariaLabel="Search tickets by title" onInput={handleSearchInput} />
+        </div>
+      {/if}
+
+      <StatusPicker statuses={orderedStatuses} multi selected={filters.statusID} onChange={(next) => setFilter("status", next)} placeholder="Status" />
+      <PriorityPicker multi selected={filterPriority} onChange={(next) => setFilter("priority", next)} placeholder="Priority" />
+      <AssigneePicker {members} multi selected={filters.assigneeID} onChange={(next) => setFilter("assignee", next)} placeholder="Assignee" />
+      <LabelsPicker {labels} value={filters.labelID} onChange={(next) => setFilter("label", next)} placeholder="Label" />
+
+      <Tooltip label={closedTooltip}>
+        <Toggle checked={filters.showClosed} onChange={toggleShowClosed} label="Show closed" size="sm" />
+      </Tooltip>
+    </div>
+
     <div class="view-controls" role="group" aria-label="Ticket view controls">
+      {#if view === "kanban" && primaryBacklogStatusID}
+        <button type="button" class="backlog-toggle" data-active={backlog.open} onclick={toggleBacklog} aria-pressed={backlog.open} aria-label="Toggle backlog drawer">
+          <Inbox size={14} />
+          Backlog
+        </button>
+        <span class="control-divider" aria-hidden="true"></span>
+      {/if}
+
       <div class="view-toggle" role="group" aria-label="Ticket view">
         <button type="button" class:active={view === "kanban"} aria-pressed={view === "kanban"} onclick={() => setView("kanban")}>
           <Columns3 size={14} />
@@ -181,7 +290,17 @@
   </div>
 
   {#if ticketData.kind === "kanban"}
-    <TicketKanban projectKey={project.key} statuses={visibleStatuses} tickets={ticketData.tickets} {members} />
+    <TicketKanban
+      projectKey={project.key}
+      statuses={visibleStatuses}
+      tickets={ticketData.tickets}
+      backlogTickets={backlog.tickets}
+      {backlogStatusIDs}
+      {primaryBacklogStatusID}
+      drawerOpen={backlog.open}
+      onCloseDrawer={closeBacklog}
+      {members}
+    />
   {:else}
     <div class="ticket-list-scroll-target" bind:this={listScrollTarget}>
       <TicketList
@@ -209,7 +328,22 @@
 
   .tickets-toolbar {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6em;
+    flex-wrap: wrap;
+  }
+
+  .filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    flex-wrap: wrap;
+  }
+
+  .search {
+    width: 18em;
+    max-width: 100%;
   }
 
   .ticket-list-scroll-target {
@@ -227,6 +361,27 @@
     box-shadow: var(--box-shadow);
   }
 
+  .backlog-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.4em 0.65em;
+    border: none;
+    border-radius: var(--border-radius-inner);
+    background: transparent;
+    color: var(--colour-text-secondary);
+    font: inherit;
+    font-size: 0.8em;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .backlog-toggle:hover,
+  .backlog-toggle:focus-visible {
+    color: var(--colour-text);
+    background: var(--colour-bg-hover);
+  }
+
   .view-toggle {
     display: inline-flex;
     gap: 0.15em;
@@ -242,7 +397,7 @@
     background: transparent;
     color: var(--colour-text-secondary);
     font-family: inherit;
-    font-size: 0.78em;
+    font-size: 0.8em;
     font-weight: 600;
     cursor: pointer;
   }
@@ -252,12 +407,13 @@
     background: var(--colour-bg-hover);
   }
 
+  .backlog-toggle[data-active="true"],
   .view-toggle button.active {
     color: white;
-    background: linear-gradient(180deg, #4a6ee8, var(--accent-base));
+    background: linear-gradient(180deg, color-mix(in oklch, var(--accent-base) 85%, white 15%), var(--accent-base));
     box-shadow:
-      rgba(30, 34, 41, 0.18) 0px 1px 2px,
-      rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+      rgb(from var(--colour-text) r g b / 0.2) 0px 1px 2px,
+      rgb(255 255 255 / 0.15) 0px 1px 0px inset;
   }
 
   .control-divider {
