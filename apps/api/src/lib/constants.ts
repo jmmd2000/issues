@@ -1,6 +1,4 @@
-export const PRIORITIES = ["critical", "high", "medium", "low", "none"] as const;
-
-export const STATUS_CATEGORIES = ["backlog", "active", "done", "cancelled"] as const;
+export { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
 
 export const ACTIVITY_ACTIONS = [
   "created",

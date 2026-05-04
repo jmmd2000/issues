@@ -24,6 +24,7 @@ export type {
   Status,
   Label,
   Priority,
+  StatusCategory,
   ProjectMemberUser,
   ProjectMember,
   ProjectDetail,
