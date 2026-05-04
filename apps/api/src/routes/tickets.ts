@@ -5,7 +5,7 @@ import { PRIORITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
 import { requireAuth } from "../middleware/auth";
 import { requireProjectAccess } from "../middleware/projectAccess";
-import { TicketService } from "../services/ticketService";
+import { TicketService, TICKET_LIST_SORT_COLUMNS } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
 
 const ticketParamSchema = projectKeyParamSchema.extend({
@@ -50,6 +50,8 @@ const listQuerySchema = ticketFilterQuerySchema.extend({
   titleSearch: z.string().trim().min(1).max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
+  sortBy: z.enum(TICKET_LIST_SORT_COLUMNS).default("updatedAt"),
+  sortDirection: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const tickets = new Hono()

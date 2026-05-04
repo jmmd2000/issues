@@ -1,10 +1,34 @@
-import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { tickets, ticketCounters, ticketLabels } from "../db/schema";
+import { statuses, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
 import type { Priority, TicketSnapshot, Transaction } from "../lib/types";
 import { ActivityService } from "./activityService";
+
+export const TICKET_LIST_SORT_COLUMNS = ["key", "title", "status", "priority", "assignee", "updatedAt"] as const;
+export type TicketListSortColumn = (typeof TICKET_LIST_SORT_COLUMNS)[number];
+export type TicketListSortDirection = "asc" | "desc";
+
+const priorityRank = sql<number>`case ${tickets.priority}
+  when 'none' then 0
+  when 'low' then 1
+  when 'medium' then 2
+  when 'high' then 3
+  when 'critical' then 4
+end`;
+
+function buildListOrderBy(sortBy: TicketListSortColumn, sortDirection: TicketListSortDirection) {
+  const order = sortDirection === "asc" ? asc : desc;
+  const fallback = order(tickets.number);
+
+  if (sortBy === "key") return [order(tickets.number)];
+  if (sortBy === "title") return [order(sql`lower(${tickets.title})`), fallback];
+  if (sortBy === "status") return [order(sql`lower(${statuses.name})`), fallback];
+  if (sortBy === "priority") return [order(priorityRank), fallback];
+  if (sortBy === "assignee") return [order(sql`coalesce(lower(${users.name}), 'unassigned')`), fallback];
+  return [order(tickets.updatedAt), fallback];
+}
 
 export class TicketService {
   /**
@@ -112,7 +136,7 @@ export class TicketService {
   /**
    * Lists tickets for a project with optional filters. Excludes soft-deleted tickets.
    * @param projectID The ID of the project
-   * @param filters Optional filters (status slug, priority, assignee ID, pagination)
+   * @param filters Optional filters, pagination, and sorting
    * @returns
    */
   static async listForProject(
@@ -124,10 +148,14 @@ export class TicketService {
       titleSearch?: string;
       page?: number;
       perPage?: number;
+      sortBy?: TicketListSortColumn;
+      sortDirection?: TicketListSortDirection;
     }
   ) {
     const page = filters.page ?? 1;
     const perPage = filters.perPage ?? 25;
+    const sortBy = filters.sortBy ?? "updatedAt";
+    const sortDirection = filters.sortDirection ?? "desc";
 
     const where = [eq(tickets.projectID, projectID), isNull(tickets.deletedAt)];
     if (filters.statusID) where.push(eq(tickets.statusID, filters.statusID));
@@ -135,12 +163,17 @@ export class TicketService {
     if (filters.assigneeID) where.push(eq(tickets.assigneeID, filters.assigneeID));
     if (filters.titleSearch) where.push(ilike(tickets.title, `%${filters.titleSearch}%`));
 
-    return await db.query.tickets.findMany({
-      where: and(...where),
-      orderBy: [desc(tickets.updatedAt)],
-      limit: perPage,
-      offset: (page - 1) * perPage,
-    });
+    const rows = await db
+      .select({ ticket: tickets })
+      .from(tickets)
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .leftJoin(users, eq(tickets.assigneeID, users.id))
+      .where(and(...where))
+      .orderBy(...buildListOrderBy(sortBy, sortDirection))
+      .limit(perPage)
+      .offset((page - 1) * perPage);
+
+    return rows.map(({ ticket }) => ticket);
   }
 
   /**
