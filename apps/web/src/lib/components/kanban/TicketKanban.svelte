@@ -4,17 +4,28 @@
   import { onDestroy } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import { client } from "$lib/api/client";
+  import BacklogDrawer from "./BacklogDrawer.svelte";
   import TicketKanbanColumn from "./TicketKanbanColumn.svelte";
 
   let {
     projectKey,
     statuses,
     tickets,
+    backlogTickets = [],
+    backlogStatusIDs = [],
+    primaryBacklogStatusID = null,
+    drawerOpen = false,
+    onCloseDrawer,
     members,
   }: {
     projectKey: string;
     statuses: Status[];
     tickets: Ticket[];
+    backlogTickets?: Ticket[];
+    backlogStatusIDs?: string[];
+    primaryBacklogStatusID?: string | null;
+    drawerOpen?: boolean;
+    onCloseDrawer?: () => void;
     members: ProjectMember[];
   } = $props();
 
@@ -27,7 +38,12 @@
     return [...ts].sort((a, b) => comparePosition(a.position, b.position));
   }
 
-  let localTickets: Ticket[] = $derived(sortByPosition(tickets));
+  const allIncomingTickets = $derived([...tickets, ...backlogTickets]);
+
+  let localTickets: Ticket[] = $derived(sortByPosition(allIncomingTickets));
+
+  const backlogStatusSet = $derived(new Set(backlogStatusIDs));
+  const backlogList = $derived(localTickets.filter((t) => backlogStatusSet.has(t.statusID)));
 
   let ticketsByStatus = $derived.by(() => {
     const map = new SvelteMap<string, Ticket[]>();
@@ -46,6 +62,14 @@
     localTickets = [...untouched, ...rewritten];
   }
 
+  function handleBacklogConsider(items: Ticket[]) {
+    if (!primaryBacklogStatusID) return;
+    const incomingIDs = new Set(items.map((i) => i.id));
+    const untouched = localTickets.filter((t) => !backlogStatusSet.has(t.statusID) && !incomingIDs.has(t.id));
+    const rewritten = items.map((t) => (backlogStatusSet.has(t.statusID) ? t : { ...t, statusID: primaryBacklogStatusID! }));
+    localTickets = [...untouched, ...rewritten];
+  }
+
   const pendingMoves = new SvelteMap<string, AbortController>();
 
   onDestroy(() => {
@@ -53,9 +77,7 @@
     pendingMoves.clear();
   });
 
-  async function handleFinalize(statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) {
-    handleConsider(statusID, items);
-
+  async function persistMove(targetStatusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) {
     const movedIndex = items.findIndex((t) => t.id === info.id);
     if (movedIndex === -1) return;
     const moved = items[movedIndex];
@@ -70,7 +92,7 @@
       const res = await client.api.projects[":key"].tickets[":num"].move.$patch(
         {
           param: { key: projectKey, num: String(moved.number) },
-          json: { statusID, beforeID, afterID },
+          json: { statusID: targetStatusID, beforeID, afterID },
         },
         { init: { signal: controller.signal } }
       );
@@ -82,12 +104,26 @@
     } catch {
       if (controller.signal.aborted) return;
       pendingMoves.delete(moved.id);
-      localTickets = sortByPosition(tickets);
+      localTickets = sortByPosition(allIncomingTickets);
     }
+  }
+
+  async function handleFinalize(statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) {
+    handleConsider(statusID, items);
+    await persistMove(statusID, items, info);
+  }
+
+  async function handleBacklogFinalize(items: Ticket[], info: DndEvent<Ticket>["info"]) {
+    if (!primaryBacklogStatusID) return;
+    handleBacklogConsider(items);
+    const moved = items.find((t) => t.id === info.id);
+    if (!moved) return;
+    const targetStatusID = backlogStatusSet.has(moved.statusID) ? moved.statusID : primaryBacklogStatusID;
+    await persistMove(targetStatusID, items, info);
   }
 </script>
 
-<div class="kanban">
+<div class="kanban" data-drawer-open={drawerOpen}>
   <div class="columns">
     {#each statuses as status (status.id)}
       <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} {members} onConsider={handleConsider} onFinalize={handleFinalize} />
@@ -96,30 +132,34 @@
       <div class="no-columns">No columns selected. Click "Columns" to choose.</div>
     {/if}
   </div>
+
+  {#if drawerOpen && primaryBacklogStatusID}
+    <BacklogDrawer {projectKey} tickets={backlogList} {members} onConsider={handleBacklogConsider} onFinalize={handleBacklogFinalize} onClose={() => onCloseDrawer?.()} />
+  {/if}
 </div>
 
 <style>
   .kanban {
-    display: flex;
-    flex-direction: column;
     min-height: 0;
   }
 
   .columns {
     display: flex;
+    flex-wrap: nowrap;
     gap: 0.75em;
-    overflow-x: auto;
-    padding-bottom: 0.5em;
     align-items: flex-start;
+    padding-bottom: 0.5em;
+    overflow-x: auto;
+    width: 100%;
   }
 
   .no-columns {
+    grid-column: 1 / -1;
     font-size: 0.85em;
     color: var(--colour-muted);
     padding: 2em;
     border: 1px dashed var(--colour-border);
     border-radius: var(--border-radius-outer);
-    width: 100%;
     text-align: center;
   }
 </style>

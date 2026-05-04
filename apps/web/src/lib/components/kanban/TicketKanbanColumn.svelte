@@ -62,15 +62,13 @@
 
     display: flex;
     flex-direction: column;
-    justify-content: center;
     gap: 0.6em;
     padding: 0.75em;
     border: var(--border);
     border-radius: var(--border-radius-outer);
     background-color: var(--colour-bg-lighter);
+    flex: 1 1 0;
     min-width: 14em;
-    max-width: 20em;
-    flex: 1 1 17.5em;
   }
 
   .column-header {
@@ -80,7 +78,7 @@
     font-size: 0.75em;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     color: var(--colour-muted);
     padding: 0 0.25em 0.25em;
   }
