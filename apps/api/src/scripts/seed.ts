@@ -62,199 +62,72 @@ const DEV_PROJECTS = [
 ] satisfies ProjectSeed[];
 
 type TicketSeed = {
+  title: string;
+  description: string;
   statusSlug: string;
-  priority?: Priority;
-  labelSlugs?: string[];
-  assignSelf?: boolean;
+  priority: Priority;
+  labelSlugs: string[];
+  assignSelf: boolean;
 };
 
-const LOREM_TICKET_TITLES = [
-  "Lorem ipsum dolor sit amet",
-  "Consectetur adipiscing elit",
-  "Sed do eiusmod tempor",
-  "Incididunt ut labore",
-  "Dolore magna aliqua",
-  "Ut enim ad minim veniam",
-  "Quis nostrud exercitation",
-  "Ullamco laboris nisi",
-  "Aliquip ex ea commodo",
-  "Duis aute irure dolor",
+const TICKETS_PER_PROJECT = 120;
+const STATUS_SEQUENCE = ["backlog", "todo", "todo", "in-progress", "in-progress", "in-review", "done", "done", "cancelled"] as const;
+const PRIORITY_SEQUENCE: Priority[] = ["critical", "high", "medium", "low", "none", "medium", "high", "low"];
+const LABEL_SEQUENCES = [["bug"], ["feature"], ["improvement"], ["task"], ["chore"], ["feature", "improvement"], ["bug", "task"], ["task", "chore"]];
+const TICKET_ACTIONS = ["Add", "Audit", "Fix", "Refine", "Document", "Wire", "Review", "Harden", "Measure", "Clean up", "Split", "Validate"] as const;
+const TICKET_AREAS = [
+  "ticket filtering",
+  "keyboard navigation",
+  "empty states",
+  "pagination controls",
+  "activity history",
+  "project settings",
+  "kanban movement",
+  "label editing",
+  "auth session handling",
+  "markdown rendering",
+] as const;
+const TICKET_OUTCOMES = [
+  "for first-time users",
+  "before release",
+  "after API changes",
+  "for mobile layouts",
+  "when data is missing",
+  "under heavy test data",
+  "with slower network responses",
+  "for owner-only workflows",
 ] as const;
 
-const LOREM_TICKET_DESCRIPTIONS = [
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus posuere velit aliquet.",
-  "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
-  "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-  "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-] as const;
-
-function getLoremTicketCopy(index: number) {
-  return {
-    title: LOREM_TICKET_TITLES[index % LOREM_TICKET_TITLES.length],
-    description: LOREM_TICKET_DESCRIPTIONS[index % LOREM_TICKET_DESCRIPTIONS.length],
-  };
+function buildTicketTitle(project: ProjectSeed, index: number) {
+  const action = TICKET_ACTIONS[(index + project.key.length) % TICKET_ACTIONS.length];
+  const area = TICKET_AREAS[(index * 3 + project.name.length) % TICKET_AREAS.length];
+  const outcome = TICKET_OUTCOMES[(index * 5 + project.stack.length) % TICKET_OUTCOMES.length];
+  return `${action} ${area} ${outcome}`;
 }
 
-const TICKET_SEEDS: Record<string, TicketSeed[]> = {
-  DASH: [
-    {
-      statusSlug: "in-progress",
-      priority: "critical",
-      labelSlugs: ["task", "improvement"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "in-review",
-      priority: "high",
-      labelSlugs: ["feature"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "todo",
-      priority: "high",
-      labelSlugs: ["feature"],
-    },
-    {
-      statusSlug: "backlog",
-      priority: "critical",
-      labelSlugs: ["bug"],
-    },
-    {
-      statusSlug: "backlog",
-      priority: "medium",
-      labelSlugs: ["task"],
-    },
-    {
-      statusSlug: "done",
-      priority: "medium",
-      labelSlugs: ["improvement"],
-    },
-    {
-      statusSlug: "todo",
-      priority: "low",
-      labelSlugs: ["chore"],
-    },
-  ],
-  ISSUE: [
-    {
-      statusSlug: "in-progress",
-      priority: "high",
-      labelSlugs: ["feature", "improvement"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "todo",
-      priority: "high",
-      labelSlugs: ["feature"],
-    },
-    {
-      statusSlug: "done",
-      priority: "critical",
-      labelSlugs: ["chore"],
-    },
-    {
-      statusSlug: "in-review",
-      priority: "critical",
-      labelSlugs: ["bug"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "backlog",
-      priority: "medium",
-      labelSlugs: ["improvement"],
-    },
-    {
-      statusSlug: "todo",
-      priority: "medium",
-      labelSlugs: ["feature"],
-    },
-  ],
-  ALBUM: [
-    {
-      statusSlug: "in-progress",
-      priority: "critical",
-      labelSlugs: ["bug", "task"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "todo",
-      priority: "high",
-      labelSlugs: ["feature"],
-    },
-    {
-      statusSlug: "backlog",
-      priority: "medium",
-      labelSlugs: ["chore"],
-    },
-    {
-      statusSlug: "in-review",
-      priority: "high",
-      labelSlugs: ["bug"],
-    },
-    {
-      statusSlug: "done",
-      priority: "medium",
-      labelSlugs: ["feature"],
-    },
-  ],
-  OPS: [
-    {
-      statusSlug: "todo",
-      priority: "critical",
-      labelSlugs: ["task", "chore"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "in-progress",
-      priority: "none",
-      labelSlugs: ["improvement"],
-    },
-    {
-      statusSlug: "backlog",
-      priority: "medium",
-      labelSlugs: ["chore"],
-    },
-    {
-      statusSlug: "in-review",
-      priority: "high",
-      labelSlugs: ["improvement"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "done",
-      priority: "medium",
-      labelSlugs: ["chore"],
-    },
-  ],
-  DOCS: [
-    {
-      statusSlug: "done",
-      priority: "high",
-      labelSlugs: ["chore"],
-    },
-    {
-      statusSlug: "in-progress",
-      priority: "medium",
-      labelSlugs: ["task"],
-      assignSelf: true,
-    },
-    {
-      statusSlug: "todo",
-      priority: "medium",
-      labelSlugs: ["task"],
-    },
-    {
-      statusSlug: "backlog",
-      priority: "low",
-      labelSlugs: ["chore"],
-    },
-    {
-      statusSlug: "todo",
-      priority: "low",
-      labelSlugs: ["improvement"],
-    },
-  ],
-};
+function buildTicketDescription(project: ProjectSeed, index: number, statusSlug: string, priority: Priority) {
+  return [
+    `Seed ticket for ${project.name}.`,
+    `Use this item to exercise pagination, sorting, column visibility, kanban drag-and-drop, and dense list/table rendering.`,
+    `Generated index: ${index + 1}. Status: ${statusSlug}. Priority: ${priority}.`,
+  ].join("\n\n");
+}
+
+function buildTicketSeeds(project: ProjectSeed) {
+  return Array.from({ length: TICKETS_PER_PROJECT }, (_, index): TicketSeed => {
+    const statusSlug = STATUS_SEQUENCE[(index + project.key.length) % STATUS_SEQUENCE.length];
+    const priority = PRIORITY_SEQUENCE[(index * 2 + project.key.length) % PRIORITY_SEQUENCE.length];
+
+    return {
+      title: buildTicketTitle(project, index),
+      description: buildTicketDescription(project, index, statusSlug, priority),
+      statusSlug,
+      priority,
+      labelSlugs: LABEL_SEQUENCES[(index + project.stack.length) % LABEL_SEQUENCES.length],
+      assignSelf: index % 3 !== 0,
+    };
+  });
+}
 
 async function seedTicketsForProject(projectID: string, ownerID: string, seeds: TicketSeed[]) {
   const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
@@ -262,11 +135,10 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
   const statusBySlug = new Map(projectStatuses.map((s) => [s.slug, s.id]));
   const labelBySlug = new Map(projectLabels.map((l) => [l.name.toLowerCase(), l.id]));
 
-  for (const [index, seed] of seeds.entries()) {
-    const copy = getLoremTicketCopy(index);
+  for (const seed of seeds) {
     const statusID = statusBySlug.get(seed.statusSlug);
     if (!statusID) throw new Error(`Missing status '${seed.statusSlug}' for project ${projectID}`);
-    const labelIDs = seed.labelSlugs?.map((slug) => {
+    const labelIDs = seed.labelSlugs.map((slug) => {
       const labelID = labelBySlug.get(slug);
       if (!labelID) throw new Error(`Missing label '${slug}' for project ${projectID}`);
       return labelID;
@@ -275,12 +147,12 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
     await TicketService.createTicket({
       projectID,
       reporterID: ownerID,
-      title: copy.title,
-      description: copy.description,
+      title: seed.title,
+      description: seed.description,
       statusID,
       priority: seed.priority,
       assigneeID: seed.assignSelf ? ownerID : undefined,
-      labelIDs: labelIDs?.length ? labelIDs : undefined,
+      labelIDs: labelIDs.length ? labelIDs : undefined,
     });
   }
 }
@@ -296,7 +168,7 @@ async function seed() {
   for (const project of DEV_PROJECTS) {
     const created = await ProjectService.createProject({ ...project, ownerID });
 
-    const seeds = TICKET_SEEDS[project.key] ?? [];
+    const seeds = buildTicketSeeds(project);
     await seedTicketsForProject(created.id, ownerID, seeds);
     ticketCount += seeds.length;
   }
