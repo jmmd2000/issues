@@ -19,6 +19,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import PriorityChip from "./PriorityChip.svelte";
+  import StatusChip from "./StatusChip.svelte";
 
   let {
     projectKey,
@@ -50,13 +51,6 @@
     day: "2-digit",
     month: "short",
   });
-
-  const statusColours: Record<Status["category"], string> = {
-    backlog: "var(--colour-status-backlog)",
-    active: "var(--colour-status-active)",
-    done: "var(--colour-status-done)",
-    cancelled: "var(--colour-status-cancelled)",
-  };
 
   const visibleColumns = $derived(LIST_COLUMNS.filter((column) => visibleColumnIDs.has(column.id)));
   const statusByID = $derived(new Map(statuses.map((status) => [status.id, status])));
@@ -111,7 +105,11 @@
               {:else if column.id === "status"}
                 {@const status = statusByID.get(ticket.statusID)}
                 <td>
-                  <span class="status-chip" style:--status-colour={status ? statusColours[status.category] : "var(--colour-status-backlog)"}>{status?.name ?? "Unknown"}</span>
+                  {#if status}
+                    <StatusChip name={status.name} category={status.category} />
+                  {:else}
+                    <StatusChip name="Unknown" category="backlog" />
+                  {/if}
                 </td>
               {:else if column.id === "priority"}
                 <td><PriorityChip priority={ticket.priority} variant="chip" /></td>
@@ -173,7 +171,7 @@
     padding: 0.75em 0.8em;
     border-bottom: var(--border);
     text-align: left;
-    font-size: 0.82em;
+    font-size: 0.8em;
     vertical-align: middle;
   }
 
@@ -192,7 +190,7 @@
     background: transparent;
     color: var(--colour-muted);
     font: inherit;
-    font-size: 0.72em;
+    font-size: 0.7em;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-align: left;
@@ -248,23 +246,6 @@
     min-width: 18em;
   }
 
-  .status-chip {
-    --status-colour: var(--colour-status-backlog);
-
-    display: inline-flex;
-    align-items: center;
-    min-height: 1.4rem;
-    padding: 0.2rem 0.45rem;
-    border: 1px solid color-mix(in oklch, var(--status-colour) 35%, white 65%);
-    border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--status-colour) 10%, white 90%);
-    color: color-mix(in oklch, var(--status-colour) 80%, black 20%);
-    font-size: 0.7rem;
-    font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
   .assignee-cell {
     display: inline-flex;
     align-items: center;
@@ -293,7 +274,7 @@
     justify-content: flex-end;
     gap: 0.65em;
     color: var(--colour-text-secondary);
-    font-size: 0.82em;
+    font-size: 0.8em;
   }
 
   @media (max-width: 640px) {
