@@ -248,6 +248,19 @@ describe("GET /api/projects/:key/tickets", () => {
     expect(body.tickets).toHaveLength(1);
   });
 
+  it("sorts before paginating", async () => {
+    await createTicket({ title: "Charlie" });
+    await createTicket({ title: "Alpha" });
+    await createTicket({ title: "Bravo" });
+
+    const res = await app.request("/api/projects/TEST/tickets?sortBy=title&sortDirection=asc&page=2&perPage=1", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.tickets).toHaveLength(1);
+    expect(body.tickets[0].title).toBe("Bravo");
+  });
+
   it("excludes soft-deleted tickets", async () => {
     const ticket = await createTicket({ title: "One" });
     await app.request(`/api/projects/TEST/tickets/${ticket.number}`, {
