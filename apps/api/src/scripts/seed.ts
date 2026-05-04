@@ -1,7 +1,7 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "../db";
-import { labels, statuses, users } from "../db/schema";
+import { labels, statuses, tickets, users } from "../db/schema";
 import type { Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
 import { ProjectService } from "../services/projectService";
@@ -68,6 +68,7 @@ type TicketSeed = {
   priority: Priority;
   labelSlugs: string[];
   assignSelf: boolean;
+  completedDaysAgo?: number;
 };
 
 const TICKETS_PER_PROJECT = 120;
@@ -129,11 +130,52 @@ function buildTicketSeeds(project: ProjectSeed) {
   });
 }
 
+const VOLUME_DISTRIBUTION = {
+  backlog: 250,
+  todoActive: 12,
+  inProgressActive: 10,
+  inReviewActive: 8,
+  doneRecent: 20,
+  doneOld: 50,
+} as const;
+
+function buildVolumeSeeds(project: ProjectSeed): TicketSeed[] {
+  const seeds: TicketSeed[] = [];
+  let counter = 0;
+
+  function push(statusSlug: string, count: number, builder: (index: number) => Partial<TicketSeed> = () => ({})) {
+    for (let i = 0; i < count; i++) {
+      const priority = PRIORITY_SEQUENCE[(counter * 3) % PRIORITY_SEQUENCE.length];
+      seeds.push({
+        title: buildTicketTitle(project, counter),
+        description: buildTicketDescription(project, counter, statusSlug, priority),
+        statusSlug,
+        priority,
+        labelSlugs: LABEL_SEQUENCES[counter % LABEL_SEQUENCES.length],
+        assignSelf: counter % 4 !== 0,
+        ...builder(i),
+      });
+      counter++;
+    }
+  }
+
+  push("backlog", VOLUME_DISTRIBUTION.backlog);
+  push("todo", VOLUME_DISTRIBUTION.todoActive);
+  push("in-progress", VOLUME_DISTRIBUTION.inProgressActive);
+  push("in-review", VOLUME_DISTRIBUTION.inReviewActive);
+  push("done", VOLUME_DISTRIBUTION.doneRecent, (i) => ({ completedDaysAgo: (i % 13) + 1 }));
+  push("done", VOLUME_DISTRIBUTION.doneOld, (i) => ({ completedDaysAgo: 18 + (i % 90) }));
+
+  return seeds;
+}
+
 async function seedTicketsForProject(projectID: string, ownerID: string, seeds: TicketSeed[]) {
   const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
   const projectLabels = await db.select({ id: labels.id, name: labels.name }).from(labels).where(eq(labels.projectID, projectID));
   const statusBySlug = new Map(projectStatuses.map((s) => [s.slug, s.id]));
   const labelBySlug = new Map(projectLabels.map((l) => [l.name.toLowerCase(), l.id]));
+
+  const backdates = new Map<number, string[]>();
 
   for (const seed of seeds) {
     const statusID = statusBySlug.get(seed.statusSlug);
@@ -144,7 +186,7 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
       return labelID;
     });
 
-    await TicketService.createTicket({
+    const ticket = await TicketService.createTicket({
       projectID,
       reporterID: ownerID,
       title: seed.title,
@@ -154,6 +196,19 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
       assigneeID: seed.assignSelf ? ownerID : undefined,
       labelIDs: labelIDs.length ? labelIDs : undefined,
     });
+
+    if (seed.completedDaysAgo !== undefined) {
+      const bucket = backdates.get(seed.completedDaysAgo) ?? [];
+      bucket.push(ticket.id);
+      backdates.set(seed.completedDaysAgo, bucket);
+    }
+  }
+
+  for (const [days, ids] of backdates) {
+    await db
+      .update(tickets)
+      .set({ completedAt: sql`now() - make_interval(days => ${days})` })
+      .where(inArray(tickets.id, ids));
   }
 }
 
@@ -168,7 +223,7 @@ async function seed() {
   for (const project of DEV_PROJECTS) {
     const created = await ProjectService.createProject({ ...project, ownerID });
 
-    const seeds = buildTicketSeeds(project);
+    const seeds = project.key === "VOLUME" ? buildVolumeSeeds(project) : buildTicketSeeds(project);
     await seedTicketsForProject(created.id, ownerID, seeds);
     ticketCount += seeds.length;
   }
