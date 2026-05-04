@@ -1,14 +1,17 @@
-import { and, asc, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { statuses, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
-import type { Priority, TicketSnapshot, Transaction } from "../lib/types";
+import type { Priority, StatusCategory, TicketSnapshot, Transaction } from "../lib/types";
 import { ActivityService } from "./activityService";
 
 export const TICKET_LIST_SORT_COLUMNS = ["key", "title", "status", "priority", "assignee", "updatedAt"] as const;
 export type TicketListSortColumn = (typeof TICKET_LIST_SORT_COLUMNS)[number];
 export type TicketListSortDirection = "asc" | "desc";
+
+const ARCHIVE_AFTER_DAYS = 14;
+const CLOSED_CATEGORIES: readonly StatusCategory[] = ["done", "cancelled"];
 
 const priorityRank = sql<number>`case ${tickets.priority}
   when 'none' then 0
@@ -29,6 +32,52 @@ function buildListOrderBy(sortBy: TicketListSortColumn, sortDirection: TicketLis
   if (sortBy === "assignee") return [order(sql`coalesce(lower(${users.name}), 'unassigned')`), fallback];
   return [order(tickets.updatedAt), fallback];
 }
+
+function archiveCutoffCondition(includeClosed: boolean): SQL | undefined {
+  if (includeClosed) return undefined;
+  // Cancelled tickets are always hidden unless explicitly requested. Done
+  // tickets are kept while their completedAt is within the recent window.
+  return and(
+    sql`${statuses.category} != 'cancelled'`,
+    or(sql`${statuses.category} != 'done'`, sql`${tickets.completedAt} > now() - make_interval(days => ${ARCHIVE_AFTER_DAYS})`)
+  );
+}
+
+function statusCondition(statusID?: string[]): SQL | undefined {
+  if (!statusID?.length) return undefined;
+  return inArray(tickets.statusID, statusID);
+}
+
+function priorityCondition(priority?: Priority[]): SQL | undefined {
+  if (!priority?.length) return undefined;
+  return inArray(tickets.priority, priority);
+}
+
+function assigneeCondition(assigneeID?: string[]): SQL | undefined {
+  if (!assigneeID?.length) return undefined;
+  return inArray(tickets.assigneeID, assigneeID);
+}
+
+function labelCondition(labelID?: string[]): SQL | undefined {
+  if (!labelID?.length) return undefined;
+  return inArray(
+    tickets.id,
+    db.select({ id: ticketLabels.ticketID }).from(ticketLabels).where(inArray(ticketLabels.labelID, labelID))
+  );
+}
+
+function titleSearchCondition(titleSearch?: string): SQL | undefined {
+  if (!titleSearch) return undefined;
+  return ilike(tickets.title, `%${titleSearch}%`);
+}
+
+type CommonFilters = {
+  statusID?: string[];
+  priority?: Priority[];
+  assigneeID?: string[];
+  labelID?: string[];
+  titleSearch?: string;
+};
 
 export class TicketService {
   /**
@@ -66,6 +115,9 @@ export class TicketService {
         .orderBy(desc(tickets.position))
         .limit(1);
 
+      const [status] = await tx.select({ category: statuses.category }).from(statuses).where(eq(statuses.id, data.statusID)).limit(1);
+      const isClosed = status ? CLOSED_CATEGORIES.includes(status.category) : false;
+
       const [ticket] = await tx
         .insert(tickets)
         .values({
@@ -79,6 +131,7 @@ export class TicketService {
           reporterID: data.reporterID,
           assigneeID: data.assigneeID ?? null,
           parentTicketID: data.parentTicketID ?? null,
+          completedAt: isClosed ? new Date() : null,
         })
         .returning();
 
@@ -135,17 +188,15 @@ export class TicketService {
 
   /**
    * Lists tickets for a project with optional filters. Excludes soft-deleted tickets.
+   * Hides tickets whose status is `done` or `cancelled` and whose `completedAt` is older
+   * than {@link ARCHIVE_AFTER_DAYS} days unless `includeClosed` is true.
    * @param projectID The ID of the project
    * @param filters Optional filters, pagination, and sorting
-   * @returns
    */
   static async listForProject(
     projectID: string,
-    filters: {
-      statusID?: string;
-      priority?: Priority;
-      assigneeID?: string;
-      titleSearch?: string;
+    filters: CommonFilters & {
+      includeClosed?: boolean;
       page?: number;
       perPage?: number;
       sortBy?: TicketListSortColumn;
@@ -157,18 +208,23 @@ export class TicketService {
     const sortBy = filters.sortBy ?? "updatedAt";
     const sortDirection = filters.sortDirection ?? "desc";
 
-    const where = [eq(tickets.projectID, projectID), isNull(tickets.deletedAt)];
-    if (filters.statusID) where.push(eq(tickets.statusID, filters.statusID));
-    if (filters.priority) where.push(eq(tickets.priority, filters.priority));
-    if (filters.assigneeID) where.push(eq(tickets.assigneeID, filters.assigneeID));
-    if (filters.titleSearch) where.push(ilike(tickets.title, `%${filters.titleSearch}%`));
+    const where = and(
+      eq(tickets.projectID, projectID),
+      isNull(tickets.deletedAt),
+      statusCondition(filters.statusID),
+      titleSearchCondition(filters.titleSearch),
+      priorityCondition(filters.priority),
+      assigneeCondition(filters.assigneeID),
+      labelCondition(filters.labelID),
+      archiveCutoffCondition(filters.includeClosed ?? false)
+    );
 
     const rows = await db
       .select({ ticket: tickets })
       .from(tickets)
       .innerJoin(statuses, eq(tickets.statusID, statuses.id))
       .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(and(...where))
+      .where(where)
       .orderBy(...buildListOrderBy(sortBy, sortDirection))
       .limit(perPage)
       .offset((page - 1) * perPage);
@@ -177,35 +233,73 @@ export class TicketService {
   }
 
   /**
-   * Lists the full kanban board for a project, ordered by column and position.
-   * Excludes soft-deleted tickets.
+   * Lists the active kanban board for a project. Backlog statuses are excluded
+   * by default; closed tickets older than {@link ARCHIVE_AFTER_DAYS} days are
+   * also excluded unless `includeClosed` is true. Excludes soft-deleted tickets.
    * @param projectID The ID of the project
    * @param filters Optional board filters
-   * @returns The board tickets
    */
   static async listBoardForProject(
     projectID: string,
-    filters: {
-      statusID?: string;
-      priority?: Priority;
-      assigneeID?: string;
+    filters: CommonFilters & {
+      includeClosed?: boolean;
     }
   ) {
-    const where = [eq(tickets.projectID, projectID), isNull(tickets.deletedAt)];
-    if (filters.statusID) where.push(eq(tickets.statusID, filters.statusID));
-    if (filters.priority) where.push(eq(tickets.priority, filters.priority));
-    if (filters.assigneeID) where.push(eq(tickets.assigneeID, filters.assigneeID));
+    const where = and(
+      eq(tickets.projectID, projectID),
+      isNull(tickets.deletedAt),
+      notInArray(statuses.category, ["backlog"]),
+      statusCondition(filters.statusID),
+      titleSearchCondition(filters.titleSearch),
+      priorityCondition(filters.priority),
+      assigneeCondition(filters.assigneeID),
+      labelCondition(filters.labelID),
+      archiveCutoffCondition(filters.includeClosed ?? false)
+    );
 
-    return await db.query.tickets.findMany({
-      where: and(...where),
-      orderBy: [tickets.statusID, sql`${tickets.position} COLLATE "C"`],
-    });
+    const rows = await db
+      .select({ ticket: tickets })
+      .from(tickets)
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .where(where)
+      .orderBy(tickets.statusID, sql`${tickets.position} COLLATE "C"`);
+
+    return rows.map(({ ticket }) => ticket);
+  }
+
+  /**
+   * Lists tickets in backlog statuses for a project, sorted by priority (desc)
+   * then creation time (desc). Excludes soft-deleted tickets. Used by the
+   * kanban backlog drawer.
+   * @param projectID The ID of the project
+   * @param filters Optional filters
+   */
+  static async listBacklogForProject(projectID: string, filters: CommonFilters) {
+    const where = and(
+      eq(tickets.projectID, projectID),
+      isNull(tickets.deletedAt),
+      eq(statuses.category, "backlog"),
+      titleSearchCondition(filters.titleSearch),
+      priorityCondition(filters.priority),
+      assigneeCondition(filters.assigneeID),
+      labelCondition(filters.labelID)
+    );
+
+    const rows = await db
+      .select({ ticket: tickets })
+      .from(tickets)
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .where(where)
+      .orderBy(desc(priorityRank), desc(tickets.createdAt));
+
+    return rows.map(({ ticket }) => ticket);
   }
 
   /**
    * Updates a ticket's data. Caller must have verified
    * member access via requireProjectAccess. Runs in a single transaction and
-   * writes one activity row per change.
+   * writes one activity row per change. When the status changes, sets or
+   * clears `completedAt` according to the destination category.
    * @param ticketID The ID of the ticket to update
    * @param projectID The ID of the project that the ticket belongs to
    * @param userID The ID of the user performing the update
@@ -234,9 +328,14 @@ export class TicketService {
       let ticket: typeof tickets.$inferSelect | undefined;
 
       if (Object.keys(fields).length) {
+        const setData: Record<string, unknown> = { ...fields };
+        if (fields.statusID && fields.statusID !== before.status.id) {
+          Object.assign(setData, await this.completedAtUpdate(tx, fields.statusID));
+        }
+
         [ticket] = await tx
           .update(tickets)
-          .set(fields)
+          .set(setData)
           .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
           .returning();
         if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
@@ -262,7 +361,8 @@ export class TicketService {
   /**
    * Moves a ticket within a kanban column, optionally changing status.
    * Computes a new fractional-index position between the given neighbours and
-   * writes an activity row when status changes.
+   * writes an activity row when status changes. Sets or clears `completedAt`
+   * if the move crosses into or out of a closed-category status.
    * @param ticketID The ID of the ticket to move
    * @param projectID The ID of the project that the ticket belongs to
    * @param userID The ID of the user performing the move (attributed on activity rows)
@@ -289,12 +389,17 @@ export class TicketService {
       ]);
       const newPosition = positionBetween(beforeNeighbour?.position ?? null, afterNeighbour?.position ?? null);
 
-      const update: { position: string; statusID?: string } = { position: newPosition };
-      if (data.statusID) update.statusID = data.statusID;
+      const setData: Record<string, unknown> = { position: newPosition };
+      if (data.statusID) {
+        setData.statusID = data.statusID;
+        if (data.statusID !== before.status.id) {
+          Object.assign(setData, await this.completedAtUpdate(tx, data.statusID));
+        }
+      }
 
       const [ticket] = await tx
         .update(tickets)
-        .set(update)
+        .set(setData)
         .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
         .returning();
 
@@ -356,6 +461,22 @@ export class TicketService {
       await ActivityService.logRestore(tx, userID, ticket);
       return ticket;
     });
+  }
+
+  /**
+   * Resolves how `completedAt` should change when a ticket moves to a new
+   * status. Closed-category targets stamp `now()` on first entry and preserve
+   * existing timestamps; open-category targets clear the field.
+   * @param tx The active transaction
+   * @param newStatusID The destination status ID
+   */
+  private static async completedAtUpdate(tx: Transaction, newStatusID: string) {
+    const [next] = await tx.select({ category: statuses.category }).from(statuses).where(eq(statuses.id, newStatusID)).limit(1);
+    if (!next) return {};
+    if (CLOSED_CATEGORIES.includes(next.category)) {
+      return { completedAt: sql`coalesce(${tickets.completedAt}, now())` };
+    }
+    return { completedAt: null };
   }
 
   /**

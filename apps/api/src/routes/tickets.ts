@@ -40,18 +40,39 @@ const moveSchema = z
   })
   .strict();
 
+const arrayParam = <T extends z.ZodTypeAny>(item: T) =>
+  z
+    .union([item, z.array(item)])
+    .transform((value) => (Array.isArray(value) ? value : [value]))
+    .optional();
+
+const boolParam = z
+  .enum(["true", "false"])
+  .transform((value) => value === "true")
+  .default(false);
+
 const ticketFilterQuerySchema = z.object({
-  statusID: z.uuid().optional(),
-  priority: z.enum(PRIORITIES).optional(),
-  assigneeID: z.uuid().optional(),
+  statusID: arrayParam(z.uuid()),
+  priority: arrayParam(z.enum(PRIORITIES)),
+  assigneeID: arrayParam(z.uuid()),
+  labelID: arrayParam(z.uuid()),
+  titleSearch: z.string().trim().min(1).max(200).optional(),
+  includeClosed: boolParam,
 });
 
 const listQuerySchema = ticketFilterQuerySchema.extend({
-  titleSearch: z.string().trim().min(1).max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
   sortBy: z.enum(TICKET_LIST_SORT_COLUMNS).default("updatedAt"),
   sortDirection: z.enum(["asc", "desc"]).default("desc"),
+});
+
+const backlogQuerySchema = ticketFilterQuerySchema.pick({
+  statusID: true,
+  priority: true,
+  assigneeID: true,
+  labelID: true,
+  titleSearch: true,
 });
 
 export const tickets = new Hono()
@@ -99,6 +120,20 @@ export const tickets = new Hono()
       const query = c.req.valid("query");
 
       const tickets = await TicketService.listBoardForProject(project.id, query);
+      return c.json({ tickets });
+    }
+  )
+  .get(
+    "/api/projects/:key/tickets/backlog",
+    requireAuth,
+    zValidator("param", projectKeyParamSchema, validationHook),
+    zValidator("query", backlogQuerySchema, validationHook),
+    requireProjectAccess("member"),
+    async (c) => {
+      const project = c.get("project");
+      const query = c.req.valid("query");
+
+      const tickets = await TicketService.listBacklogForProject(project.id, query);
       return c.json({ tickets });
     }
   )
