@@ -37,10 +37,7 @@ function archiveCutoffCondition(includeClosed: boolean): SQL | undefined {
   if (includeClosed) return undefined;
   // Cancelled tickets are always hidden unless explicitly requested. Done
   // tickets are kept while their completedAt is within the recent window.
-  return and(
-    sql`${statuses.category} != 'cancelled'`,
-    or(sql`${statuses.category} != 'done'`, sql`${tickets.completedAt} > now() - make_interval(days => ${ARCHIVE_AFTER_DAYS})`)
-  );
+  return and(sql`${statuses.category} != 'cancelled'`, or(sql`${statuses.category} != 'done'`, sql`${tickets.completedAt} > now() - make_interval(days => ${ARCHIVE_AFTER_DAYS})`));
 }
 
 function statusCondition(statusID?: string[]): SQL | undefined {
@@ -60,10 +57,7 @@ function assigneeCondition(assigneeID?: string[]): SQL | undefined {
 
 function labelCondition(labelID?: string[]): SQL | undefined {
   if (!labelID?.length) return undefined;
-  return inArray(
-    tickets.id,
-    db.select({ id: ticketLabels.ticketID }).from(ticketLabels).where(inArray(ticketLabels.labelID, labelID))
-  );
+  return inArray(tickets.id, db.select({ id: ticketLabels.ticketID }).from(ticketLabels).where(inArray(ticketLabels.labelID, labelID)));
 }
 
 function titleSearchCondition(titleSearch?: string): SQL | undefined {
@@ -285,12 +279,7 @@ export class TicketService {
       labelCondition(filters.labelID)
     );
 
-    const rows = await db
-      .select({ ticket: tickets })
-      .from(tickets)
-      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
-      .where(where)
-      .orderBy(desc(priorityRank), desc(tickets.createdAt));
+    const rows = await db.select({ ticket: tickets }).from(tickets).innerJoin(statuses, eq(tickets.statusID, statuses.id)).where(where).orderBy(desc(priorityRank), desc(tickets.createdAt));
 
     return rows.map(({ ticket }) => ticket);
   }

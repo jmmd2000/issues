@@ -45,16 +45,7 @@
 
   <div class="project-content">
     {#snippet ticketsPanel()}
-      <TicketsView
-        project={data.project}
-        {statuses}
-        labels={data.labels}
-        members={data.members}
-        view={data.ticketView}
-        ticketData={data.ticketData}
-        backlog={data.backlog}
-        filters={data.filters}
-      />
+      <TicketsView project={data.project} {statuses} labels={data.labels} members={data.members} view={data.ticketView} ticketData={data.ticketData} backlog={data.backlog} filters={data.filters} />
     {/snippet}
     {#snippet overviewPanel()}Overview content{/snippet}
     {#snippet membersPanel()}Members content{/snippet}

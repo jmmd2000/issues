@@ -12,25 +12,13 @@ const searchSchema = z.object({
   perPage: z.coerce.number().int().min(1).max(100).catch(25),
   sortBy: z.enum(ticketListSortColumns).catch("updatedAt"),
   sortDirection: z.enum(["asc", "desc"]).catch("desc"),
-  q: z
-    .string()
-    .trim()
-    .min(1)
-    .max(200)
-    .nullable()
-    .catch(null),
+  q: z.string().trim().min(1).max(200).nullable().catch(null),
   status: z.string().nullable().catch(null),
   priority: z.string().nullable().catch(null),
   assignee: z.string().nullable().catch(null),
   label: z.string().nullable().catch(null),
-  showClosed: z
-    .enum(["true", "false"])
-    .nullable()
-    .catch(null),
-  backlog: z
-    .enum(["true", "false"])
-    .nullable()
-    .catch(null),
+  showClosed: z.enum(["true", "false"]).nullable().catch(null),
+  backlog: z.enum(["true", "false"]).nullable().catch(null),
 });
 
 function parseList(value: string | null): string[] {
@@ -98,16 +86,9 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
           },
         });
 
-  const backlogRequest =
-    view === "kanban" && backlogOpen
-      ? api.tickets.backlog.$get({ param: { key: params.key }, query: sharedQuery })
-      : null;
+  const backlogRequest = view === "kanban" && backlogOpen ? api.tickets.backlog.$get({ param: { key: params.key }, query: sharedQuery }) : null;
 
-  const [projectRes, ticketsRes, backlogRes] = await Promise.all([
-    api.$get({ param: { key: params.key } }),
-    ticketsRequest,
-    backlogRequest,
-  ]);
+  const [projectRes, ticketsRes, backlogRes] = await Promise.all([api.$get({ param: { key: params.key } }), ticketsRequest, backlogRequest]);
 
   if (!projectRes.ok) error(projectRes.status, "Failed to load project");
 

@@ -154,14 +154,7 @@
 
     {#each filtered as member (member.userID)}
       {@const isSelected = multi ? selectedSet.has(member.userID) : value === member.userID}
-      <button
-        type="button"
-        class="option"
-        role="option"
-        aria-selected={isSelected}
-        onclick={() => (multi ? toggleMulti(member.userID) : selectSingle(member.userID))}
-        {disabled}
-      >
+      <button type="button" class="option" role="option" aria-selected={isSelected} onclick={() => (multi ? toggleMulti(member.userID) : selectSingle(member.userID))} {disabled}>
         <span class="check">
           {#if isSelected}<Check size={12} strokeWidth={3} />{/if}
         </span>
