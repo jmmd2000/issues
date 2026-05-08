@@ -25,6 +25,7 @@
   let assigneeID = $state<string | undefined>(undefined);
   let labelIDs = $state<string[]>([]);
   let parentTicketID = $state<string | undefined>(undefined);
+  let visibility = $state<"public" | "private">("public");
   let submitting = $state(false);
   let formMessage = $state<FormMessageType | null>(null);
   let fieldErrors = $state<Record<string, string>>({});
@@ -57,6 +58,7 @@
           assigneeID: assigneeID || undefined,
           labelIDs: labelIDs.length ? labelIDs : undefined,
           parentTicketID: parentTicketID || undefined,
+          visibility,
         },
       });
 
@@ -163,6 +165,23 @@
       <ParentTicketCombobox projectKey={data.project.key} inputID="parent-ticket" bind:value={parentTicketID} />
     </div>
 
+    <div class="input-row">
+      <span class="form-label">Visibility</span>
+      <div class="visibility-toggle" role="radiogroup" aria-label="Visibility">
+        <button type="button" class="toggle-option" class:active={visibility === "public"} role="radio" aria-checked={visibility === "public"} onclick={() => (visibility = "public")}> Public </button>
+        <button type="button" class="toggle-option" class:active={visibility === "private"} role="radio" aria-checked={visibility === "private"} onclick={() => (visibility = "private")}>
+          Private
+        </button>
+      </div>
+      <p class="field-hint">
+        {#if visibility === "private"}
+          Only project members can see this ticket and its attachments.
+        {:else}
+          Anyone who can see the project can see this ticket.
+        {/if}
+      </p>
+    </div>
+
     <div class="ticket-form-footer">
       <FormMessage message={formMessage} />
       <div class="form-actions">
@@ -261,6 +280,46 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.6rem;
+  }
+
+  .visibility-toggle {
+    display: inline-flex;
+    border: var(--border);
+    border-radius: 999px;
+    padding: 2px;
+    background: var(--colour-bg);
+    width: fit-content;
+  }
+
+  .toggle-option {
+    padding: 0.35rem 0.9rem;
+    border: 0;
+    background: transparent;
+    color: var(--colour-text-secondary);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      color 120ms ease,
+      background 120ms ease;
+  }
+
+  .toggle-option:hover:not(.active) {
+    color: var(--colour-text);
+  }
+
+  .toggle-option.active {
+    background: var(--colour-bg-lighter);
+    color: var(--accent-base);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  .field-hint {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--colour-muted);
   }
 
   @media (max-width: 640px) {
