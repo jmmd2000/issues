@@ -22,5 +22,11 @@
     "prettier": "^3.8.1",
     "prettier-plugin-svelte": "^3.5.1",
     "typescript-eslint": "^8.58.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "sharp"
+    ]
   }
 }
