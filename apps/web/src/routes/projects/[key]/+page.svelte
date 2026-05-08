@@ -5,6 +5,8 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Tabs from "$lib/components/ui/Tabs.svelte";
   import TicketsView from "$lib/components/tickets/TicketsView.svelte";
+  import ProjectOverview from "$lib/components/ProjectOverview.svelte";
+  import ProjectMembers from "$lib/components/ProjectMembers.svelte";
 
   let { data }: PageProps = $props();
   let project = $derived(data.project);
@@ -47,8 +49,12 @@
     {#snippet ticketsPanel()}
       <TicketsView project={data.project} {statuses} labels={data.labels} members={data.members} view={data.ticketView} ticketData={data.ticketData} backlog={data.backlog} filters={data.filters} />
     {/snippet}
-    {#snippet overviewPanel()}Overview content{/snippet}
-    {#snippet membersPanel()}Members content{/snippet}
+    {#snippet overviewPanel()}
+      <ProjectOverview project={data.project} stats={data.stats} />
+    {/snippet}
+    {#snippet membersPanel()}
+      <ProjectMembers members={data.members} stats={data.stats} />
+    {/snippet}
 
     <Tabs
       tabs={[
