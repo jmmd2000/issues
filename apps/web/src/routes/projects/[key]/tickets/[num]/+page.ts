@@ -1,6 +1,6 @@
 // Load function for ticket detail page
 import { error } from "@sveltejs/kit";
-import type { Comment, ProjectDetail, TicketActivity, TicketDetail, TicketLink } from "@issues/api";
+import type { Attachment, Comment, ProjectDetail, TicketActivity, TicketDetail, TicketLink } from "@issues/api";
 import { requireAuth } from "$lib/auth";
 import { createClient } from "$lib/api/client";
 import type { PageLoad } from "./$types";
@@ -11,7 +11,7 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
 
   const api = createClient(fetch).api.projects[":key"];
 
-  const [projectRes, ticketRes, commentsRes, activityRes, linksRes] = await Promise.all([
+  const [projectRes, ticketRes, commentsRes, activityRes, linksRes, attachmentsRes] = await Promise.all([
     api.$get({ param: { key: params.key } }),
     api.tickets[":num"].$get({
       param: { key: params.key, num: params.num },
@@ -25,6 +25,9 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
     api.tickets[":num"].links.$get({
       param: { key: params.key, num: params.num },
     }),
+    api.tickets[":num"].attachments.$get({
+      param: { key: params.key, num: params.num },
+    }),
   ]);
 
   if (!projectRes.ok) error(projectRes.status, "Failed to load project");
@@ -32,12 +35,14 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
   if (!commentsRes.ok) error(commentsRes.status, "Failed to load comments");
   if (!activityRes.ok) error(activityRes.status, "Failed to load activity");
   if (!linksRes.ok) error(linksRes.status, "Failed to load links");
+  if (!attachmentsRes.ok) error(attachmentsRes.status, "Failed to load attachments");
 
   const { project }: { project: ProjectDetail } = await projectRes.json();
   const { ticket }: { ticket: TicketDetail } = await ticketRes.json();
   const { comments }: { comments: Comment[] } = await commentsRes.json();
   const { activity }: { activity: TicketActivity[] } = await activityRes.json();
   const { links }: { links: TicketLink[] } = await linksRes.json();
+  const { attachments }: { attachments: Attachment[] } = await attachmentsRes.json();
 
-  return { user, project, ticket, comments, activity, links };
+  return { user, project, ticket, comments, activity, links, attachments };
 };

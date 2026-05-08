@@ -14,6 +14,8 @@
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
   import TicketHistory from "$lib/components/tickets/TicketHistory.svelte";
   import TicketLinks from "$lib/components/tickets/TicketLinks.svelte";
+  import TicketAttachments from "$lib/components/tickets/TicketAttachments.svelte";
+  import { Eye, EyeOff } from "@lucide/svelte";
 
   let { data }: PageProps = $props();
   let ticket = $derived(data.ticket);
@@ -21,6 +23,8 @@
   let comments = $derived(data.comments);
   let activity = $derived(data.activity);
   let links = $derived(data.links);
+  let attachments = $derived(data.attachments);
+  const attachmentContext = $derived({ projectKey: project.key, ticketNumber: ticket.number });
 
   let savingTitle = $state(false);
   let savingDescription = $state(false);
@@ -28,10 +32,12 @@
   let statusID = $derived(ticket.status.id);
   let priority = $derived<Priority>(ticket.priority);
   let labelIDs = $derived(ticket.labels.map((label) => label.id));
+  let visibility = $derived<"public" | "private">(ticket.visibility);
   let savingAssignee = $state(false);
   let savingStatus = $state(false);
   let savingPriority = $state(false);
   let savingLabels = $state(false);
+  let savingVisibility = $state(false);
 
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -176,6 +182,29 @@
       savingLabels = false;
     }
   }
+
+  async function toggleVisibility() {
+    if (savingVisibility) return;
+    const next = visibility === "public" ? "private" : "public";
+    const previous = visibility;
+    visibility = next;
+    savingVisibility = true;
+    try {
+      const res = await client.api.projects[":key"].tickets[":num"].$patch({
+        param: { key: project.key, num: String(ticket.number) },
+        json: { visibility: next },
+      });
+      if (!res.ok) {
+        visibility = previous;
+        return;
+      }
+      await invalidateAll();
+    } catch {
+      visibility = previous;
+    } finally {
+      savingVisibility = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -199,7 +228,8 @@
 
   <div class="ticket-content">
     <main class="ticket-main">
-      <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} />
+      <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} {attachmentContext} />
+      <TicketAttachments {attachments} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
       <TicketLinks {links} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
       <TicketHistory
         {comments}
@@ -299,6 +329,27 @@
                 size="sm"
                 oncommit={(nextLabelIDs, previousLabelIDs) => void saveLabels(nextLabelIDs, previousLabelIDs)}
               />
+            </dd>
+          </div>
+
+          <div class="property-row">
+            <dt>Visibility</dt>
+            <dd>
+              <button
+                type="button"
+                class="visibility-pill"
+                class:private={visibility === "private"}
+                onclick={() => void toggleVisibility()}
+                disabled={savingVisibility}
+                aria-pressed={visibility === "private"}
+                title={visibility === "public" ? "Public — visible to anyone if the project is public" : "Private — members only"}
+              >
+                {#if visibility === "private"}
+                  <EyeOff size={12} strokeWidth={2.5} /> Private
+                {:else}
+                  <Eye size={12} strokeWidth={2.5} /> Public
+                {/if}
+              </button>
             </dd>
           </div>
         </dl>
@@ -450,6 +501,36 @@
   .muted-value {
     color: var(--colour-muted);
     font-weight: 500;
+  }
+
+  .visibility-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border: var(--border);
+    border-radius: 999px;
+    background: var(--colour-bg);
+    color: var(--colour-text);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .visibility-pill:hover:not(:disabled) {
+    background: var(--colour-bg-lighter);
+  }
+
+  .visibility-pill.private {
+    color: var(--accent-shade-200);
+    background: var(--accent-tint-800);
+    border-color: var(--accent-tint-600);
+  }
+
+  .visibility-pill:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .ticket-link {
