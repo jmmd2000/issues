@@ -1,6 +1,7 @@
 <script lang="ts">
   import MarkdownRenderer from "./MarkdownRenderer.svelte";
   import MarkdownToolbar, { type ToolbarInsert } from "./MarkdownToolbar.svelte";
+  import { uploadTicketAttachment } from "$lib/uploads";
 
   let {
     value = $bindable(""),
@@ -8,13 +9,18 @@
     autofocus = false,
     minHeight = "14rem",
     onsubmit,
+    attachmentContext,
   }: {
     value?: string;
     placeholder?: string;
     autofocus?: boolean;
     minHeight?: string;
     onsubmit?: () => void;
+    /** When provided, paste/drop of image files uploads them and inserts the resulting markdown at the cursor. */
+    attachmentContext?: { projectKey: string; ticketNumber: number };
   } = $props();
+
+  let dragOver = $state(false);
 
   let tab = $state<"write" | "preview">("write");
   let textarea: HTMLTextAreaElement | null = $state(null);
@@ -39,6 +45,91 @@
       const offset = start + prefix.length + selected.length + suffix.length;
       textarea?.setSelectionRange(offset, offset);
     });
+  }
+
+  /**
+   * Inserts plain text at the current caret (or replaces the selection).
+   * Returns the resulting offsets so callers can replace the inserted token
+   * later (e.g. swap an upload placeholder for the final image markdown).
+   */
+  function insertAtCursor(text: string): { start: number; end: number } {
+    const start = textarea?.selectionStart ?? value.length;
+    const end = textarea?.selectionEnd ?? value.length;
+    value = `${value.slice(0, start)}${text}${value.slice(end)}`;
+    const insertedEnd = start + text.length;
+    queueMicrotask(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(insertedEnd, insertedEnd);
+    });
+    return { start, end: insertedEnd };
+  }
+
+  /** Replaces a previously-inserted token in `value`. Token must be unique enough to find. */
+  function replaceToken(token: string, replacement: string) {
+    const idx = value.indexOf(token);
+    if (idx === -1) return;
+    value = value.slice(0, idx) + replacement + value.slice(idx + token.length);
+  }
+
+  let uploadCounter = 0;
+  function nextPlaceholder(): string {
+    uploadCounter += 1;
+    return `![uploading-${uploadCounter}…]()`;
+  }
+
+  async function uploadAndInsert(file: File) {
+    if (!attachmentContext) return;
+    const placeholder = nextPlaceholder();
+    insertAtCursor(placeholder);
+    try {
+      const att = await uploadTicketAttachment(attachmentContext.projectKey, attachmentContext.ticketNumber, file);
+      const markdown = att.isImage ? `![${att.filename}](${att.url})` : `[${att.filename}](${att.url})`;
+      replaceToken(placeholder, markdown);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "upload failed";
+      replaceToken(placeholder, `_(${message})_`);
+    }
+  }
+
+  function imageFilesFromClipboard(event: ClipboardEvent): File[] {
+    const items = event.clipboardData?.items;
+    if (!items) return [];
+    const files: File[] = [];
+    for (const item of items) {
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    return files;
+  }
+
+  function handlePaste(event: ClipboardEvent) {
+    if (!attachmentContext) return;
+    const files = imageFilesFromClipboard(event);
+    if (files.length === 0) return;
+    event.preventDefault();
+    files.forEach((file) => void uploadAndInsert(file));
+  }
+
+  function handleDragOver(event: DragEvent) {
+    if (!attachmentContext) return;
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    dragOver = true;
+  }
+
+  function handleDragLeave() {
+    dragOver = false;
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (!attachmentContext) return;
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    event.preventDefault();
+    dragOver = false;
+    files.forEach((file) => void uploadAndInsert(file));
   }
 
   function handleInsert(action: ToolbarInsert) {
@@ -84,7 +175,17 @@
   <MarkdownToolbar oninsert={handleInsert} />
 
   {#if tab === "write"}
-    <textarea bind:this={textarea} bind:value {placeholder} onkeydown={handleKeydown}></textarea>
+    <textarea
+      bind:this={textarea}
+      bind:value
+      class:drag-over={dragOver}
+      {placeholder}
+      onkeydown={handleKeydown}
+      onpaste={handlePaste}
+      ondragover={handleDragOver}
+      ondragleave={handleDragLeave}
+      ondrop={handleDrop}
+    ></textarea>
   {:else}
     <div class="preview">
       {#if value.trim()}
@@ -155,6 +256,12 @@
 
   textarea::placeholder {
     color: var(--colour-muted);
+  }
+
+  textarea.drag-over {
+    background: var(--accent-tint-900);
+    outline: 2px dashed var(--accent-tint-600);
+    outline-offset: -4px;
   }
 
   .preview {

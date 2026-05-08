@@ -169,7 +169,7 @@
               <p class="comment-tombstone">Comment deleted.</p>
             {:else if editingID === comment.id}
               <div class="comment-edit">
-                <MarkdownEditor bind:value={editDraft} minHeight="8rem" autofocus onsubmit={() => void saveEdit(comment.id)} />
+                <MarkdownEditor bind:value={editDraft} minHeight="8rem" autofocus onsubmit={() => void saveEdit(comment.id)} attachmentContext={{ projectKey, ticketNumber }} />
                 {#if editError}
                   <p class="comment-error" role="alert">{editError}</p>
                 {/if}
@@ -200,7 +200,7 @@
       }}
     >
       <h3 class="composer-title">Add a comment</h3>
-      <MarkdownEditor bind:value={draft} placeholder="Leave a comment..." minHeight="8rem" autofocus onsubmit={() => void postComment()} />
+      <MarkdownEditor bind:value={draft} placeholder="Leave a comment..." minHeight="8rem" autofocus onsubmit={() => void postComment()} attachmentContext={{ projectKey, ticketNumber }} />
       {#if postError}
         <p class="comment-error" role="alert">{postError}</p>
       {/if}

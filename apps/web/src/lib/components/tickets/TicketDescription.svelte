@@ -7,9 +7,10 @@
     description: string;
     saving?: boolean;
     onsave: (description: string) => boolean | Promise<boolean>;
+    attachmentContext?: { projectKey: string; ticketNumber: number };
   }
 
-  let { description, saving = false, onsave }: TicketDescriptionProps = $props();
+  let { description, saving = false, onsave, attachmentContext }: TicketDescriptionProps = $props();
 
   let editing = $state(false);
   let draft = $state("");
@@ -56,7 +57,7 @@
   </div>
 
   {#if editing}
-    <MarkdownEditor bind:value={draft} minHeight="14rem" autofocus onsubmit={() => void save()} />
+    <MarkdownEditor bind:value={draft} minHeight="14rem" autofocus onsubmit={() => void save()} {attachmentContext} />
 
     <div class="description-actions">
       <Button type="button" variant="secondary" onclick={cancelEdit} disabled={isSaving}>Cancel</Button>
