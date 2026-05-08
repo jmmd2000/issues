@@ -1,6 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
-import type { ProjectDetail, ProjectStats, Ticket } from "@issues/api";
+import type { ProjectActivity, ProjectDetail, ProjectStats, Ticket } from "@issues/api";
 import { createClient } from "$lib/api/client";
 import type { PageLoad } from "./$types";
 
@@ -88,11 +88,12 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 
   const backlogRequest = view === "kanban" && backlogOpen ? api.tickets.backlog.$get({ param: { key: params.key }, query: sharedQuery }) : null;
 
-  const [projectRes, ticketsRes, backlogRes, statsRes] = await Promise.all([
+  const [projectRes, ticketsRes, backlogRes, statsRes, activityRes] = await Promise.all([
     api.$get({ param: { key: params.key } }),
     ticketsRequest,
     backlogRequest,
     api.stats.$get({ param: { key: params.key } }),
+    api.activity.$get({ param: { key: params.key }, query: { limit: "20" } }),
   ]);
 
   if (!projectRes.ok) error(projectRes.status, "Failed to load project");
@@ -103,6 +104,12 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
   if (statsRes.ok) {
     const body: { stats: ProjectStats } = await statsRes.json();
     stats = body.stats;
+  }
+
+  let activity: ProjectActivity[] = [];
+  if (activityRes.ok) {
+    const body: { activity: ProjectActivity[] } = await activityRes.json();
+    activity = body.activity;
   }
 
   let tickets: Ticket[] = [];
@@ -147,5 +154,6 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
     labels: project.labels,
     members: project.members,
     stats,
+    activity,
   };
 };

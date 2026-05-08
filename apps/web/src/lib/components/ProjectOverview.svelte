@@ -1,15 +1,20 @@
 <script lang="ts">
-  import type { ProjectDetail, ProjectStats } from "@issues/api";
+  import type { Label, ProjectActivity, ProjectDetail, ProjectMember, ProjectStats, Status } from "@issues/api";
   import { ExternalLink } from "@lucide/svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import ActivityRow from "$lib/components/tickets/ActivityRow.svelte";
   import { formatAbsolute, timeAgo } from "$lib/time";
 
   interface ProjectOverviewProps {
     project: ProjectDetail;
     stats: ProjectStats;
+    activity: ProjectActivity[];
+    statuses: Status[];
+    labels: Label[];
+    members: ProjectMember[];
   }
 
-  let { project, stats }: ProjectOverviewProps = $props();
+  let { project, stats, activity, statuses, labels, members }: ProjectOverviewProps = $props();
 
   const owner = $derived(project.members.find((member) => member.role === "owner") ?? null);
   const repoLabel = $derived(project.repo ? project.repo.replace(/^https?:\/\//, "") : null);
@@ -89,6 +94,20 @@
       </div>
     </div>
   </div>
+
+  <div class="feed">
+    <h2>Recent activity</h2>
+
+    {#if activity.length === 0}
+      <p class="empty">No activity yet.</p>
+    {:else}
+      <div class="feed-list" role="list">
+        {#each activity as row (row.id)}
+          <ActivityRow {row} {statuses} {labels} {members} ticketRef={{ projectKey: project.key, number: row.ticket.number, title: row.ticket.title }} />
+        {/each}
+      </div>
+    {/if}
+  </div>
 </section>
 
 <style>
@@ -99,8 +118,13 @@
     align-items: start;
   }
 
+  .feed {
+    grid-column: 1 / -1;
+  }
+
   .metadata,
-  .stats {
+  .stats,
+  .feed {
     border: var(--border);
     border-radius: var(--border-radius-outer);
     background: var(--colour-bg-lighter);
@@ -200,6 +224,23 @@
     color: var(--colour-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .feed-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .feed-list :global(.activity-row + .activity-row) {
+    border-top: var(--border);
+  }
+
+  .empty {
+    margin: 0;
+    padding: 0.5rem 0;
+    color: var(--colour-muted);
+    font-size: 0.85rem;
+    font-style: italic;
   }
 
   @media (max-width: 720px) {

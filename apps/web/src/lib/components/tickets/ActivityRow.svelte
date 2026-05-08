@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from "$app/paths";
   import type { Label, Priority, ProjectMember, Status, TicketActivity } from "@issues/api";
   import { PRIORITIES } from "@issues/shared";
   import { formatActivity } from "$lib/activity";
@@ -15,11 +16,13 @@
     statuses: Status[];
     labels: Label[];
     members: ProjectMember[];
+    /** When set, renders a small ticket link between the actor and the verb. Used by the project-scoped feed. */
+    ticketRef?: { projectKey: string; number: number; title: string } | null;
     expandedBody?: string | null;
     expandedTombstone?: boolean;
   }
 
-  let { row, statuses, labels, members, expandedBody = null, expandedTombstone = false }: ActivityRowProps = $props();
+  let { row, statuses, labels, members, ticketRef = null, expandedBody = null, expandedTombstone = false }: ActivityRowProps = $props();
 
   function isPriority(v: string | undefined | null): v is Priority {
     return typeof v === "string" && (PRIORITIES as readonly string[]).includes(v);
@@ -49,6 +52,12 @@
 
   <div class="activity-text">
     <span class="activity-actor">{row.user.name}</span>
+
+    {#if ticketRef}
+      <a class="ticket-pill" href={resolve("/projects/[key]/tickets/[num]", { key: ticketRef.projectKey, num: String(ticketRef.number) })} title={ticketRef.title}>
+        {ticketRef.projectKey}-{ticketRef.number}
+      </a>
+    {/if}
 
     {#if row.action === "label_added" && row.newValue?.id && row.newValue?.name}
       <span class="activity-verb">added label</span>
@@ -150,6 +159,26 @@
     color: var(--colour-muted);
     font-size: 0.75rem;
     white-space: nowrap;
+  }
+
+  .ticket-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border: var(--border);
+    border-radius: var(--border-radius-inner);
+    background: var(--colour-bg);
+    color: var(--accent-base);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--accent-tint-900);
+      border-color: var(--accent-tint-600);
+    }
   }
 
   .person-pill {
