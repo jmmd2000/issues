@@ -14,6 +14,8 @@ import { tickets } from "./routes/tickets";
 import { comments } from "./routes/comments";
 import { activity } from "./routes/activity";
 import { ticketLinks } from "./routes/ticketLinks";
+import { attachments } from "./routes/attachments";
+import { uploads } from "./routes/uploads";
 export type {
   Jsonified,
   UserRow,
@@ -45,6 +47,9 @@ export type {
   TicketLink,
   LinkType,
   LinkedTicketRef,
+  Attachment,
+  AttachmentRow,
+  Visibility,
 } from "./lib/types";
 
 const app = new Hono();
@@ -73,7 +78,9 @@ const routes = app
   .route("", tickets)
   .route("", comments)
   .route("", activity)
-  .route("", ticketLinks);
+  .route("", ticketLinks)
+  .route("", attachments)
+  .route("", uploads);
 
 export type AppType = typeof routes;
 
