@@ -52,6 +52,20 @@ export type TicketActivity = Jsonified<Pick<ActivityRow, "id" | "ticketID" | "us
   user: TicketUser;
 };
 
+export type MemberStats = {
+  assignedOpen: number;
+  assignedTotal: number;
+  reported: number;
+};
+
+export type ProjectStats = {
+  totalTickets: number;
+  openTickets: number;
+  closedTickets: number;
+  lastActivityAt: string | null;
+  byMember: Record<string, MemberStats>;
+};
+
 export type TicketSummary = Jsonified<Pick<TicketRow, "id" | "number" | "title" | "priority" | "position" | "statusID" | "createdAt" | "updatedAt">> & {
   labels: Label[];
   assignee: TicketUser | null;

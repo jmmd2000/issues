@@ -78,4 +78,9 @@ export const projects = new Hono()
     await ProjectService.deleteProject(id);
 
     return c.body(null, 204);
+  })
+  .get("/api/projects/:key/stats", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+    const { id } = c.get("project");
+    const stats = await ProjectService.getStats(id);
+    return c.json({ stats });
   });

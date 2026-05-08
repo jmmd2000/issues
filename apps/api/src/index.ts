@@ -38,6 +38,8 @@ export type {
   TicketActivity,
   ActivityAction,
   ActivityValue,
+  ProjectStats,
+  MemberStats,
 } from "./lib/types";
 
 const app = new Hono();

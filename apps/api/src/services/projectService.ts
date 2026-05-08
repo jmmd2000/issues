@@ -1,8 +1,8 @@
 import { db } from "../db";
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
-import { projectMembers, projects, safeUserColumns, ticketCounters } from "../db/schema";
+import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 
 export class ProjectService {
@@ -61,20 +61,20 @@ export class ProjectService {
     const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
     if (!project) throw notFound;
 
-    const isMember = userID && project.members.some((m) => m.userID === userID);
+    const isMember = userID && project.members.some((member) => member.userID === userID);
     if (project.visibility === "private" && !isMember) throw notFound;
 
     if (!userID) {
       return {
         ...project,
-        members: project.members.map((m) => ({
-          ...m,
+        members: project.members.map((member) => ({
+          ...member,
           user: {
-            id: m.user.id,
-            name: m.user.name,
-            avatarURL: m.user.avatarURL,
-            createdAt: m.user.createdAt,
-            updatedAt: m.user.updatedAt,
+            id: member.user.id,
+            name: member.user.name,
+            avatarURL: member.user.avatarURL,
+            createdAt: member.user.createdAt,
+            updatedAt: member.user.updatedAt,
           },
         })),
       };
@@ -110,5 +110,66 @@ export class ProjectService {
    */
   static async deleteProject(projectID: string) {
     await db.delete(projects).where(eq(projects.id, projectID));
+  }
+
+  /**
+   * Aggregate ticket statistics for a project. Returns total / open / closed
+   * counts plus per-member assigned and reported counts. Closed tickets that
+   * have been soft-deleted are excluded from every count. The caller is
+   * expected to have already verified project access.
+   * @param projectID The resolved project ID
+   * @returns Stats blob suitable for the project Overview / Members tabs
+   */
+  static async getStats(projectID: string) {
+    const where = and(eq(tickets.projectID, projectID), isNull(tickets.deletedAt));
+
+    const [[totals], assigneeRows, reporterRows] = await Promise.all([
+      db
+        .select({
+          total: sql<number>`count(*)::int`,
+          open: sql<number>`count(*) filter (where ${statuses.category} in ('backlog', 'active'))::int`,
+          closed: sql<number>`count(*) filter (where ${statuses.category} in ('done', 'cancelled'))::int`,
+          lastActivityAt: sql<string | null>`max(${tickets.updatedAt})::text`,
+        })
+        .from(tickets)
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .where(where),
+      db
+        .select({
+          userID: tickets.assigneeID,
+          open: sql<number>`count(*) filter (where ${statuses.category} in ('backlog', 'active'))::int`,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(tickets)
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .where(and(where, isNotNull(tickets.assigneeID)))
+        .groupBy(tickets.assigneeID),
+      db
+        .select({
+          userID: tickets.reporterID,
+          reported: sql<number>`count(*)::int`,
+        })
+        .from(tickets)
+        .where(where)
+        .groupBy(tickets.reporterID),
+    ]);
+
+    const byMember: Record<string, { assignedOpen: number; assignedTotal: number; reported: number }> = {};
+    for (const row of assigneeRows) {
+      if (!row.userID) continue;
+      byMember[row.userID] = { assignedOpen: row.open, assignedTotal: row.total, reported: 0 };
+    }
+    for (const row of reporterRows) {
+      const existing = byMember[row.userID] ?? { assignedOpen: 0, assignedTotal: 0, reported: 0 };
+      byMember[row.userID] = { ...existing, reported: row.reported };
+    }
+
+    return {
+      totalTickets: totals?.total ?? 0,
+      openTickets: totals?.open ?? 0,
+      closedTickets: totals?.closed ?? 0,
+      lastActivityAt: totals?.lastActivityAt ?? null,
+      byMember,
+    };
   }
 }
