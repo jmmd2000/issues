@@ -4,6 +4,7 @@ import { db } from "../db";
 import { labels, statuses, tickets, users } from "../db/schema";
 import type { Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
+import { CommentService } from "../services/commentService";
 import { ProjectService } from "../services/projectService";
 import { TicketService } from "../services/ticketService";
 
@@ -72,6 +73,26 @@ type TicketSeed = {
 };
 
 const TICKETS_PER_PROJECT = 120;
+
+const COMMENT_BODIES = [
+  "Looks good to me — happy to pick this up.",
+  "Tried reproducing locally and hit the same error. Logs attached on the parent ticket.",
+  "Quick sanity check: do we want this gated behind a feature flag, or rolling straight to everyone?",
+  "Blocked on the auth refactor landing first. Will revisit after that ships.",
+  "Did a quick pass — left a couple of comments inline. Nothing major, just naming.",
+  "I think the simpler path is to just normalise on read. Storing both adds drift risk.",
+  "Pushed an experimental branch with the migration. Worth a look before we commit.",
+  "Closing this out — turned out to be a config issue, not a real bug. Notes on the wiki.",
+  "Worth pairing on this for an hour? I keep going in circles on the indexing strategy.",
+  "Confirmed in staging. Approving and queuing for the next release window.",
+  "Reopening — the fix works for the happy path but the empty-state regressed.",
+  "Going to split this into two: one for the API change, one for the UI follow-up.",
+  "Numbers from prod look healthy — p95 dropped from 280ms to 190ms after the change.",
+  "Heads up: this overlaps with what I'm doing on the kanban side. Let's sync.",
+  "Punted to next sprint. Not high enough priority to bump anything else off.",
+];
+
+const COMMENT_DENSITY_BUCKETS = [0, 0, 0, 0, 0, 0, 0, 1, 2, 3] as const;
 const STATUS_SEQUENCE = ["backlog", "todo", "todo", "in-progress", "in-progress", "in-review", "done", "done", "cancelled"] as const;
 const PRIORITY_SEQUENCE: Priority[] = ["critical", "high", "medium", "low", "none", "medium", "high", "low"];
 const LABEL_SEQUENCES = [["bug"], ["feature"], ["improvement"], ["task"], ["chore"], ["feature", "improvement"], ["bug", "task"], ["task", "chore"]];
@@ -169,7 +190,26 @@ function buildVolumeSeeds(project: ProjectSeed): TicketSeed[] {
   return seeds;
 }
 
-async function seedTicketsForProject(projectID: string, ownerID: string, seeds: TicketSeed[]) {
+function commentCountFor(projectKey: string, ticketIndex: number): number {
+  let hash = 0;
+  const key = `${projectKey}:${ticketIndex}`;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return COMMENT_DENSITY_BUCKETS[hash % COMMENT_DENSITY_BUCKETS.length];
+}
+
+async function seedCommentsForTicket(ticketID: string, ownerID: string, projectKey: string, ticketIndex: number) {
+  const count = commentCountFor(projectKey, ticketIndex);
+  if (count === 0) return;
+
+  for (let i = 0; i < count; i++) {
+    const body = COMMENT_BODIES[(ticketIndex * 7 + i * 3 + projectKey.length) % COMMENT_BODIES.length];
+    await CommentService.createComment(ticketID, ownerID, body);
+  }
+}
+
+async function seedTicketsForProject(projectID: string, projectKey: string, ownerID: string, seeds: TicketSeed[]) {
   const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
   const projectLabels = await db.select({ id: labels.id, name: labels.name }).from(labels).where(eq(labels.projectID, projectID));
   const statusBySlug = new Map(projectStatuses.map((s) => [s.slug, s.id]));
@@ -177,6 +217,7 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
 
   const backdates = new Map<number, string[]>();
 
+  let ticketIndex = 0;
   for (const seed of seeds) {
     const statusID = statusBySlug.get(seed.statusSlug);
     if (!statusID) throw new Error(`Missing status '${seed.statusSlug}' for project ${projectID}`);
@@ -202,6 +243,9 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
       bucket.push(ticket.id);
       backdates.set(seed.completedDaysAgo, bucket);
     }
+
+    await seedCommentsForTicket(ticket.id, ownerID, projectKey, ticketIndex);
+    ticketIndex++;
   }
 
   for (const [days, ids] of backdates) {
@@ -214,7 +258,7 @@ async function seedTicketsForProject(projectID: string, ownerID: string, seeds: 
 
 async function seed() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await db.execute(sql`TRUNCATE TABLE ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE comments, ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`);
 
   await AuthService.createUser(DEV_USER.name, DEV_USER.email, DEV_USER.password);
   const [{ id: ownerID }] = await db.select({ id: users.id }).from(users).limit(1);
@@ -224,7 +268,7 @@ async function seed() {
     const created = await ProjectService.createProject({ ...project, ownerID });
 
     const seeds = project.key === "VOLUME" ? buildVolumeSeeds(project) : buildTicketSeeds(project);
-    await seedTicketsForProject(created.id, ownerID, seeds);
+    await seedTicketsForProject(created.id, project.key, ownerID, seeds);
     ticketCount += seeds.length;
   }
 
