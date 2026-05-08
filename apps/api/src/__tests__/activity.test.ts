@@ -342,3 +342,94 @@ describe("listForTicket", () => {
     expect(rows[0].user?.name).toBeDefined();
   });
 });
+
+describe("GET /api/projects/:key/tickets/:num/activity", () => {
+  let ticketNumber: number;
+
+  beforeEach(async () => {
+    await setupFixture();
+    const ticket = await createTicket({ title: "Activity ticket" });
+    ticketNumber = ticket.number;
+  });
+
+  it("returns the created activity row with the acting user joined", async () => {
+    const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.activity).toHaveLength(1);
+    expect(body.activity[0].action).toBe("created");
+    expect(body.activity[0].user.name).toBe("Test User");
+    expect(body.activity[0].newValue).toEqual({ value: "Activity ticket" });
+  });
+
+  it("returns rows newest-first across multiple actions", async () => {
+    await app.request(`/api/projects/TEST/tickets/${ticketNumber}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ priority: "high" }),
+    });
+    await app.request(`/api/projects/TEST/tickets/${ticketNumber}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ statusID: altStatusID }),
+    });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+    const body = await res.json();
+    const fields = body.activity.map((row: { action: string; fieldName: string | null }) => row.fieldName ?? row.action);
+    expect(fields[0]).toBe("statusID");
+    expect(fields[1]).toBe("priority");
+    expect(fields[fields.length - 1]).toBe("created");
+  });
+
+  it("includes comment lifecycle activity rows", async () => {
+    const create = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ body: "Hi" }),
+    });
+    const { comment } = await create.json();
+
+    await app.request(`/api/projects/TEST/tickets/${ticketNumber}/comments/${comment.id}`, {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+    const body = await res.json();
+    const actions = body.activity.map((row: { action: string }) => row.action);
+    expect(actions).toContain("comment_added");
+    expect(actions).toContain("comment_deleted");
+  });
+
+  it("rejects unauthenticated requests with 401", async () => {
+    const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, { method: "GET" });
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects non-members with 404", async () => {
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+    const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, {
+      method: "GET",
+      headers: { Cookie: outsider },
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for unknown ticket numbers", async () => {
+    const res = await app.request(`/api/projects/TEST/tickets/9999/activity`, {
+      method: "GET",
+      headers: { Cookie: cookies },
+    });
+    expect(res.status).toBe(404);
+  });
+});
