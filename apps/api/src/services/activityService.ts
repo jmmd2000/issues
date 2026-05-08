@@ -3,7 +3,7 @@ import { db } from "../db";
 import { ticketActivity, tickets } from "../db/schema";
 import type { LinkType, TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 
-const VALUE_FIELDS = ["title", "description", "priority"] as const;
+const VALUE_FIELDS = ["title", "description", "priority", "visibility"] as const;
 const REF_FIELDS = ["status", "assignee", "parent"] as const;
 
 const COMMENT_EXCERPT_LIMIT = 200;
@@ -233,6 +233,37 @@ export class ActivityService {
         newValue: kind === "added" ? targetValue : null,
       },
     ]);
+  }
+
+  /**
+   * Emits an `attachment_added` or `attachment_removed` row for the parent
+   * ticket. Caller passes the same `tx` the attachment mutation ran on.
+   * Value shape: `{ id, filename }`.
+   * @param tx Active transaction
+   * @param event.userID The acting user
+   * @param event.ticketID The parent ticket
+   * @param event.kind "added" or "removed"
+   * @param event.attachment The attachment's id and filename
+   */
+  static async logAttachment(
+    tx: Transaction,
+    event: {
+      userID: string;
+      ticketID: string;
+      kind: "added" | "removed";
+      attachment: { id: string; filename: string };
+    }
+  ) {
+    const { userID, ticketID, kind, attachment } = event;
+    const value = { id: attachment.id, filename: attachment.filename };
+    await tx.insert(ticketActivity).values({
+      ticketID,
+      userID,
+      action: kind === "added" ? "attachment_added" : "attachment_removed",
+      fieldName: null,
+      oldValue: kind === "added" ? null : value,
+      newValue: kind === "added" ? value : null,
+    });
   }
 
   /**

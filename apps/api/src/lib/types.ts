@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
+import { attachments, comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
 import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, STATUS_CATEGORIES } from "./constants";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -24,6 +24,9 @@ export type ActivityInsert = typeof ticketActivity.$inferInsert;
 export type ActivityRow = typeof ticketActivity.$inferSelect;
 export type CommentRow = typeof comments.$inferSelect;
 export type TicketLinkRow = typeof ticketLinks.$inferSelect;
+export type AttachmentRow = typeof attachments.$inferSelect;
+
+export type Visibility = "public" | "private";
 
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
@@ -94,6 +97,13 @@ export type ProjectStats = {
   byMember: Record<string, MemberStats>;
 };
 
+export type Attachment = Jsonified<
+  Pick<AttachmentRow, "id" | "ticketID" | "commentID" | "uploaderID" | "filename" | "storageKey" | "contentHash" | "sizeBytes" | "width" | "height" | "mimeType" | "isImage" | "createdAt">
+> & {
+  url: string;
+  uploader: TicketUser;
+};
+
 export type TicketSummary = Jsonified<Pick<TicketRow, "id" | "number" | "title" | "priority" | "position" | "statusID" | "createdAt" | "updatedAt">> & {
   labels: Label[];
   assignee: TicketUser | null;
@@ -114,6 +124,7 @@ export type TicketSnapshot = {
   title: string;
   description: string;
   priority: Priority;
+  visibility: Visibility;
   status: TicketFieldRef;
   reporter: TicketFieldRef;
   assignee: TicketFieldRef | null;
