@@ -562,3 +562,87 @@ describe("DELETE /api/projects/:key", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("GET /api/projects/:key/stats", () => {
+  let projectID: string;
+  let backlogStatusID: string;
+  let doneStatusID: string;
+
+  async function createTicket(authCookies: string, statusID: string, overrides: Partial<{ title: string; assigneeID: string | null }> = {}) {
+    const res = await app.request("/api/projects/STATS/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: authCookies },
+      body: JSON.stringify({ title: "Stat", statusID, ...overrides }),
+    });
+    const body = await res.json();
+    return body.ticket;
+  }
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies, { key: "STATS" });
+    projectID = project.id;
+    const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
+    backlogStatusID = projectStatuses.find((status) => status.slug === "backlog")!.id;
+    doneStatusID = projectStatuses.find((status) => status.slug === "done")!.id;
+  });
+
+  it("returns zero counts for a fresh project", async () => {
+    const res = await app.request("/api/projects/STATS/stats", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.stats).toMatchObject({
+      totalTickets: 0,
+      openTickets: 0,
+      closedTickets: 0,
+      lastActivityAt: null,
+      byMember: {},
+    });
+  });
+
+  it("counts open vs closed tickets and tracks last activity", async () => {
+    await createTicket(cookies, backlogStatusID, { title: "Open A" });
+    await createTicket(cookies, backlogStatusID, { title: "Open B" });
+    await createTicket(cookies, doneStatusID, { title: "Closed" });
+
+    const res = await app.request("/api/projects/STATS/stats", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.stats.totalTickets).toBe(3);
+    expect(body.stats.openTickets).toBe(2);
+    expect(body.stats.closedTickets).toBe(1);
+    expect(body.stats.lastActivityAt).not.toBeNull();
+  });
+
+  it("aggregates per-member assignee and reporter counts", async () => {
+    const { user: other } = await createExtraUser("Other", "other@test.com");
+    await db.insert(projectMembers).values({ projectID, userID: other.id, role: "member" });
+
+    await createTicket(cookies, backlogStatusID, { title: "Self assigned" });
+    await createTicket(cookies, backlogStatusID, { title: "Other assigned", assigneeID: other.id });
+    await createTicket(cookies, doneStatusID, { title: "Other closed", assigneeID: other.id });
+
+    const res = await app.request("/api/projects/STATS/stats", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    const reporter = body.stats.byMember[Object.keys(body.stats.byMember).find((id) => id !== other.id)!];
+    expect(reporter.reported).toBe(3);
+    expect(reporter.assignedOpen).toBe(0);
+
+    const otherStats = body.stats.byMember[other.id];
+    expect(otherStats.assignedOpen).toBe(1);
+    expect(otherStats.assignedTotal).toBe(2);
+    expect(otherStats.reported).toBe(0);
+  });
+
+  it("rejects non-members with 404", async () => {
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+    const res = await app.request("/api/projects/STATS/stats", { method: "GET", headers: { Cookie: outsider } });
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects unauthenticated requests with 401", async () => {
+    const res = await app.request("/api/projects/STATS/stats", { method: "GET" });
+    expect(res.status).toBe(401);
+  });
+});
