@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, STATUS_CATEGORIES } from "../lib/constants";
 import type { ActivityValue } from "../lib/types";
 
@@ -122,6 +122,9 @@ export const tickets = pgTable(
       .notNull()
       .references(() => statuses.id),
     priority: priorityEnum("priority").notNull().default("medium"),
+    visibility: text("visibility", { enum: ["public", "private"] })
+      .notNull()
+      .default("public"),
     position: text("position").notNull(),
     parentTicketID: uuid("parent_ticket_id").references((): AnyPgColumn => tickets.id, { onDelete: "set null" }),
     reporterID: uuid("reporter_id")
@@ -149,6 +152,9 @@ export const tickets = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
     index("idx_tickets_parent").on(table.parentTicketID),
     index("idx_tickets_project_number").on(table.projectID, table.number),
+    index("idx_tickets_visibility")
+      .on(table.projectID)
+      .where(sql`${table.visibility} = 'private'`),
     check("ck_tickets_title_nonempty", sql`length(trim(${table.title})) > 0`),
   ]
 );
@@ -184,6 +190,7 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
   comments: many(comments),
   outgoingLinks: many(ticketLinks, { relationName: "link_source" }),
   incomingLinks: many(ticketLinks, { relationName: "link_target" }),
+  attachments: many(attachments),
 }));
 
 export const ticketLabelsRelations = relations(ticketLabels, ({ one }) => ({
@@ -272,4 +279,37 @@ export const ticketLinksRelations = relations(ticketLinks, ({ one }) => ({
   source: one(tickets, { fields: [ticketLinks.sourceTicketID], references: [tickets.id], relationName: "link_source" }),
   target: one(tickets, { fields: [ticketLinks.targetTicketID], references: [tickets.id], relationName: "link_target" }),
   createdBy: one(users, { fields: [ticketLinks.createdByID], references: [users.id] }),
+}));
+
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketID: uuid("ticket_id").references(() => tickets.id, { onDelete: "cascade" }),
+    commentID: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+    uploaderID: uuid("uploader_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    filename: text("filename").notNull(),
+    storageKey: text("storage_key").notNull(),
+    contentHash: text("content_hash").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    mimeType: text("mime_type").notNull(),
+    isImage: boolean("is_image").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_attachments_ticket").on(table.ticketID),
+    index("idx_attachments_comment").on(table.commentID),
+    index("idx_attachments_hash").on(table.contentHash),
+    check("ck_attachments_owner", sql`(${table.ticketID} IS NOT NULL) OR (${table.commentID} IS NOT NULL)`),
+  ]
+);
+
+export const attachmentsRelations = relations(attachments, ({ one }) => ({
+  ticket: one(tickets, { fields: [attachments.ticketID], references: [tickets.id] }),
+  comment: one(comments, { fields: [attachments.commentID], references: [comments.id] }),
+  uploader: one(users, { fields: [attachments.uploaderID], references: [users.id] }),
 }));
