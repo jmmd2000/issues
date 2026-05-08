@@ -11,10 +11,12 @@
   import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
+  import CommentThread from "$lib/components/tickets/CommentThread.svelte";
 
   let { data }: PageProps = $props();
   let ticket = $derived(data.ticket);
   let project = $derived(data.project);
+  let comments = $derived(data.comments);
 
   let savingDescription = $state(false);
   let assigneeID = $derived<string | undefined>(ticket.assignee?.id ?? undefined);
@@ -174,6 +176,7 @@
   <div class="ticket-content">
     <main class="ticket-main">
       <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} />
+      <CommentThread {comments} projectKey={project.key} ticketNumber={ticket.number} currentUserID={data.user.id} onmutated={() => invalidateAll()} />
     </main>
 
     <aside class="ticket-sidebar" aria-label="Ticket metadata">
