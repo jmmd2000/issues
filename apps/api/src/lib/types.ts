@@ -1,12 +1,13 @@
 import { db } from "../db";
-import { comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
-import { ACTIVITY_ACTIONS, PRIORITIES, STATUS_CATEGORIES } from "./constants";
+import { comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
+import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, STATUS_CATEGORIES } from "./constants";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
 export type Priority = (typeof PRIORITIES)[number];
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
+export type LinkType = (typeof LINK_TYPES)[number];
 
 export type Jsonified<T> = T extends Date ? string : T extends (infer U)[] ? Jsonified<U>[] : T extends object ? { [K in keyof T]: Jsonified<T[K]> } : T;
 
@@ -22,6 +23,7 @@ export type TicketLabelRow = typeof ticketLabels.$inferSelect;
 export type ActivityInsert = typeof ticketActivity.$inferInsert;
 export type ActivityRow = typeof ticketActivity.$inferSelect;
 export type CommentRow = typeof comments.$inferSelect;
+export type TicketLinkRow = typeof ticketLinks.$inferSelect;
 
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
@@ -54,6 +56,28 @@ export type TicketActivity = Jsonified<Pick<ActivityRow, "id" | "ticketID" | "us
 
 export type ProjectActivity = TicketActivity & {
   ticket: { id: string; number: number; title: string };
+};
+
+export type LinkedTicketRef = {
+  id: string;
+  number: number;
+  title: string;
+  projectKey: string;
+};
+
+export type TicketLink = {
+  id: string;
+  linkType: LinkType;
+  /**
+   * Logical direction relative to the ticket whose detail page is being viewed.
+   * Outgoing means the viewing ticket is the source (uses the canonical link
+   * type label). Incoming means the viewing ticket is the target (the renderer
+   * should pick the inverse label).
+   */
+  direction: "outgoing" | "incoming";
+  /** The ticket on the other side of the link relative to the viewer. */
+  ticket: LinkedTicketRef;
+  createdAt: string;
 };
 
 export type MemberStats = {
@@ -103,8 +127,10 @@ export type ActivityValue = {
   name?: string; // frozen name
   body?: string; // comment_edited before/after
   excerpt?: string; // comment_added/deleted body preview
-  number?: number; // link_added/removed target ticket number
-  title?: string; // link_added/removed target ticket title
-  ticketID?: string; // link_added/removed target ticket id
+  number?: number; // link_added/removed partner ticket number
+  title?: string; // link_added/removed partner ticket title
+  ticketID?: string; // link_added/removed partner ticket id
+  projectKey?: string; // link_added/removed partner ticket project key
+  direction?: "outgoing" | "incoming"; // link_added/removed direction relative to the side this row lives on
   filename?: string; // attachment_added/removed
 };

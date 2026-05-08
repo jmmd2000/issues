@@ -17,20 +17,14 @@ const projectActivityQuerySchema = z.object({
 });
 
 export const activity = new Hono()
-  .get(
-    "/api/projects/:key/tickets/:num/activity",
-    requireAuth,
-    zValidator("param", activityParamSchema, validationHook),
-    requireProjectAccess("member"),
-    async (c) => {
-      const project = c.get("project");
-      const { num } = c.req.valid("param");
+  .get("/api/projects/:key/tickets/:num/activity", requireAuth, zValidator("param", activityParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+    const project = c.get("project");
+    const { num } = c.req.valid("param");
 
-      const ticket = await TicketService.getTicketByNumber(project.id, num);
-      const rows = await ActivityService.listForTicket(ticket.id);
-      return c.json({ activity: rows });
-    }
-  )
+    const ticket = await TicketService.getTicketByNumber(project.id, num);
+    const rows = await ActivityService.listForTicket(ticket.id);
+    return c.json({ activity: rows });
+  })
   .get(
     "/api/projects/:key/activity",
     requireAuth,

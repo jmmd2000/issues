@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { ticketActivity, tickets } from "../db/schema";
-import type { TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
+import type { LinkType, TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 
 const VALUE_FIELDS = ["title", "description", "priority"] as const;
 const REF_FIELDS = ["status", "assignee", "parent"] as const;
@@ -186,6 +186,53 @@ export class ActivityService {
       oldValue: { id: comment.id, excerpt: excerpt(comment.body) },
       newValue: null,
     });
+  }
+
+  /**
+   * Emits activity rows for a link lifecycle event. Writes one row on each
+   * side of the link with opposite `direction` snapshots so either ticket's
+   * timeline reads correctly. Caller passes the same `tx` the
+   * link mutation ran on so the rows commit together.
+   * @param tx Active transaction
+   * @param event.userID The ID of the user adding or removing the link
+   * @param event.kind "added" or "removed"
+   * @param event.linkType Canonical link type
+   * @param event.source The source-side ticket snapshot (the side that owns the canonical row)
+   * @param event.target The target-side ticket snapshot
+   */
+  static async logLink(
+    tx: Transaction,
+    event: {
+      userID: string;
+      kind: "added" | "removed";
+      linkType: LinkType;
+      source: { ticketID: string; number: number; title: string; projectKey: string };
+      target: { ticketID: string; number: number; title: string; projectKey: string };
+    }
+  ) {
+    const { userID, kind, linkType, source, target } = event;
+    const action = kind === "added" ? "link_added" : "link_removed";
+    const sourceValue = { ticketID: target.ticketID, number: target.number, title: target.title, projectKey: target.projectKey, direction: "outgoing" as const };
+    const targetValue = { ticketID: source.ticketID, number: source.number, title: source.title, projectKey: source.projectKey, direction: "incoming" as const };
+
+    await tx.insert(ticketActivity).values([
+      {
+        ticketID: source.ticketID,
+        userID,
+        action,
+        fieldName: linkType,
+        oldValue: kind === "added" ? null : sourceValue,
+        newValue: kind === "added" ? sourceValue : null,
+      },
+      {
+        ticketID: target.ticketID,
+        userID,
+        action,
+        fieldName: linkType,
+        oldValue: kind === "added" ? null : targetValue,
+        newValue: kind === "added" ? targetValue : null,
+      },
+    ]);
   }
 
   /**
