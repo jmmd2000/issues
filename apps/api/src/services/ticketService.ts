@@ -92,6 +92,7 @@ export class TicketService {
     assigneeID?: string;
     labelIDs?: string[];
     parentTicketID?: string;
+    visibility?: "public" | "private";
   }) {
     return await db.transaction(async (tx) => {
       const [counter] = await tx
@@ -125,6 +126,7 @@ export class TicketService {
           reporterID: data.reporterID,
           assigneeID: data.assigneeID ?? null,
           parentTicketID: data.parentTicketID ?? null,
+          visibility: data.visibility ?? "public",
           completedAt: isClosed ? new Date() : null,
         })
         .returning();
@@ -308,6 +310,7 @@ export class TicketService {
       assigneeID?: string | null;
       parentTicketID?: string | null;
       labelIDs?: string[];
+      visibility?: "public" | "private";
     }
   ) {
     return await db.transaction(async (tx) => {
@@ -505,6 +508,7 @@ export class TicketService {
       title: row.title,
       description: row.description,
       priority: row.priority,
+      visibility: row.visibility,
       status: { id: row.status.id, name: row.status.name },
       reporter: { id: row.reporter.id, name: row.reporter.name },
       assignee: row.assignee ? { id: row.assignee.id, name: row.assignee.name } : null,

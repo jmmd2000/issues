@@ -21,6 +21,7 @@ const createSchema = z
     assigneeID: z.uuid().optional(),
     labelIDs: z.array(z.uuid()).optional(),
     parentTicketID: z.uuid().optional(),
+    visibility: z.enum(["public", "private"]).optional(),
   })
   .strict();
 
@@ -29,6 +30,7 @@ const patchSchema = createSchema
   .extend({
     assigneeID: z.uuid().nullable().optional(),
     parentTicketID: z.uuid().nullable().optional(),
+    visibility: z.enum(["public", "private"]).optional(),
   })
   .strict();
 
