@@ -1,20 +1,31 @@
 import DOMPurify from "isomorphic-dompurify";
 import { marked } from "marked";
+import { PUBLIC_API_URL } from "$env/static/public";
 
 // Matches ticket refs like `PROJ-123`. Project key: 2–6 uppercase letters, `\b` avoids matching inside words.
 const TICKET_REF_RE = /\b([A-Z]{2,6})-(\d+)\b/g;
 const SKIP_TAGS = new Set(["A", "CODE", "PRE"]);
+
+// Inserted attachments use a relative `/uploads/<key>` path so the markdown
+// stays portable across environments. The web app and API run on different
+// origins in dev, so when we render the HTML we need to point browsers at the
+// API host explicitly.
+const RELATIVE_UPLOAD_RE = /(src|href)="\/uploads\//g;
 
 marked.setOptions({
   gfm: true,
   breaks: true,
 });
 
+function absolutiseUploads(html: string): string {
+  return html.replace(RELATIVE_UPLOAD_RE, (_, attr) => `${attr}="${PUBLIC_API_URL}/uploads/`);
+}
+
 // Parse markdown -> HTML, then sanitise so DOMPurify strips anything dangerous before it hits {@html}.
 export function renderMarkdown(source: string): string {
   const html = marked.parse(source ?? "", { async: false });
   // ensure html is a string, not promise<string>
-  return DOMPurify.sanitize(html);
+  return absolutiseUploads(DOMPurify.sanitize(html));
 }
 
 // Render then strip every tag to produce a single-line plaintext summary (e.g. list previews)
