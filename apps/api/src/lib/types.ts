@@ -52,6 +52,10 @@ export type TicketActivity = Jsonified<Pick<ActivityRow, "id" | "ticketID" | "us
   user: TicketUser;
 };
 
+export type ProjectActivity = TicketActivity & {
+  ticket: { id: string; number: number; title: string };
+};
+
 export type MemberStats = {
   assignedOpen: number;
   assignedTotal: number;

@@ -38,6 +38,7 @@ export type {
   TicketActivity,
   ActivityAction,
   ActivityValue,
+  ProjectActivity,
   ProjectStats,
   MemberStats,
 } from "./lib/types";

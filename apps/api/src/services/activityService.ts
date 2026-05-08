@@ -1,6 +1,6 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
-import { ticketActivity } from "../db/schema";
+import { ticketActivity, tickets } from "../db/schema";
 import type { TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 
 const VALUE_FIELDS = ["title", "description", "priority"] as const;
@@ -199,6 +199,32 @@ export class ActivityService {
       orderBy: [desc(ticketActivity.createdAt)],
       with: {
         user: { columns: { id: true, name: true, avatarURL: true } },
+      },
+    });
+  }
+
+  /**
+   * Returns recent activity rows across every non-deleted ticket in a project.
+   * Each row carries the acting user and the parent ticket's number/title so
+   * the project-level feed can link straight to the source ticket.
+   * @param projectID The ID of the project
+   * @param limit Maximum number of rows to return (default 50)
+   * @returns Activity rows newest-first with user and ticket joins
+   */
+  static async listForProject(projectID: string, limit = 50) {
+    return db.query.ticketActivity.findMany({
+      where: (activity, { exists }) =>
+        exists(
+          db
+            .select({ id: tickets.id })
+            .from(tickets)
+            .where(and(eq(tickets.id, activity.ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
+        ),
+      orderBy: [desc(ticketActivity.createdAt)],
+      limit,
+      with: {
+        user: { columns: { id: true, name: true, avatarURL: true } },
+        ticket: { columns: { id: true, number: true, title: true } },
       },
     });
   }
