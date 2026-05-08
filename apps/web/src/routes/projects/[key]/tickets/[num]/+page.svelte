@@ -13,12 +13,14 @@
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
   import TicketHistory from "$lib/components/tickets/TicketHistory.svelte";
+  import TicketLinks from "$lib/components/tickets/TicketLinks.svelte";
 
   let { data }: PageProps = $props();
   let ticket = $derived(data.ticket);
   let project = $derived(data.project);
   let comments = $derived(data.comments);
   let activity = $derived(data.activity);
+  let links = $derived(data.links);
 
   let savingTitle = $state(false);
   let savingDescription = $state(false);
@@ -198,7 +200,18 @@
   <div class="ticket-content">
     <main class="ticket-main">
       <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} />
-      <TicketHistory {comments} {activity} statuses={project.statuses} labels={project.labels} members={project.members} projectKey={project.key} ticketNumber={ticket.number} currentUserID={data.user.id} onmutated={() => invalidateAll()} />
+      <TicketLinks {links} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
+      <TicketHistory
+        {comments}
+        {activity}
+        statuses={project.statuses}
+        labels={project.labels}
+        members={project.members}
+        projectKey={project.key}
+        ticketNumber={ticket.number}
+        currentUserID={data.user.id}
+        onmutated={() => invalidateAll()}
+      />
     </main>
 
     <aside class="ticket-sidebar" aria-label="Ticket metadata">

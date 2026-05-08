@@ -68,16 +68,7 @@
 
 <div class="ticket-title">
   {#if editing}
-    <textarea
-      bind:this={input}
-      bind:value={draft}
-      class="title-input"
-      class:invalid={!isValid}
-      rows="1"
-      maxlength="200"
-      disabled={isSaving}
-      onkeydown={handleKeydown}
-      onblur={() => void save()}
+    <textarea bind:this={input} bind:value={draft} class="title-input" class:invalid={!isValid} rows="1" maxlength="200" disabled={isSaving} onkeydown={handleKeydown} onblur={() => void save()}
     ></textarea>
   {:else}
     <button type="button" class="title-button" onclick={startEditing} title="Edit title">

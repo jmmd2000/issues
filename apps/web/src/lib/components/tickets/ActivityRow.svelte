@@ -1,8 +1,9 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import type { Label, Priority, ProjectMember, Status, TicketActivity } from "@issues/api";
-  import { PRIORITIES } from "@issues/shared";
+  import type { Label, LinkType, Priority, ProjectMember, Status, TicketActivity } from "@issues/api";
+  import { LINK_TYPES, PRIORITIES } from "@issues/shared";
   import { formatActivity } from "$lib/activity";
+  import { linkLabel } from "$lib/linkLabels";
   import { formatAbsolute, timeAgo } from "$lib/time";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import MarkdownRenderer from "$lib/components/markdown/MarkdownRenderer.svelte";
@@ -26,6 +27,10 @@
 
   function isPriority(v: string | undefined | null): v is Priority {
     return typeof v === "string" && (PRIORITIES as readonly string[]).includes(v);
+  }
+
+  function asLinkType(v: string | null | undefined): LinkType | null {
+    return v && (LINK_TYPES as readonly string[]).includes(v) ? (v as LinkType) : null;
   }
 
   function statusCategory(id: string | undefined | null): Status["category"] {
@@ -59,7 +64,25 @@
       </a>
     {/if}
 
-    {#if row.action === "label_added" && row.newValue?.id && row.newValue?.name}
+    {#if row.action === "link_added" && row.newValue}
+      {@const linkType = asLinkType(row.fieldName)}
+      {@const direction = row.newValue.direction ?? "outgoing"}
+      <span class="activity-verb">added link · {linkType ? linkLabel(linkType, direction) : (row.fieldName ?? "")}</span>
+      {#if row.newValue.projectKey && row.newValue.number != null}
+        <a class="ticket-pill" href={resolve("/projects/[key]/tickets/[num]", { key: row.newValue.projectKey, num: String(row.newValue.number) })} title={row.newValue.title ?? ""}>
+          {row.newValue.projectKey}-{row.newValue.number}
+        </a>
+      {/if}
+    {:else if row.action === "link_removed" && row.oldValue}
+      {@const linkType = asLinkType(row.fieldName)}
+      {@const direction = row.oldValue.direction ?? "outgoing"}
+      <span class="activity-verb">removed link · {linkType ? linkLabel(linkType, direction) : (row.fieldName ?? "")}</span>
+      {#if row.oldValue.projectKey && row.oldValue.number != null}
+        <a class="ticket-pill" href={resolve("/projects/[key]/tickets/[num]", { key: row.oldValue.projectKey, num: String(row.oldValue.number) })} title={row.oldValue.title ?? ""}>
+          {row.oldValue.projectKey}-{row.oldValue.number}
+        </a>
+      {/if}
+    {:else if row.action === "label_added" && row.newValue?.id && row.newValue?.name}
       <span class="activity-verb">added label</span>
       <LabelChip name={row.newValue.name} colour={labelColour(row.newValue.id)} />
     {:else if row.action === "label_removed" && row.oldValue?.id && row.oldValue?.name}
