@@ -6,6 +6,23 @@ import type { TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 const VALUE_FIELDS = ["title", "description", "priority"] as const;
 const REF_FIELDS = ["status", "assignee", "parent"] as const;
 
+const COMMENT_EXCERPT_LIMIT = 200;
+
+/**
+ * Plaintext preview of a comment body for activity rows. Collapses runs of
+ * whitespace, trims, and truncates to {@link COMMENT_EXCERPT_LIMIT} chars with
+ * an ellipsis. Markdown is left intact - the renderer treats activity excerpts
+ * as plaintext.
+ */
+function excerpt(body: string): string {
+  const trimmed = body.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= COMMENT_EXCERPT_LIMIT) return trimmed;
+  const slice = trimmed.slice(0, COMMENT_EXCERPT_LIMIT);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
+  return `${cut.trimEnd()}...`;
+}
+
 export class ActivityService {
   /**
    * Emits a `created` row for a freshly inserted ticket. Called from inside
@@ -108,6 +125,67 @@ export class ActivityService {
     }
 
     if (rows.length) await tx.insert(ticketActivity).values(rows);
+  }
+
+  /**
+   * Emits an activity row for a comment lifecycle event. Called from inside
+   * `CommentService` mutations on the same transaction so the comment row and
+   * activity row commit atomically.
+   *
+   * Action / value shapes
+   *   added   -> newValue: { id, excerpt }
+   *   edited  -> oldValue: { body: prevBody }, newValue: { body: nextBody }
+   *   deleted -> oldValue: { id, excerpt }
+   *
+   * @param tx Active transaction - must be the same one the comment mutation ran on.
+   * @param event.userID The ID of the user performing the action.
+   * @param event.ticketID The ID of the parent ticket.
+   * @param event.kind Lifecycle event - "added", "edited", or "deleted".
+   * @param event.comment The comment's id and body (post-mutation for added/edited, pre-mutation for deleted).
+   * @param event.prevBody Previous body. Required for "edited" events; ignored otherwise.
+   */
+  static async logComment(
+    tx: Transaction,
+    event: {
+      userID: string;
+      ticketID: string;
+      kind: "added" | "edited" | "deleted";
+      comment: { id: string; body: string };
+      prevBody?: string;
+    }
+  ) {
+    const { userID, ticketID, kind, comment, prevBody } = event;
+    const base = { ticketID, userID } as const;
+
+    if (kind === "added") {
+      await tx.insert(ticketActivity).values({
+        ...base,
+        action: "comment_added",
+        fieldName: null,
+        oldValue: null,
+        newValue: { id: comment.id, excerpt: excerpt(comment.body) },
+      });
+      return;
+    }
+
+    if (kind === "edited") {
+      await tx.insert(ticketActivity).values({
+        ...base,
+        action: "comment_edited",
+        fieldName: null,
+        oldValue: { body: prevBody ?? "" },
+        newValue: { body: comment.body },
+      });
+      return;
+    }
+
+    await tx.insert(ticketActivity).values({
+      ...base,
+      action: "comment_deleted",
+      fieldName: null,
+      oldValue: { id: comment.id, excerpt: excerpt(comment.body) },
+      newValue: null,
+    });
   }
 
   /**
