@@ -3,10 +3,12 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "../db";
 import { labels, projectMembers, statuses, tickets, users } from "../db/schema";
-import type { Priority } from "../lib/types";
+import { LINK_TYPES } from "../lib/constants";
+import type { LinkType, Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
 import { CommentService } from "../services/commentService";
 import { ProjectService } from "../services/projectService";
+import { TicketLinkService } from "../services/ticketLinkService";
 import { TicketService } from "../services/ticketService";
 
 const DEV_USER = { name: "James", email: "james@test.com", password: "password123" };
@@ -237,13 +239,16 @@ function pickExtraMembers(projectKey: string, extraUserIDs: string[]): string[] 
   return picked;
 }
 
-async function seedTicketsForProject(projectID: string, projectKey: string, ownerID: string, memberIDs: string[], seeds: TicketSeed[]) {
+type SeededTicket = { id: string; number: number; title: string };
+
+async function seedTicketsForProject(projectID: string, projectKey: string, ownerID: string, memberIDs: string[], seeds: TicketSeed[]): Promise<SeededTicket[]> {
   const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
   const projectLabels = await db.select({ id: labels.id, name: labels.name }).from(labels).where(eq(labels.projectID, projectID));
   const statusBySlug = new Map(projectStatuses.map((s) => [s.slug, s.id]));
   const labelBySlug = new Map(projectLabels.map((l) => [l.name.toLowerCase(), l.id]));
 
   const backdates = new Map<number, string[]>();
+  const created: SeededTicket[] = [];
 
   let ticketIndex = 0;
   for (const seed of seeds) {
@@ -276,6 +281,7 @@ async function seedTicketsForProject(projectID: string, projectKey: string, owne
     }
 
     await seedCommentsForTicket(ticket.id, memberIDs, projectKey, ticketIndex);
+    created.push({ id: ticket.id, number: ticket.number, title: ticket.title });
     ticketIndex++;
   }
 
@@ -285,11 +291,47 @@ async function seedTicketsForProject(projectID: string, projectKey: string, owne
       .set({ completedAt: sql`now() - make_interval(days => ${days})` })
       .where(inArray(tickets.id, ids));
   }
+
+  return created;
+}
+
+async function seedLinksForProject(projectKey: string, ownerID: string, projectTickets: SeededTicket[]) {
+  if (projectTickets.length < 2) return 0;
+
+  const linkCount = Math.min(8, Math.floor(projectTickets.length / 12));
+  const seen = new Set<string>();
+  let created = 0;
+
+  for (let i = 0; i < linkCount; i++) {
+    const sourceIdx = (i * 7 + projectKey.length) % projectTickets.length;
+    let targetIdx = (i * 13 + projectKey.length * 3 + 1) % projectTickets.length;
+    if (targetIdx === sourceIdx) targetIdx = (targetIdx + 1) % projectTickets.length;
+
+    const source = projectTickets[sourceIdx];
+    const target = projectTickets[targetIdx];
+    const linkType = LINK_TYPES[i % LINK_TYPES.length] as LinkType;
+
+    const dedupeKey = `${source.id}:${target.id}:${linkType}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    await TicketLinkService.createLink({
+      viewingTicketID: source.id,
+      viewingTicketRef: { number: source.number, title: source.title, projectKey },
+      userID: ownerID,
+      targetRef: `${projectKey}-${target.number}`,
+      linkType,
+      direction: "outgoing",
+    });
+    created++;
+  }
+
+  return created;
 }
 
 async function seed() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await db.execute(sql`TRUNCATE TABLE comments, ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE ticket_links, comments, ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`);
 
   await AuthService.createUser(DEV_USER.name, DEV_USER.email, DEV_USER.password);
   const [{ id: ownerID }] = await db.select({ id: users.id }).from(users).limit(1);
@@ -299,6 +341,7 @@ async function seed() {
   const extraUserIDs = (await db.insert(users).values(extraInsertRows).returning({ id: users.id })).map((row) => row.id);
 
   let ticketCount = 0;
+  let linkCount = 0;
   for (const project of DEV_PROJECTS) {
     const created = await ProjectService.createProject({ ...project, ownerID });
 
@@ -309,12 +352,13 @@ async function seed() {
     const memberIDs = [ownerID, ...projectExtraIDs];
 
     const seeds = project.key === "VOLUME" ? buildVolumeSeeds(project) : buildTicketSeeds(project);
-    await seedTicketsForProject(created.id, project.key, ownerID, memberIDs, seeds);
+    const projectTickets = await seedTicketsForProject(created.id, project.key, ownerID, memberIDs, seeds);
     ticketCount += seeds.length;
+    linkCount += await seedLinksForProject(project.key, ownerID, projectTickets);
   }
 
   const totalUsers = 1 + EXTRA_USERS.length;
-  console.log(`Seeded ${totalUsers} users, ${DEV_PROJECTS.length} projects and ${ticketCount} tickets.`);
+  console.log(`Seeded ${totalUsers} users, ${DEV_PROJECTS.length} projects, ${ticketCount} tickets, ${linkCount} links.`);
   console.log(`Login: ${DEV_USER.email} / ${DEV_USER.password} (all extra users share the same password)`);
 }
 
