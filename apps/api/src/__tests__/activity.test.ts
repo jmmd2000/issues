@@ -433,3 +433,67 @@ describe("GET /api/projects/:key/tickets/:num/activity", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("GET /api/projects/:key/activity", () => {
+  beforeEach(setupFixture);
+
+  it("returns activity rows newest-first across every ticket in the project", async () => {
+    const a = await createTicket({ title: "Alpha" });
+    const b = await createTicket({ title: "Beta" });
+
+    await app.request(`/api/projects/TEST/tickets/${b.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ priority: "high" }),
+    });
+
+    const res = await app.request("/api/projects/TEST/activity", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.activity.length).toBeGreaterThanOrEqual(3);
+
+    const newest = body.activity[0];
+    expect(newest.action).toBe("updated");
+    expect(newest.fieldName).toBe("priority");
+    expect(newest.ticket).toEqual({ id: b.id, number: b.number, title: "Beta" });
+
+    const oldest = body.activity[body.activity.length - 1];
+    expect(oldest.action).toBe("created");
+    expect(oldest.ticket).toEqual({ id: a.id, number: a.number, title: "Alpha" });
+  });
+
+  it("excludes activity for soft-deleted tickets", async () => {
+    const visible = await createTicket({ title: "Visible" });
+    const deleted = await createTicket({ title: "Deleted" });
+
+    await app.request(`/api/projects/TEST/tickets/${deleted.number}`, {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    const res = await app.request("/api/projects/TEST/activity", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    const ticketIDs = new Set(body.activity.map((row: { ticket: { id: string } }) => row.ticket.id));
+    expect(ticketIDs.has(visible.id)).toBe(true);
+    expect(ticketIDs.has(deleted.id)).toBe(false);
+  });
+
+  it("respects the limit query param", async () => {
+    for (let i = 0; i < 5; i++) await createTicket({ title: `T${i}` });
+
+    const res = await app.request("/api/projects/TEST/activity?limit=2", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.activity).toHaveLength(2);
+  });
+
+  it("rejects unauthenticated requests with 401", async () => {
+    const res = await app.request("/api/projects/TEST/activity", { method: "GET" });
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects non-members with 404", async () => {
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+    const res = await app.request("/api/projects/TEST/activity", { method: "GET", headers: { Cookie: outsider } });
+    expect(res.status).toBe(404);
+  });
+});
