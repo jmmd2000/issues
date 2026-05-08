@@ -20,6 +20,7 @@ export type TicketCounterRow = typeof ticketCounters.$inferSelect;
 export type TicketLabelRow = typeof ticketLabels.$inferSelect;
 
 export type ActivityInsert = typeof ticketActivity.$inferInsert;
+export type ActivityRow = typeof ticketActivity.$inferSelect;
 export type CommentRow = typeof comments.$inferSelect;
 
 export type User = Jsonified<UserRow>;
@@ -44,6 +45,11 @@ export type Comment = Jsonified<Pick<CommentRow, "id" | "ticketID" | "authorID" 
   body: string | null;
   isDeleted: boolean;
   author: TicketUser;
+};
+
+export type TicketActivity = Jsonified<Pick<ActivityRow, "id" | "ticketID" | "userID" | "fieldName" | "oldValue" | "newValue" | "createdAt">> & {
+  action: ActivityAction;
+  user: TicketUser;
 };
 
 export type TicketSummary = Jsonified<Pick<TicketRow, "id" | "number" | "title" | "priority" | "position" | "statusID" | "createdAt" | "updatedAt">> & {

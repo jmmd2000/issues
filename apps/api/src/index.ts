@@ -12,6 +12,7 @@ import { labels } from "./routes/labels";
 import { statuses } from "./routes/statuses";
 import { tickets } from "./routes/tickets";
 import { comments } from "./routes/comments";
+import { activity } from "./routes/activity";
 export type {
   Jsonified,
   UserRow,
@@ -34,6 +35,9 @@ export type {
   TicketSummary,
   TicketUser,
   Comment,
+  TicketActivity,
+  ActivityAction,
+  ActivityValue,
 } from "./lib/types";
 
 const app = new Hono();
@@ -60,7 +64,8 @@ const routes = app
   .route("", labels)
   .route("", statuses)
   .route("", tickets)
-  .route("", comments);
+  .route("", comments)
+  .route("", activity);
 
 export type AppType = typeof routes;
 
