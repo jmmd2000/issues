@@ -57,6 +57,13 @@
       "when": 1778195274061,
       "tag": "0007_bored_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778258290822,
+      "tag": "0008_high_ego",
+      "breakpoints": true
     }
   ]
 }

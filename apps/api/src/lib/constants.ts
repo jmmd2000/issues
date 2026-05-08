@@ -1,4 +1,4 @@
-export { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
+export { PRIORITIES, STATUS_CATEGORIES, LINK_TYPES } from "@issues/shared";
 
 export const ACTIVITY_ACTIONS = [
   "created",

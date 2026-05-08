@@ -1,11 +1,12 @@
 import { relations, sql } from "drizzle-orm";
 import { pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
-import { ACTIVITY_ACTIONS, PRIORITIES, STATUS_CATEGORIES } from "../lib/constants";
+import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, STATUS_CATEGORIES } from "../lib/constants";
 import type { ActivityValue } from "../lib/types";
 
 export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);
 export const priorityEnum = pgEnum("priority", PRIORITIES);
 export const activityActionEnum = pgEnum("activity_action", ACTIVITY_ACTIONS);
+export const linkTypeEnum = pgEnum("link_type", LINK_TYPES);
 
 export const safeUserColumns = {
   id: true,
@@ -181,6 +182,8 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
   children: many(tickets, { relationName: "ticket_parent" }),
   labels: many(ticketLabels),
   comments: many(comments),
+  outgoingLinks: many(ticketLinks, { relationName: "link_source" }),
+  incomingLinks: many(ticketLinks, { relationName: "link_target" }),
 }));
 
 export const ticketLabelsRelations = relations(ticketLabels, ({ one }) => ({
@@ -239,4 +242,34 @@ export const comments = pgTable(
 export const commentsRelations = relations(comments, ({ one }) => ({
   ticket: one(tickets, { fields: [comments.ticketID], references: [tickets.id] }),
   author: one(users, { fields: [comments.authorID], references: [users.id] }),
+}));
+
+export const ticketLinks = pgTable(
+  "ticket_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceTicketID: uuid("source_ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    targetTicketID: uuid("target_ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    linkType: linkTypeEnum("link_type").notNull(),
+    createdByID: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("uq_ticket_links").on(table.sourceTicketID, table.targetTicketID, table.linkType),
+    index("idx_ticket_links_source").on(table.sourceTicketID),
+    index("idx_ticket_links_target").on(table.targetTicketID),
+    check("ck_ticket_links_no_self", sql`${table.sourceTicketID} <> ${table.targetTicketID}`),
+  ]
+);
+
+export const ticketLinksRelations = relations(ticketLinks, ({ one }) => ({
+  source: one(tickets, { fields: [ticketLinks.sourceTicketID], references: [tickets.id], relationName: "link_source" }),
+  target: one(tickets, { fields: [ticketLinks.targetTicketID], references: [tickets.id], relationName: "link_target" }),
+  createdBy: one(users, { fields: [ticketLinks.createdByID], references: [users.id] }),
 }));
