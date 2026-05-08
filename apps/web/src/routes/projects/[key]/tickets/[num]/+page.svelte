@@ -7,17 +7,20 @@
   import type { Priority } from "@issues/api";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import TicketDescription from "$lib/components/tickets/TicketDescription.svelte";
+  import TicketTitle from "$lib/components/tickets/TicketTitle.svelte";
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
   import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
-  import CommentThread from "$lib/components/tickets/CommentThread.svelte";
+  import TicketHistory from "$lib/components/tickets/TicketHistory.svelte";
 
   let { data }: PageProps = $props();
   let ticket = $derived(data.ticket);
   let project = $derived(data.project);
   let comments = $derived(data.comments);
+  let activity = $derived(data.activity);
 
+  let savingTitle = $state(false);
   let savingDescription = $state(false);
   let assigneeID = $derived<string | undefined>(ticket.assignee?.id ?? undefined);
   let statusID = $derived(ticket.status.id);
@@ -40,6 +43,25 @@
     if (!value) return "Not set";
 
     return dateFormatter.format(new Date(value));
+  }
+
+  async function saveTitle(title: string) {
+    if (savingTitle) return false;
+
+    savingTitle = true;
+    try {
+      const res = await client.api.projects[":key"].tickets[":num"].$patch({
+        param: { key: project.key, num: String(ticket.number) },
+        json: { title },
+      });
+
+      if (!res.ok) return false;
+
+      await invalidateAll();
+      return true;
+    } finally {
+      savingTitle = false;
+    }
   }
 
   async function saveDescription(description: string) {
@@ -168,7 +190,7 @@
       </div>
 
       <div class="ticket-headline">
-        <h1>{ticket.title}</h1>
+        <TicketTitle title={ticket.title} saving={savingTitle} onsave={saveTitle} />
       </div>
     </div>
   </div>
@@ -176,7 +198,7 @@
   <div class="ticket-content">
     <main class="ticket-main">
       <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} />
-      <CommentThread {comments} projectKey={project.key} ticketNumber={ticket.number} currentUserID={data.user.id} onmutated={() => invalidateAll()} />
+      <TicketHistory {comments} {activity} statuses={project.statuses} labels={project.labels} members={project.members} projectKey={project.key} ticketNumber={ticket.number} currentUserID={data.user.id} onmutated={() => invalidateAll()} />
     </main>
 
     <aside class="ticket-sidebar" aria-label="Ticket metadata">
@@ -338,14 +360,6 @@
       font-size: 0.85em;
       letter-spacing: 0.01em;
     }
-  }
-
-  .ticket-headline h1 {
-    max-width: 20em;
-    color: var(--colour-text);
-    font-size: clamp(1.8rem, 1.6vw + 1.3rem, 3rem);
-    line-height: 1.05;
-    overflow-wrap: anywhere;
   }
 
   .ticket-content {
