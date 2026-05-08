@@ -180,6 +180,7 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
   parent: one(tickets, { fields: [tickets.parentTicketID], references: [tickets.id], relationName: "ticket_parent" }),
   children: many(tickets, { relationName: "ticket_parent" }),
   labels: many(ticketLabels),
+  comments: many(comments),
 }));
 
 export const ticketLabelsRelations = relations(ticketLabels, ({ one }) => ({
@@ -209,4 +210,33 @@ export const ticketActivity = pgTable(
 export const ticketActivityRelations = relations(ticketActivity, ({ one }) => ({
   ticket: one(tickets, { fields: [ticketActivity.ticketID], references: [tickets.id] }),
   user: one(users, { fields: [ticketActivity.userID], references: [users.id] }),
+}));
+
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketID: uuid("ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    authorID: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    body: text("body").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_comments_ticket")
+      .on(table.ticketID)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_comments_ticket_time").on(table.ticketID, table.createdAt),
+    check("ck_comments_body_nonempty", sql`length(trim(${table.body})) > 0`),
+  ]
+);
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  ticket: one(tickets, { fields: [comments.ticketID], references: [tickets.id] }),
+  author: one(users, { fields: [comments.authorID], references: [users.id] }),
 }));

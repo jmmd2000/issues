@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
+import { comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, tickets, users } from "../db/schema";
 import { ACTIVITY_ACTIONS, PRIORITIES, STATUS_CATEGORIES } from "./constants";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -20,6 +20,7 @@ export type TicketCounterRow = typeof ticketCounters.$inferSelect;
 export type TicketLabelRow = typeof ticketLabels.$inferSelect;
 
 export type ActivityInsert = typeof ticketActivity.$inferInsert;
+export type CommentRow = typeof comments.$inferSelect;
 
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
@@ -38,6 +39,12 @@ export type ProjectDetail = Project & {
 };
 
 export type TicketUser = Jsonified<Pick<UserRow, "id" | "name" | "avatarURL">>;
+
+export type Comment = Jsonified<Pick<CommentRow, "id" | "ticketID" | "authorID" | "createdAt" | "editedAt">> & {
+  body: string | null;
+  isDeleted: boolean;
+  author: TicketUser;
+};
 
 export type TicketSummary = Jsonified<Pick<TicketRow, "id" | "number" | "title" | "priority" | "position" | "statusID" | "createdAt" | "updatedAt">> & {
   labels: Label[];

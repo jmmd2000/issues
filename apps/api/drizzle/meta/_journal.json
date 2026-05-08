@@ -50,6 +50,13 @@
       "when": 1776695989484,
       "tag": "0006_curious_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778195274061,
+      "tag": "0007_bored_black_tom",
+      "breakpoints": true
     }
   ]
 }
