@@ -1,7 +1,8 @@
+import argon2 from "argon2";
 import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "../db";
-import { labels, statuses, tickets, users } from "../db/schema";
+import { labels, projectMembers, statuses, tickets, users } from "../db/schema";
 import type { Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
 import { CommentService } from "../services/commentService";
@@ -9,6 +10,17 @@ import { ProjectService } from "../services/projectService";
 import { TicketService } from "../services/ticketService";
 
 const DEV_USER = { name: "James", email: "james@test.com", password: "password123" };
+
+const EXTRA_USERS = [
+  { name: "John Smith", email: "john@test.com" },
+  { name: "Lucy Green", email: "lucy@test.com" },
+  { name: "Emily Doyle", email: "emily@test.com" },
+  { name: "Sam Jones", email: "sam@test.com" },
+  { name: "Justin Vernon", email: "Justin@test.com" },
+  { name: "Daniel O'Connor", email: "daniel@test.com" },
+];
+
+const SHARED_PASSWORD = DEV_USER.password;
 
 type ProjectSeed = {
   key: string;
@@ -199,17 +211,33 @@ function commentCountFor(projectKey: string, ticketIndex: number): number {
   return COMMENT_DENSITY_BUCKETS[hash % COMMENT_DENSITY_BUCKETS.length];
 }
 
-async function seedCommentsForTicket(ticketID: string, ownerID: string, projectKey: string, ticketIndex: number) {
+async function seedCommentsForTicket(ticketID: string, memberIDs: string[], projectKey: string, ticketIndex: number) {
   const count = commentCountFor(projectKey, ticketIndex);
   if (count === 0) return;
 
   for (let i = 0; i < count; i++) {
     const body = COMMENT_BODIES[(ticketIndex * 7 + i * 3 + projectKey.length) % COMMENT_BODIES.length];
-    await CommentService.createComment(ticketID, ownerID, body);
+    const authorID = memberIDs[(ticketIndex * 5 + i * 11 + projectKey.length) % memberIDs.length];
+    await CommentService.createComment(ticketID, authorID, body);
   }
 }
 
-async function seedTicketsForProject(projectID: string, projectKey: string, ownerID: string, seeds: TicketSeed[]) {
+function pickExtraMembers(projectKey: string, extraUserIDs: string[]): string[] {
+  if (extraUserIDs.length === 0) return [];
+  let hash = 0;
+  for (let i = 0; i < projectKey.length; i++) {
+    hash = (hash * 31 + projectKey.charCodeAt(i)) >>> 0;
+  }
+  const count = 2 + (hash % 3); // 2, 3, or 4
+  const start = hash % extraUserIDs.length;
+  const picked: string[] = [];
+  for (let i = 0; i < count && i < extraUserIDs.length; i++) {
+    picked.push(extraUserIDs[(start + i) % extraUserIDs.length]);
+  }
+  return picked;
+}
+
+async function seedTicketsForProject(projectID: string, projectKey: string, ownerID: string, memberIDs: string[], seeds: TicketSeed[]) {
   const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
   const projectLabels = await db.select({ id: labels.id, name: labels.name }).from(labels).where(eq(labels.projectID, projectID));
   const statusBySlug = new Map(projectStatuses.map((s) => [s.slug, s.id]));
@@ -227,14 +255,17 @@ async function seedTicketsForProject(projectID: string, projectKey: string, owne
       return labelID;
     });
 
+    const reporterID = memberIDs[(ticketIndex * 7 + projectKey.length) % memberIDs.length];
+    const assigneeID = seed.assignSelf ? memberIDs[(ticketIndex * 13 + projectKey.length * 3) % memberIDs.length] : undefined;
+
     const ticket = await TicketService.createTicket({
       projectID,
-      reporterID: ownerID,
+      reporterID,
       title: seed.title,
       description: seed.description,
       statusID,
       priority: seed.priority,
-      assigneeID: seed.assignSelf ? ownerID : undefined,
+      assigneeID,
       labelIDs: labelIDs.length ? labelIDs : undefined,
     });
 
@@ -244,7 +275,7 @@ async function seedTicketsForProject(projectID: string, projectKey: string, owne
       backdates.set(seed.completedDaysAgo, bucket);
     }
 
-    await seedCommentsForTicket(ticket.id, ownerID, projectKey, ticketIndex);
+    await seedCommentsForTicket(ticket.id, memberIDs, projectKey, ticketIndex);
     ticketIndex++;
   }
 
@@ -263,17 +294,28 @@ async function seed() {
   await AuthService.createUser(DEV_USER.name, DEV_USER.email, DEV_USER.password);
   const [{ id: ownerID }] = await db.select({ id: users.id }).from(users).limit(1);
 
+  const passwordHash = await argon2.hash(SHARED_PASSWORD);
+  const extraInsertRows = EXTRA_USERS.map((user) => ({ name: user.name, email: user.email, passwordHash }));
+  const extraUserIDs = (await db.insert(users).values(extraInsertRows).returning({ id: users.id })).map((row) => row.id);
+
   let ticketCount = 0;
   for (const project of DEV_PROJECTS) {
     const created = await ProjectService.createProject({ ...project, ownerID });
 
+    const projectExtraIDs = pickExtraMembers(project.key, extraUserIDs);
+    if (projectExtraIDs.length) {
+      await db.insert(projectMembers).values(projectExtraIDs.map((userID) => ({ projectID: created.id, userID, role: "member" as const })));
+    }
+    const memberIDs = [ownerID, ...projectExtraIDs];
+
     const seeds = project.key === "VOLUME" ? buildVolumeSeeds(project) : buildTicketSeeds(project);
-    await seedTicketsForProject(created.id, project.key, ownerID, seeds);
+    await seedTicketsForProject(created.id, project.key, ownerID, memberIDs, seeds);
     ticketCount += seeds.length;
   }
 
-  console.log(`Seeded ${DEV_PROJECTS.length} projects and ${ticketCount} tickets owned by ${DEV_USER.email}.`);
-  console.log(`Login: ${DEV_USER.email} / ${DEV_USER.password}`);
+  const totalUsers = 1 + EXTRA_USERS.length;
+  console.log(`Seeded ${totalUsers} users, ${DEV_PROJECTS.length} projects and ${ticketCount} tickets.`);
+  console.log(`Login: ${DEV_USER.email} / ${DEV_USER.password} (all extra users share the same password)`);
 }
 
 seed()
