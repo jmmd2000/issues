@@ -7,14 +7,15 @@
 </script>
 
 <script lang="ts">
-  import { Bold, Code, Italic, Link2, List } from "@lucide/svelte";
+  import { Bold, Code, FileCode2, Italic, Link2, List } from "@lucide/svelte";
 
   let { oninsert }: { oninsert: (action: ToolbarInsert) => void } = $props();
 
   const actions: Array<{ key: string; label: string; icon: typeof Bold; action: ToolbarInsert }> = [
     { key: "bold", label: "Bold", icon: Bold, action: { prefix: "**", suffix: "**", placeholder: "bold text" } },
     { key: "italic", label: "Italic", icon: Italic, action: { prefix: "_", suffix: "_", placeholder: "italic text" } },
-    { key: "code", label: "Code", icon: Code, action: { prefix: "`", suffix: "`", placeholder: "code" } },
+    { key: "code", label: "Inline code", icon: Code, action: { prefix: "`", suffix: "`", placeholder: "code" } },
+    { key: "code-block", label: "Code block", icon: FileCode2, action: { prefix: "\n```\n", suffix: "\n```\n", placeholder: "code" } },
     { key: "list", label: "List", icon: List, action: { prefix: "- ", placeholder: "list item" } },
     { key: "link", label: "Link", icon: Link2, action: { prefix: "[", suffix: "](https://)", placeholder: "label" } },
   ];
