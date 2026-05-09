@@ -136,12 +136,12 @@
     background: transparent;
     color: var(--colour-text-secondary);
     cursor: pointer;
-  }
 
-  .close:hover,
-  .close:focus-visible {
-    background: var(--colour-bg-hover);
-    color: var(--colour-text);
+    &:hover,
+    &:focus-visible {
+      background: var(--colour-bg-hover);
+      color: var(--colour-text);
+    }
   }
 
   .search {
@@ -156,14 +156,14 @@
     flex: 1 1 auto;
     min-height: 0;
     padding-right: 0.15em;
-  }
 
-  .cards > :global(*) {
-    flex-shrink: 0;
-  }
+    & > :global(*) {
+      flex-shrink: 0;
+    }
 
-  .cards[data-empty="true"] {
-    min-height: 4.25rem;
+    &[data-empty="true"] {
+      min-height: 4.25rem;
+    }
   }
 
   .cards :global([data-is-dnd-shadow-item-internal="true"]) {

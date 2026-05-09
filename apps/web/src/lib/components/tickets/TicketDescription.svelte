@@ -77,6 +77,12 @@
 <style>
   .description-card {
     position: relative;
+
+    &:hover .description-edit,
+    &:focus-within .description-edit {
+      opacity: 1;
+      pointer-events: auto;
+    }
   }
 
   .section-header {
@@ -85,24 +91,18 @@
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 0.85rem;
-  }
 
-  .section-header h2 {
-    color: var(--colour-text);
-    font-size: 0.8rem;
-    font-weight: 800;
+    & h2 {
+      color: var(--colour-text);
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
   }
 
   .description-edit {
     opacity: 0;
     pointer-events: none;
     transition: opacity 120ms ease;
-  }
-
-  .description-card:hover .description-edit,
-  .description-card:focus-within .description-edit {
-    opacity: 1;
-    pointer-events: auto;
   }
 
   .description-view {
@@ -119,12 +119,12 @@
     color: var(--colour-muted);
     text-align: left;
     cursor: pointer;
-  }
 
-  .empty-description:hover {
-    border-color: var(--accent-tint-600);
-    background: var(--accent-tint-900);
-    color: var(--accent-base);
+    &:hover {
+      border-color: var(--accent-tint-600);
+      background: var(--accent-tint-900);
+      color: var(--accent-base);
+    }
   }
 
   .description-actions {

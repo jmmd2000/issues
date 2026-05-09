@@ -224,16 +224,16 @@
     font-weight: 500;
     font-size: 0.9em;
     transition: color 0.4s ease;
-  }
 
-  .back-link span {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-  }
+    & span {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
 
-  .back-link:hover {
-    color: var(--accent-tint-300);
+    &:hover {
+      color: var(--accent-tint-300);
+    }
   }
 
   .heading-content {
@@ -311,16 +311,16 @@
     transition:
       color 120ms ease,
       background 120ms ease;
-  }
 
-  .toggle-option:hover:not(.active) {
-    color: var(--colour-text);
-  }
+    &:hover:not(.active) {
+      color: var(--colour-text);
+    }
 
-  .toggle-option.active {
-    background: var(--colour-bg-lighter);
-    color: var(--accent-base);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    &.active {
+      background: var(--colour-bg-lighter);
+      color: var(--accent-base);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
   }
 
   .field-hint {

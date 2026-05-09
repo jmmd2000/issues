@@ -54,10 +54,10 @@
     transition:
       background 0.12s,
       color 0.12s;
-  }
 
-  .toolbar button:hover {
-    background: var(--colour-bg-hover);
-    color: var(--colour-text);
+    &:hover {
+      background: var(--colour-bg-hover);
+      color: var(--colour-text);
+    }
   }
 </style>

@@ -132,67 +132,67 @@
     line-height: 1;
     white-space: nowrap;
     cursor: pointer;
-  }
 
-  .trigger:hover,
-  .trigger:focus-visible,
-  .trigger[aria-expanded="true"] {
-    background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
-  }
+    &:hover,
+    &:focus-visible,
+    &[aria-expanded="true"] {
+      background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
+    }
 
-  .trigger[data-size="md"] {
-    min-height: 2.4em;
-    padding: 0.45em 0.7em;
-    font-size: 0.85em;
-  }
+    &[data-size="md"] {
+      min-height: 2.4em;
+      padding: 0.45em 0.7em;
+      font-size: 0.85em;
+    }
 
-  .trigger[data-empty="true"] {
-    border-color: var(--colour-border);
-    background: var(--colour-bg);
-    color: var(--colour-text-secondary);
-    font-weight: 600;
-  }
+    &[data-size="sm"] {
+      margin-left: -0.4rem;
+      padding: 0.25rem 0.45rem;
+      font-size: 0.7rem;
+    }
 
-  .trigger[data-empty="true"]:hover,
-  .trigger[data-empty="true"]:focus-visible,
-  .trigger[data-empty="true"][aria-expanded="true"] {
-    background: var(--colour-bg-hover);
-    color: var(--colour-text);
-  }
+    &[data-empty="true"] {
+      border-color: var(--colour-border);
+      background: var(--colour-bg);
+      color: var(--colour-text-secondary);
+      font-weight: 600;
 
-  .trigger[data-multi="true"]:not([data-empty="true"]) {
-    border-color: var(--colour-border);
-    background: var(--colour-bg);
-    color: var(--colour-text);
-    flex-wrap: wrap;
-    row-gap: 0.3em;
-  }
+      &:hover,
+      &:focus-visible,
+      &[aria-expanded="true"] {
+        background: var(--colour-bg-hover);
+        color: var(--colour-text);
+      }
+    }
 
-  .trigger[data-multi="true"]:not([data-empty="true"]):hover,
-  .trigger[data-multi="true"]:not([data-empty="true"]):focus-visible,
-  .trigger[data-multi="true"]:not([data-empty="true"])[aria-expanded="true"] {
-    background: var(--colour-bg-hover);
-  }
+    &[data-multi="true"]:not([data-empty="true"]) {
+      border-color: var(--colour-border);
+      background: var(--colour-bg);
+      color: var(--colour-text);
+      flex-wrap: wrap;
+      row-gap: 0.3em;
 
-  .trigger[data-size="sm"] {
-    margin-left: -0.4rem;
-    padding: 0.25rem 0.45rem;
-    font-size: 0.7rem;
-  }
+      &:hover,
+      &:focus-visible,
+      &[aria-expanded="true"] {
+        background: var(--colour-bg-hover);
+      }
+    }
 
-  .trigger:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
 
-  .trigger :global(.chevron) {
-    color: currentColor;
-    opacity: 0.7;
-  }
+    & :global(.chevron) {
+      color: currentColor;
+      opacity: 0.7;
+    }
 
-  .trigger :global(.spinner) {
-    animation: spin 720ms linear infinite;
-    color: currentColor;
+    & :global(.spinner) {
+      animation: spin 720ms linear infinite;
+      color: currentColor;
+    }
   }
 
   @keyframes spin {
@@ -230,20 +230,20 @@
     font-weight: 650;
     text-align: left;
     cursor: pointer;
-  }
 
-  .option:hover {
-    background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
-  }
+    &:hover {
+      background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
+    }
 
-  .option[aria-selected="true"] {
-    background: color-mix(in oklch, var(--option-colour) 20%, white 80%);
-    font-weight: 800;
-  }
+    &[aria-selected="true"] {
+      background: color-mix(in oklch, var(--option-colour) 20%, white 80%);
+      font-weight: 800;
+    }
 
-  .option:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
   }
 
   .check {

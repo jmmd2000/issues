@@ -68,15 +68,15 @@
     background: transparent;
     color: var(--colour-text-secondary);
     font-family: inherit;
-    font-size: 0.78em;
+    font-size: 0.8em;
     font-weight: 600;
     cursor: pointer;
-  }
 
-  .trigger:hover,
-  .trigger[aria-expanded="true"] {
-    color: var(--colour-text);
-    background: var(--colour-bg-hover);
+    &:hover,
+    &[aria-expanded="true"] {
+      color: var(--colour-text);
+      background: var(--colour-bg-hover);
+    }
   }
 
   .menu {

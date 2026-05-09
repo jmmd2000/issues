@@ -137,45 +137,45 @@
     font: inherit;
     cursor: pointer;
     text-align: left;
-  }
 
-  .trigger[data-size="md"] {
-    min-height: 2.4em;
-    padding: 0.45em 0.7em;
-    border: var(--border);
-    background: var(--colour-bg);
-    font-size: 0.85em;
-  }
+    &[data-size="md"] {
+      min-height: 2.4em;
+      padding: 0.45em 0.7em;
+      border: var(--border);
+      background: var(--colour-bg);
+      font-size: 0.85em;
 
-  .trigger[data-size="md"]:hover,
-  .trigger[data-size="md"]:focus-visible,
-  .trigger[data-size="md"][aria-expanded="true"] {
-    background: var(--colour-bg-hover);
-  }
+      &:hover,
+      &:focus-visible,
+      &[aria-expanded="true"] {
+        background: var(--colour-bg-hover);
+      }
+    }
 
-  .trigger[data-size="sm"] {
-    min-height: 1.65rem;
-    margin-left: -0.35rem;
-    padding: 0.2rem 0.35rem;
-    border: var(--border);
-    background: var(--colour-bg);
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
+    &[data-size="sm"] {
+      min-height: 1.65rem;
+      margin-left: -0.35rem;
+      padding: 0.2rem 0.35rem;
+      border: var(--border);
+      background: var(--colour-bg);
+      font-size: 0.8rem;
+      font-weight: 600;
 
-  .trigger[data-size="sm"]:hover,
-  .trigger[data-size="sm"]:focus-visible,
-  .trigger[data-size="sm"][aria-expanded="true"] {
-    background: var(--colour-bg-hover);
-  }
+      &:hover,
+      &:focus-visible,
+      &[aria-expanded="true"] {
+        background: var(--colour-bg-hover);
+      }
+    }
 
-  .trigger:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
 
-  .trigger[data-empty="true"] .empty-state {
-    color: var(--colour-muted);
+    &[data-empty="true"] .empty-state {
+      color: var(--colour-muted);
+    }
   }
 
   .empty-state {
@@ -254,15 +254,15 @@
     font-size: 0.8em;
     text-align: left;
     cursor: pointer;
-  }
 
-  .option:hover {
-    background: var(--colour-bg-hover);
-  }
+    &:hover {
+      background: var(--colour-bg-hover);
+    }
 
-  .option[aria-selected="true"] {
-    color: var(--accent-base);
-    font-weight: 600;
+    &[aria-selected="true"] {
+      color: var(--accent-base);
+      font-weight: 600;
+    }
   }
 
   .check {

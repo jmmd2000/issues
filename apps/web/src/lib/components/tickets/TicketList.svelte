@@ -193,12 +193,12 @@
     text-align: left;
     text-transform: uppercase;
     cursor: pointer;
-  }
 
-  .sort-button:hover,
-  .sort-button[data-active="true"] {
-    color: var(--colour-text);
-    background: var(--colour-bg-hover);
+    &:hover,
+    &[data-active="true"] {
+      color: var(--colour-text);
+      background: var(--colour-bg-hover);
+    }
   }
 
   .sort-icon {
@@ -209,38 +209,43 @@
     color: var(--accent-base);
   }
 
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
+  tbody tr {
+    &:last-child td {
+      border-bottom: none;
+    }
 
-  tbody tr:hover {
-    background: var(--colour-bg-hover);
+    &:hover {
+      background: var(--colour-bg-hover);
+    }
   }
 
   .key {
     font-family: var(--font-mono);
     white-space: nowrap;
-  }
 
-  .key a,
-  .title a {
-    color: inherit;
-    text-decoration: none;
-  }
+    & a {
+      color: var(--accent-base);
+      text-decoration: none;
 
-  .key a {
-    color: var(--accent-base);
-  }
-
-  .key a:hover,
-  .title a:hover {
-    text-decoration: underline;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   .title {
     color: var(--colour-text);
     font-weight: 600;
     min-width: 18em;
+
+    & a {
+      color: inherit;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   .assignee-cell {

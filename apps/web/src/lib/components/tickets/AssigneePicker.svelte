@@ -177,57 +177,57 @@
     font: inherit;
     white-space: nowrap;
     cursor: pointer;
-  }
 
-  .trigger[data-size="md"] {
-    min-height: 2.4em;
-    padding: 0.45em 0.7em;
-    border: var(--border);
-    background: var(--colour-bg);
-    font-size: 0.85em;
-  }
+    &[data-size="md"] {
+      min-height: 2.4em;
+      padding: 0.45em 0.7em;
+      border: var(--border);
+      background: var(--colour-bg);
+      font-size: 0.85em;
 
-  .trigger[data-size="md"][data-empty="true"] .label,
-  .trigger[data-size="md"][data-empty="true"] .placeholder,
-  .trigger[data-size="md"][data-empty="true"] .placeholder-icon {
-    color: var(--colour-text-secondary);
-  }
+      &[data-empty="true"] {
+        font-weight: 600;
 
-  .trigger[data-size="md"][data-empty="true"] {
-    font-weight: 600;
-  }
+        & .label,
+        & .placeholder,
+        & .placeholder-icon {
+          color: var(--colour-text-secondary);
+        }
+      }
 
-  .trigger[data-size="md"]:hover,
-  .trigger[data-size="md"]:focus-visible,
-  .trigger[data-size="md"][aria-expanded="true"] {
-    background: var(--colour-bg-hover);
-  }
+      &:hover,
+      &:focus-visible,
+      &[aria-expanded="true"] {
+        background: var(--colour-bg-hover);
+      }
+    }
 
-  .trigger[data-multi="true"]:not([data-empty="true"]) {
-    flex-wrap: wrap;
-    row-gap: 0.3em;
-  }
+    &[data-size="sm"] {
+      min-height: 1.65rem;
+      margin-left: -0.35rem;
+      padding: 0.2rem 0.35rem;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 0.8rem;
+      font-weight: 600;
 
-  .trigger[data-size="sm"] {
-    min-height: 1.65rem;
-    margin-left: -0.35rem;
-    padding: 0.2rem 0.35rem;
-    border: 1px solid transparent;
-    background: transparent;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
+      &:hover,
+      &:focus-visible,
+      &[aria-expanded="true"] {
+        border-color: var(--colour-border);
+        background: var(--colour-bg);
+      }
+    }
 
-  .trigger[data-size="sm"]:hover,
-  .trigger[data-size="sm"]:focus-visible,
-  .trigger[data-size="sm"][aria-expanded="true"] {
-    border-color: var(--colour-border);
-    background: var(--colour-bg);
-  }
+    &[data-multi="true"]:not([data-empty="true"]) {
+      flex-wrap: wrap;
+      row-gap: 0.3em;
+    }
 
-  .trigger:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
   }
 
   .label {
@@ -315,15 +315,15 @@
     font-size: 0.8em;
     text-align: left;
     cursor: pointer;
-  }
 
-  .option:hover {
-    background: var(--colour-bg-hover);
-  }
+    &:hover {
+      background: var(--colour-bg-hover);
+    }
 
-  .option[aria-selected="true"] {
-    color: var(--accent-base);
-    font-weight: 600;
+    &[aria-selected="true"] {
+      color: var(--accent-base);
+      font-weight: 600;
+    }
   }
 
   .check {

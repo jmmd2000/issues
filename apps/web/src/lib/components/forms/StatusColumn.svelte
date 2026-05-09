@@ -134,7 +134,7 @@
     font-size: 0.75em;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     color: var(--colour-muted);
     padding: 0.25em 0.25em 0.5em;
   }
