@@ -696,3 +696,80 @@ describe("DELETE /api/projects/:key/tickets/:num", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("POST /api/projects/:key/tickets/:num/restore", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function softDelete(num: number) {
+    await app.request(`/api/projects/TEST/tickets/${num}`, { method: "DELETE", headers: { Cookie: cookies } });
+  }
+
+  it("restores a soft-deleted ticket", async () => {
+    const ticket = await createTicket({ title: "Bring me back" });
+    await softDelete(ticket.number);
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/restore`, { method: "POST", headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.ticket.id).toBe(ticket.id);
+    expect(body.ticket.deletedAt).toBeNull();
+
+    const [row] = await db.select().from(tickets).where(eq(tickets.id, ticket.id));
+    expect(row.deletedAt).toBeNull();
+  });
+
+  it("writes a restored activity row", async () => {
+    const ticket = await createTicket({ title: "Phoenix" });
+    await softDelete(ticket.number);
+
+    await app.request(`/api/projects/TEST/tickets/${ticket.number}/restore`, { method: "POST", headers: { Cookie: cookies } });
+
+    const rows = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "restored")));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].newValue).toEqual({ value: "Phoenix" });
+  });
+
+  it("returns 401 for non-authenticated requests", async () => {
+    const ticket = await createTicket();
+    await softDelete(ticket.number);
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/restore`, { method: "POST" });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 for non-member", async () => {
+    const ticket = await createTicket();
+    await softDelete(ticket.number);
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/restore`, { method: "POST", headers: { Cookie: otherCookies } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when the ticket is not soft-deleted", async () => {
+    const ticket = await createTicket({ title: "Still here" });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/restore`, { method: "POST", headers: { Cookie: cookies } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for a non-existent ticket number", async () => {
+    const res = await app.request("/api/projects/TEST/tickets/999/restore", { method: "POST", headers: { Cookie: cookies } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for a non-numeric ticket number", async () => {
+    const res = await app.request("/api/projects/TEST/tickets/abc/restore", { method: "POST", headers: { Cookie: cookies } });
+    expect(res.status).toBe(400);
+  });
+});
