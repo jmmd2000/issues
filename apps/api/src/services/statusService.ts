@@ -1,8 +1,8 @@
-import { and, eq, max, ne } from "drizzle-orm";
+import { and, eq, isNull, max, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { statuses, tickets } from "../db/schema";
-import type { StatusCategory, Transaction } from "../lib/types";
+import { statuses, ticketActivity, tickets } from "../db/schema";
+import type { ActivityInsert, StatusCategory, Transaction } from "../lib/types";
 import { slugify } from "../lib/slugify";
 
 const DEFAULT_STATUSES = [
@@ -119,12 +119,16 @@ export class StatusService {
   }
 
   /**
-   * Deletes a status, scoped to a project. Reassigns all tickets using this status to a different status.
+   * Deletes a status, scoped to a project. Reassigns all tickets using this
+   * status to a different status, writing one `updated`/`statusID` activity
+   * row per affected ticket so the change is visible on each ticket's
+   * timeline. Soft-deleted tickets are not migrated or logged.
    * @param statusID The ID of the status to delete
    * @param projectID The ID of the project
    * @param reassignToID The ID of the status to reassign tickets to
+   * @param userID The ID of the user performing the delete (attributed on activity rows)
    */
-  static async deleteStatus(statusID: string, projectID: string, reassignToID: string) {
+  static async deleteStatus(statusID: string, projectID: string, reassignToID: string, userID: string) {
     const projectStatuses = await this.getStatuses(projectID);
 
     if (projectStatuses.length <= 1) {
@@ -138,10 +142,28 @@ export class StatusService {
     if (!reassignStatus) throw new HTTPException(404, { message: `Status with id ${reassignToID} not found.` });
 
     await db.transaction(async (tx) => {
+      const affected = await tx
+        .select({ id: tickets.id })
+        .from(tickets)
+        .where(and(eq(tickets.projectID, projectID), eq(tickets.statusID, statusID), isNull(tickets.deletedAt)));
+
       await tx
         .update(tickets)
         .set({ statusID: reassignToID })
         .where(and(eq(tickets.projectID, projectID), eq(tickets.statusID, statusID)));
+
+      if (affected.length) {
+        const rows: ActivityInsert[] = affected.map(({ id }) => ({
+          ticketID: id,
+          userID,
+          action: "updated",
+          fieldName: "statusID",
+          oldValue: { id: targetStatus.id, name: targetStatus.name },
+          newValue: { id: reassignStatus.id, name: reassignStatus.name },
+        }));
+        await tx.insert(ticketActivity).values(rows);
+      }
+
       await tx.delete(statuses).where(and(eq(statuses.id, statusID), eq(statuses.projectID, projectID)));
     });
   }

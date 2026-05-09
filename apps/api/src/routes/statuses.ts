@@ -106,7 +106,8 @@ export const statuses = new Hono()
       const { id: projectID } = c.get("project");
       const { id: statusID } = c.req.valid("param");
       const { reassignTo } = c.req.valid("json");
-      await StatusService.deleteStatus(statusID, projectID, reassignTo);
+      const userID = c.get("userID");
+      await StatusService.deleteStatus(statusID, projectID, reassignTo, userID);
 
       return c.body(null, 204);
     }
