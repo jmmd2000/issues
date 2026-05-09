@@ -6,12 +6,15 @@
   import { ChevronRight } from "@lucide/svelte";
   import type { Priority } from "@issues/api";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import TicketChildren from "$lib/components/tickets/TicketChildren.svelte";
   import TicketDescription from "$lib/components/tickets/TicketDescription.svelte";
   import TicketTitle from "$lib/components/tickets/TicketTitle.svelte";
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
   import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
+  import TicketSearchModal from "$lib/components/tickets/TicketSearchModal.svelte";
+  import { Pencil, X } from "@lucide/svelte";
   import TicketHistory from "$lib/components/tickets/TicketHistory.svelte";
   import TicketLinks from "$lib/components/tickets/TicketLinks.svelte";
   import TicketAttachments from "$lib/components/tickets/TicketAttachments.svelte";
@@ -38,6 +41,8 @@
   let savingPriority = $state(false);
   let savingLabels = $state(false);
   let savingVisibility = $state(false);
+  let savingParent = $state(false);
+  let parentSearchOpen = $state(false);
 
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -160,6 +165,23 @@
     }
   }
 
+  async function saveParent(nextParentTicketID: string | null) {
+    if (savingParent) return;
+
+    savingParent = true;
+    try {
+      const res = await client.api.projects[":key"].tickets[":num"].$patch({
+        param: { key: project.key, num: String(ticket.number) },
+        json: { parentTicketID: nextParentTicketID },
+      });
+
+      if (!res.ok) return;
+      await invalidateAll();
+    } finally {
+      savingParent = false;
+    }
+  }
+
   async function saveLabels(nextLabelIDs: string[], previousLabelIDs: string[]) {
     if (savingLabels) return;
 
@@ -229,6 +251,15 @@
   <div class="ticket-content">
     <main class="ticket-main">
       <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} {attachmentContext} />
+      <TicketChildren
+        children={ticket.children}
+        projectKey={project.key}
+        parentTicketID={ticket.id}
+        parentTicketNumber={ticket.number}
+        statuses={project.statuses}
+        members={project.members}
+        onmutated={() => invalidateAll()}
+      />
       <TicketAttachments {attachments} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
       <TicketLinks {links} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
       <TicketHistory
@@ -311,9 +342,17 @@
             <dt>Parent</dt>
             <dd>
               {#if ticket.parent}
-                <a class="ticket-link" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })}>{project.key}-{ticket.parent.number}</a>
+                <span class="parent-cluster">
+                  <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}>{project.key}-{ticket.parent.number}</a>
+                  <button type="button" class="parent-icon-btn" onclick={() => (parentSearchOpen = true)} disabled={savingParent} aria-label="Change parent" title="Change parent">
+                    <Pencil size={12} strokeWidth={2.5} />
+                  </button>
+                  <button type="button" class="parent-icon-btn destructive" onclick={() => void saveParent(null)} disabled={savingParent} aria-label="Remove parent" title="Remove parent">
+                    <X size={12} strokeWidth={2.5} />
+                  </button>
+                </span>
               {:else}
-                <span class="muted-value">None</span>
+                <button type="button" class="set-parent" onclick={() => (parentSearchOpen = true)} disabled={savingParent}>+ Set parent</button>
               {/if}
             </dd>
           </div>
@@ -345,9 +384,9 @@
                 title={visibility === "public" ? "Public — visible to anyone if the project is public" : "Private — members only"}
               >
                 {#if visibility === "private"}
-                  <EyeOff size={12} strokeWidth={2.5} /> Private
+                  <EyeOff size={14} strokeWidth={2} /> Private
                 {:else}
-                  <Eye size={12} strokeWidth={2.5} /> Public
+                  <Eye size={14} strokeWidth={2} /> Public
                 {/if}
               </button>
             </dd>
@@ -378,6 +417,20 @@
     </aside>
   </div>
 </section>
+
+<TicketSearchModal
+  open={parentSearchOpen}
+  title="Set parent ticket"
+  projectKey={project.key}
+  statuses={project.statuses}
+  members={project.members}
+  excludeTicketNumbers={[ticket.number]}
+  onpicked={(picked) => {
+    parentSearchOpen = false;
+    void saveParent(picked.id);
+  }}
+  onclose={() => (parentSearchOpen = false)}
+/>
 
 <style>
   .ticket-page {
@@ -494,28 +547,124 @@
     white-space: nowrap;
   }
 
-  .muted-value {
+  /* Sized to match the picker triggers' size="sm" rule (StatusPicker,
+     PriorityPicker, LabelsPicker, AssigneePicker): padding, font-size, and
+     a negative margin-left that pulls the chip's visible left edge into
+     line with where the dt text would sit. Without that margin the chips
+     sit 0.4rem to the right of the column. */
+  .parent-cluster {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: -0.4rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .parent-pill,
+  .parent-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.65rem;
+    border: var(--border);
+    border-radius: var(--border-radius-inner);
+    background: var(--colour-bg);
+    font-size: 0.7rem;
+    line-height: 1;
+    box-sizing: border-box;
+  }
+
+  .parent-pill {
+    padding: 0 0.45rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent-base);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--colour-bg-hover);
+      outline: none;
+    }
+  }
+
+  .parent-icon-btn {
+    width: 1.65rem;
+    padding: 0;
     color: var(--colour-muted);
-    font-weight: 500;
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      color: var(--colour-text);
+      background: var(--colour-bg-hover);
+      outline: none;
+    }
+
+    &.destructive:hover:not(:disabled),
+    &.destructive:focus-visible {
+      color: var(--colour-error);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .set-parent {
+    display: inline-flex;
+    align-items: center;
+    margin-left: -0.4rem;
+    padding: 0.25rem 0.45rem;
+    border: 1px dashed var(--colour-border);
+    border-radius: var(--border-radius-inner);
+    background: transparent;
+    color: var(--colour-muted);
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      color: var(--accent-base);
+      border-color: var(--accent-tint-600);
+      background: var(--accent-tint-900);
+      outline: none;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 
   .visibility-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    padding: 0.2rem 0.55rem;
+    margin-left: -0.4rem;
+    padding: 0.25rem 0.45rem;
     border: var(--border);
-    border-radius: 999px;
+    border-radius: var(--border-radius-inner);
     background: var(--colour-bg);
     color: var(--colour-text);
     font: inherit;
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: 0.7rem;
+    font-weight: 650;
+    line-height: 1;
     cursor: pointer;
   }
 
   .visibility-pill:hover:not(:disabled) {
-    background: var(--colour-bg-lighter);
+    background: var(--colour-bg-hover);
   }
 
   .visibility-pill.private {
@@ -527,17 +676,6 @@
   .visibility-pill:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .ticket-link {
-    color: var(--accent-base);
-    font-family: var(--font-mono);
-    font-size: 0.9em;
-    text-decoration: none;
-  }
-
-  .ticket-link:hover {
-    text-decoration: underline;
   }
 
   @media (max-width: 900px) {
