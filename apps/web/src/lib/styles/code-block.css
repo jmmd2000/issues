@@ -1,0 +1,141 @@
+/* Fenced code-block surface for rendered markdown; hljs token classes coloured below. */
+.code-block {
+  border: var(--border);
+  border-radius: var(--border-radius-outer);
+  overflow: hidden;
+  background: #16181d;
+  margin: 0.5rem 0;
+}
+
+.code-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.85rem;
+  background: #1e2229;
+  border-bottom: 1px solid rgb(255 255 255 / 0.05);
+}
+
+.code-block__lang {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.code-block__copy {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.05);
+  color: rgb(255 255 255 / 0.45);
+  border-radius: var(--border-radius-inner);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+
+  &:hover {
+    background: rgb(255 255 255 / 0.1);
+    color: rgb(255 255 255 / 0.85);
+  }
+
+  &.code-block__copy--copied {
+    color: #34d399;
+    border-color: rgb(52 211 153 / 0.3);
+  }
+}
+
+.code-block__body {
+  padding: 0.95rem 1.1rem;
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: #e2e4e9;
+  tab-size: 2;
+  background: transparent;
+  border: 0;
+}
+
+.code-block__body code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+}
+
+/* highlight.js */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-doctag,
+.hljs-name,
+.hljs-tag {
+  color: #c792ea;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-attr,
+.hljs-template-variable,
+.hljs-variable,
+.hljs-symbol,
+.hljs-bullet {
+  color: #c3e88d;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-type {
+  color: #f78c6c;
+}
+
+.hljs-function,
+.hljs-title,
+.hljs-section {
+  color: #82aaff;
+}
+
+.hljs-class .hljs-title,
+.hljs-title.class_ {
+  color: #ffcb6b;
+}
+
+.hljs-attribute,
+.hljs-property,
+.hljs-params {
+  color: #ffcb6b;
+}
+
+.hljs-deletion {
+  color: #ff5370;
+}
+
+.hljs-addition {
+  color: #c3e88d;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}

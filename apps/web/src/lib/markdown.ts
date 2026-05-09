@@ -1,5 +1,6 @@
 import DOMPurify from "isomorphic-dompurify";
-import { marked } from "marked";
+import hljs from "highlight.js/lib/common";
+import { marked, type Tokens } from "marked";
 import { PUBLIC_API_URL } from "$env/static/public";
 
 // Matches ticket refs like `PROJ-123`. Project key: 2–6 uppercase letters, `\b` avoids matching inside words.
@@ -16,6 +17,27 @@ marked.setOptions({
   gfm: true,
   breaks: true,
 });
+
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function escapeHTML(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]!);
+}
+
+const renderer = new marked.Renderer();
+renderer.code = ({ text, lang }: Tokens.Code) => {
+  const requested = (lang ?? "").trim().split(/\s+/)[0] ?? "";
+  const language = requested && hljs.getLanguage(requested) ? requested : "";
+  const highlighted = language ? hljs.highlight(text, { language }).value : escapeHTML(text);
+  const label = requested || "plaintext";
+  return `<div class="code-block" data-lang="${escapeHTML(label)}">
+  <div class="code-block__header">
+    <span class="code-block__lang">${escapeHTML(label)}</span>
+    <button type="button" class="code-block__copy">Copy</button>
+  </div>
+  <pre class="code-block__body"><code class="hljs">${highlighted}</code></pre>
+</div>`;
+};
+marked.use({ renderer });
 
 function absolutiseUploads(html: string): string {
   return html.replace(RELATIVE_UPLOAD_RE, (_, attr) => `${attr}="${PUBLIC_API_URL}/uploads/`);

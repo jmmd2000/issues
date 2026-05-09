@@ -10,8 +10,40 @@
 
   $effect(() => {
     void html;
-    if (container) decorateTicketRefs(container);
+    if (!container) return;
+    decorateTicketRefs(container);
+    return attachCopyHandlers(container);
   });
+
+  function attachCopyHandlers(root: HTMLElement) {
+    const buttons = root.querySelectorAll<HTMLButtonElement>(".code-block__copy");
+    const handlers = new Map<HTMLButtonElement, () => void>();
+    for (const button of buttons) {
+      const handler = () => copyButtonContents(button);
+      button.addEventListener("click", handler);
+      handlers.set(button, handler);
+    }
+    return () => {
+      for (const [button, handler] of handlers) button.removeEventListener("click", handler);
+    };
+  }
+
+  async function copyButtonContents(button: HTMLButtonElement) {
+    const body = button.closest(".code-block")?.querySelector(".code-block__body");
+    const payload = body?.textContent ?? "";
+    try {
+      await navigator.clipboard.writeText(payload);
+    } catch {
+      return;
+    }
+    const originalText = button.textContent;
+    button.classList.add("code-block__copy--copied");
+    button.textContent = "Copied";
+    setTimeout(() => {
+      button.classList.remove("code-block__copy--copied");
+      button.textContent = originalText;
+    }, 1500);
+  }
 
   $effect(() => {
     if (!lightboxSrc) return;
@@ -110,29 +142,16 @@
     margin-top: 0.25em;
   }
 
-  .markdown-body :global(code) {
+  /* Inline `code` only. Fenced code blocks render through .code-block in
+     code-block.css; their inner <code> sits inside a <pre> so this selector
+     skips them. */
+  .markdown-body :global(:not(pre) > code) {
     font-family: var(--font-mono);
     font-size: 0.9em;
     padding: 0.1em 0.35em;
     border-radius: var(--border-radius-inner);
     background: var(--colour-bg);
     border: var(--border);
-  }
-
-  .markdown-body :global(pre) {
-    overflow-x: auto;
-    padding: 0.8em 0.95em;
-    border-radius: var(--border-radius-inner);
-    background: var(--accent-shade-900);
-    color: #f5f7fd;
-    margin: 0;
-  }
-
-  .markdown-body :global(pre code) {
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: inherit;
   }
 
   .markdown-body :global(blockquote) {
