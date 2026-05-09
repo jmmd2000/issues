@@ -398,6 +398,175 @@ describe("GET /api/projects/:key/tickets/:num", () => {
     const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, { headers: { Cookie: cookies } });
     expect(res.status).toBe(404);
   });
+
+  it("returns an empty children array when the ticket has no sub-tickets", async () => {
+    const created = await createTicket({ title: "Solo" });
+    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, { headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.ticket.children).toEqual([]);
+  });
+
+  it("returns children with status, priority and assignee on the parent", async () => {
+    const parent = await createTicket({ title: "Parent" });
+
+    const childA = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "Child A", statusID, parentTicketID: parent.id, priority: "high" }),
+    });
+    expect(childA.status).toBe(201);
+
+    const childB = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "Child B", statusID, parentTicketID: parent.id }),
+    });
+    expect(childB.status).toBe(201);
+
+    const res = await app.request(`/api/projects/TEST/tickets/${parent.number}`, { headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.ticket.children).toHaveLength(2);
+    expect(body.ticket.children.map((c: { title: string }) => c.title).sort()).toEqual(["Child A", "Child B"]);
+    expect(body.ticket.children[0].status).toMatchObject({ name: expect.any(String), category: expect.any(String) });
+  });
+
+  it("excludes soft-deleted children from the parent's children array", async () => {
+    const parent = await createTicket({ title: "Parent" });
+    const childRes = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "Doomed child", statusID, parentTicketID: parent.id }),
+    });
+    const child = (await childRes.json()).ticket;
+
+    await app.request(`/api/projects/TEST/tickets/${child.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${parent.number}`, { headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.ticket.children).toEqual([]);
+  });
+
+  it("sorts children with open categories first, then by ticket number", async () => {
+    const parent = await createTicket({ title: "Parent" });
+    const doneStatus = await getStatusIDBySlug("done");
+    const inProgressStatus = await getStatusIDBySlug("in-progress");
+    const backlogStatus = await getStatusIDBySlug("backlog");
+
+    const titles = [
+      ["Done child", doneStatus],
+      ["Active child", inProgressStatus],
+      ["Backlog child", backlogStatus],
+    ] as const;
+
+    for (const [title, sid] of titles) {
+      await app.request("/api/projects/TEST/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookies },
+        body: JSON.stringify({ title, statusID: sid, parentTicketID: parent.id }),
+      });
+    }
+
+    const res = await app.request(`/api/projects/TEST/tickets/${parent.number}`, { headers: { Cookie: cookies } });
+    const body = await res.json();
+    const orderedTitles = body.ticket.children.map((c: { title: string }) => c.title);
+    expect(orderedTitles).toEqual(["Backlog child", "Active child", "Done child"]);
+  });
+});
+
+describe("PATCH /api/projects/:key/tickets/:num parent cycle guard", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  it("returns 400 when setting a ticket as its own parent", async () => {
+    const ticket = await createTicket({ title: "Self" });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ parentTicketID: ticket.id }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when setting an ancestor's parent to a descendant (cycle of 2)", async () => {
+    const a = await createTicket({ title: "A" });
+    const bRes = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "B", statusID, parentTicketID: a.id }),
+    });
+    const b = (await bRes.json()).ticket;
+
+    // A -> B exists. Trying to set B as A's parent forms cycle: A -> B -> A.
+    const res = await app.request(`/api/projects/TEST/tickets/${a.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ parentTicketID: b.id }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for a deeper cycle (length 3)", async () => {
+    const a = await createTicket({ title: "A" });
+    const bRes = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "B", statusID, parentTicketID: a.id }),
+    });
+    const b = (await bRes.json()).ticket;
+    const cRes = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "C", statusID, parentTicketID: b.id }),
+    });
+    const c = (await cRes.json()).ticket;
+
+    // A -> B -> C exists. Setting C as A's parent forms cycle: A -> B -> C -> A.
+    const res = await app.request(`/api/projects/TEST/tickets/${a.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ parentTicketID: c.id }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("allows clearing the parent (null)", async () => {
+    const a = await createTicket({ title: "A" });
+    const bRes = await app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "B", statusID, parentTicketID: a.id }),
+    });
+    const b = (await bRes.json()).ticket;
+
+    const res = await app.request(`/api/projects/TEST/tickets/${b.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ parentTicketID: null }),
+    });
+    expect(res.status).toBe(200);
+
+    const after = await app.request(`/api/projects/TEST/tickets/${b.number}`, { headers: { Cookie: cookies } });
+    const body = await after.json();
+    expect(body.ticket.parent).toBeNull();
+  });
+
+  it("allows setting an unrelated ticket as parent", async () => {
+    const a = await createTicket({ title: "A" });
+    const b = await createTicket({ title: "B" });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${a.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ parentTicketID: b.id }),
+    });
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("PATCH /api/projects/:key/tickets/:num", () => {
