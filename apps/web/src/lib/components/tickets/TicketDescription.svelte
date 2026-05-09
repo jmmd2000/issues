@@ -45,7 +45,7 @@
   }
 </script>
 
-<section class="description-card">
+<section class="description-card card">
   <div class="section-header">
     <h2>Description</h2>
 
@@ -77,11 +77,6 @@
 <style>
   .description-card {
     position: relative;
-    padding: 1rem;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
   }
 
   .section-header {

@@ -166,7 +166,7 @@
   }
 </script>
 
-<div class="markdown-editor" style={`--editor-min-height: ${minHeight};`}>
+<div class="markdown-editor card" style={`--editor-min-height: ${minHeight};`}>
   <div class="editor-tabs" role="tablist">
     <button type="button" role="tab" aria-selected={tab === "write"} class:active={tab === "write"} onclick={() => (tab = "write")}>Write</button>
     <button type="button" role="tab" aria-selected={tab === "preview"} class:active={tab === "preview"} onclick={() => (tab = "preview")}>Preview</button>
@@ -201,11 +201,8 @@
   .markdown-editor {
     display: flex;
     flex-direction: column;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
     overflow: hidden;
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
+    padding: 0;
   }
 
   .editor-tabs {

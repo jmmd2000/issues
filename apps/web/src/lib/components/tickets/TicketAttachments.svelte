@@ -110,7 +110,7 @@
   }
 </script>
 
-<section class="attachments-card" class:drag-over={dragOver} class:empty={isEmpty} aria-label="Attachments" ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop}>
+<section class="attachments-card card" class:drag-over={dragOver} class:empty={isEmpty} aria-label="Attachments" ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop}>
   <header class="header">
     <h2>Attachments</h2>
     <span class="count">{attachments.length}</span>
@@ -196,10 +196,6 @@
 <style>
   .attachments-card {
     position: relative;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
     padding: 0.85rem;
     display: flex;
     flex-direction: column;

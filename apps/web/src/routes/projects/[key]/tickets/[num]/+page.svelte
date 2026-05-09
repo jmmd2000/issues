@@ -245,7 +245,7 @@
     </main>
 
     <aside class="ticket-sidebar" aria-label="Ticket metadata">
-      <section class="sidebar-card">
+      <section class="sidebar-card card">
         <h2>People</h2>
 
         <dl class="property-list">
@@ -276,7 +276,7 @@
         </dl>
       </section>
 
-      <section class="sidebar-card">
+      <section class="sidebar-card card">
         <h2>Properties</h2>
 
         <dl class="property-list">
@@ -355,7 +355,7 @@
         </dl>
       </section>
 
-      <section class="sidebar-card">
+      <section class="sidebar-card card">
         <h2>Dates</h2>
 
         <dl class="property-list">
@@ -446,10 +446,6 @@
   }
 
   .sidebar-card {
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
     padding: 0.85rem;
   }
 

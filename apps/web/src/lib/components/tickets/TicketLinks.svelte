@@ -150,7 +150,7 @@
   }
 </script>
 
-<section class="links-card" aria-label="Links">
+<section class="links-card card" aria-label="Links">
   <header class="header">
     <h2>Links</h2>
     <button type="button" class="add-trigger" onclick={startAdding} aria-label="Add link" disabled={adding}>
@@ -248,10 +248,6 @@
 
 <style>
   .links-card {
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
     padding: 0.85rem;
   }
 

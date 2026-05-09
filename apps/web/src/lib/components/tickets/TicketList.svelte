@@ -71,7 +71,7 @@
 </script>
 
 <div class="ticket-list">
-  <div class="table-wrap">
+  <div class="table-wrap card">
     <table>
       <thead>
         <tr>
@@ -154,10 +154,7 @@
 
   .table-wrap {
     overflow-x: auto;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
+    padding: 0;
   }
 
   table {

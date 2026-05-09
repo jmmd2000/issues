@@ -1,0 +1,8 @@
+/* Shared card, override padding per-component. */
+.card {
+  border: var(--border);
+  border-radius: var(--border-radius-outer);
+  background: var(--colour-bg-lighter);
+  box-shadow: var(--box-shadow);
+  padding: 1rem;
+}

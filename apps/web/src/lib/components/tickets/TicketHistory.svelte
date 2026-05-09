@@ -40,7 +40,7 @@
 {/snippet}
 
 {#snippet activityPanel()}
-  <section class="activity-panel" aria-label="Activity">
+  <section class="activity-panel card" aria-label="Activity">
     {#if activity.length === 0}
       <p class="empty">No activity yet.</p>
     {:else}
@@ -54,7 +54,7 @@
 {/snippet}
 
 {#snippet allPanel()}
-  <section class="activity-panel" aria-label="All activity">
+  <section class="activity-panel card" aria-label="All activity">
     {#if activity.length === 0}
       <p class="empty">No activity yet.</p>
     {:else}
@@ -70,10 +70,6 @@
 
 <style>
   .activity-panel {
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
     padding: 0.6rem 0.85rem;
   }
 

@@ -23,7 +23,7 @@
   }
 </script>
 
-<section class="members">
+<section class="members card">
   <header class="members-header">
     <h2>Members</h2>
     <span class="count">{members.length}</span>
@@ -63,14 +63,6 @@
 </section>
 
 <style>
-  .members {
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
-    padding: 1rem;
-  }
-
   .members-header {
     display: flex;
     align-items: baseline;

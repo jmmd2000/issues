@@ -21,7 +21,7 @@
 </script>
 
 <section class="overview">
-  <div class="metadata">
+  <div class="metadata card">
     <h2>About</h2>
 
     <dl class="metadata-list">
@@ -76,7 +76,7 @@
     </dl>
   </div>
 
-  <div class="stats">
+  <div class="stats card">
     <h2>Tickets</h2>
 
     <div class="stat-grid">
@@ -95,7 +95,7 @@
     </div>
   </div>
 
-  <div class="feed">
+  <div class="feed card">
     <h2>Recent activity</h2>
 
     {#if activity.length === 0}
@@ -120,16 +120,6 @@
 
   .feed {
     grid-column: 1 / -1;
-  }
-
-  .metadata,
-  .stats,
-  .feed {
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
-    padding: 1rem;
   }
 
   h2 {

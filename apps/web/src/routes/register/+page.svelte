@@ -51,7 +51,7 @@
 
 <div class="form-container">
   {#if !data.open}
-    <div class="closed-message">
+    <div class="closed-message card">
       <p>Registration is currently closed.</p>
     </div>
   {:else}
@@ -96,9 +96,5 @@
 <style>
   .closed-message {
     padding: 2em;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background-color: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
   }
 </style>

@@ -126,7 +126,7 @@
   }
 </script>
 
-<section class="comment-thread" aria-label="Comments">
+<section class="comment-thread card" aria-label="Comments">
   <header class="thread-header">
     <h2>Comments</h2>
     <span class="thread-count">{comments.length}</span>
@@ -219,11 +219,6 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding: 1rem;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
   }
 
   .thread-header {
