@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { statuses, projectMembers } from "../db/schema";
+import { statuses, projectMembers, ticketActivity, tickets } from "../db/schema";
 import { and, eq, ne } from "drizzle-orm";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
 
@@ -314,6 +314,65 @@ describe("DELETE /api/projects/:key/statuses/:id", () => {
     expect(res.status).toBe(204);
     const rows = await db.select().from(statuses).where(eq(statuses.id, statusID));
     expect(rows).toHaveLength(0);
+  });
+
+  it("writes a statusID activity row for each reassigned ticket", async () => {
+    const [sourceStatus, reassignStatus] = await db
+      .select({ id: statuses.id, name: statuses.name })
+      .from(statuses)
+      .where(eq(statuses.projectID, projectID))
+      .limit(2);
+
+    const ticketIDs: string[] = [];
+    for (const title of ["First", "Second"]) {
+      const create = await app.request("/api/projects/TEST/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookies },
+        body: JSON.stringify({ title, statusID: sourceStatus.id }),
+      });
+      const body = await create.json();
+      ticketIDs.push(body.ticket.id);
+    }
+
+    const res = await app.request(`/api/projects/TEST/statuses/${sourceStatus.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ reassignTo: reassignStatus.id }),
+    });
+    expect(res.status).toBe(204);
+
+    for (const ticketID of ticketIDs) {
+      const [activeRow] = await db.select({ statusID: tickets.statusID }).from(tickets).where(eq(tickets.id, ticketID));
+      expect(activeRow.statusID).toBe(reassignStatus.id);
+
+      const activityRows = await db
+        .select()
+        .from(ticketActivity)
+        .where(and(eq(ticketActivity.ticketID, ticketID), eq(ticketActivity.action, "updated"), eq(ticketActivity.fieldName, "statusID")));
+      expect(activityRows).toHaveLength(1);
+      expect(activityRows[0].oldValue).toEqual({ id: sourceStatus.id, name: sourceStatus.name });
+      expect(activityRows[0].newValue).toEqual({ id: reassignStatus.id, name: reassignStatus.name });
+    }
+  });
+
+  it("does not write activity rows when no tickets are using the deleted status", async () => {
+    const [sourceStatus, reassignStatus] = await db
+      .select({ id: statuses.id })
+      .from(statuses)
+      .where(eq(statuses.projectID, projectID))
+      .limit(2);
+
+    const before = await db.select().from(ticketActivity);
+
+    const res = await app.request(`/api/projects/TEST/statuses/${sourceStatus.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ reassignTo: reassignStatus.id }),
+    });
+    expect(res.status).toBe(204);
+
+    const after = await db.select().from(ticketActivity);
+    expect(after).toHaveLength(before.length);
   });
 
   it("returns 409 when deleting last status", async () => {
