@@ -29,8 +29,18 @@ describe("TicketLinks", () => {
 
   it("groups links by their rendered direction label", async () => {
     const links = [
-      makeTicketLink({ id: "l-out", linkType: "blocks", direction: "outgoing", ticket: { id: "t2", number: 2, title: "Blocked thing", projectKey: "TEST" } }),
-      makeTicketLink({ id: "l-in", linkType: "blocks", direction: "incoming", ticket: { id: "t3", number: 3, title: "Blocking thing", projectKey: "TEST" } }),
+      makeTicketLink({
+        id: "l-out",
+        linkType: "blocks",
+        direction: "outgoing",
+        ticket: { id: "t2", number: 2, title: "Blocked thing", projectKey: "TEST", status: { name: "Backlog", category: "backlog" }, priority: "medium", assignee: null },
+      }),
+      makeTicketLink({
+        id: "l-in",
+        linkType: "blocks",
+        direction: "incoming",
+        ticket: { id: "t3", number: 3, title: "Blocking thing", projectKey: "TEST", status: { name: "Backlog", category: "backlog" }, priority: "medium", assignee: null },
+      }),
     ];
     const screen = render(TicketLinks, { ...baseProps, links });
     await expect.element(screen.getByText("blocks")).toBeVisible();
@@ -60,7 +70,14 @@ describe("TicketLinks", () => {
   });
 
   it("renders a remove button per link with an accessible label", async () => {
-    const links = [makeTicketLink({ id: "l1", linkType: "blocks", direction: "outgoing", ticket: { id: "t2", number: 2, title: "Other", projectKey: "TEST" } })];
+    const links = [
+      makeTicketLink({
+        id: "l1",
+        linkType: "blocks",
+        direction: "outgoing",
+        ticket: { id: "t2", number: 2, title: "Other", projectKey: "TEST", status: { name: "Backlog", category: "backlog" }, priority: "medium", assignee: null },
+      }),
+    ];
     const screen = render(TicketLinks, { ...baseProps, links });
     await expect.element(screen.getByRole("button", { name: /Remove blocks TEST-2/ })).toBeVisible();
   });

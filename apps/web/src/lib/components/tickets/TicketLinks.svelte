@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { resolve } from "$app/paths";
   import { Plus, X } from "@lucide/svelte";
   import type { TicketLink } from "@issues/api";
   import Button from "$lib/components/ui/Button.svelte";
   import { client } from "$lib/api/client";
   import { LINK_OPTIONS, linkLabel } from "$lib/linkLabels";
+  import TicketSearchCombobox, { type TicketRef } from "./TicketSearchCombobox.svelte";
+  import TicketRow from "./TicketRow.svelte";
 
   interface TicketLinksProps {
     links: TicketLink[];
@@ -15,56 +16,14 @@
 
   let { links, projectKey, ticketNumber, onmutated }: TicketLinksProps = $props();
 
-  type SearchResult = { id: string; number: number; title: string };
-
   let adding = $state(false);
   let optionKey = $state<string>(LINK_OPTIONS[0].key);
-  let query = $state("");
-  let results = $state<SearchResult[]>([]);
-  let searching = $state(false);
-  let selected = $state<SearchResult | null>(null);
+  let selected = $state<TicketRef | null>(null);
   let saving = $state(false);
   let error = $state<string | null>(null);
   let deletingID = $state<string | null>(null);
 
   const selectedOption = $derived(LINK_OPTIONS.find((option) => option.key === optionKey) ?? LINK_OPTIONS[0]);
-
-  // Debounce the project ticket search so we don't hammer the API on every keystroke.
-  $effect(() => {
-    const term = query.trim();
-    if (selected) return;
-    if (term.length < 2) {
-      results = [];
-      searching = false;
-      return;
-    }
-
-    let cancelled = false;
-    searching = true;
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await client.api.projects[":key"].tickets.$get({
-          param: { key: projectKey },
-          query: { titleSearch: term, perPage: "8", includeClosed: "true" },
-        });
-        if (cancelled) return;
-        if (res.ok) {
-          const body = await res.json();
-          results = body.tickets.filter((t) => t.number !== ticketNumber).map((t) => ({ id: t.id, number: t.number, title: t.title }));
-        } else {
-          results = [];
-        }
-      } finally {
-        if (!cancelled) searching = false;
-      }
-    }, 200);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  });
 
   // Group links by their rendered label so the sidebar reads like:
   //   blocks
@@ -86,29 +45,14 @@
   function startAdding() {
     adding = true;
     error = null;
-    query = "";
     selected = null;
-    results = [];
     optionKey = LINK_OPTIONS[0].key;
   }
 
   function cancelAdding() {
     adding = false;
-    query = "";
     selected = null;
-    results = [];
     error = null;
-  }
-
-  function pickResult(result: SearchResult) {
-    selected = result;
-    query = "";
-    results = [];
-  }
-
-  function clearSelection() {
-    selected = null;
-    query = "";
   }
 
   async function addLink() {
@@ -172,37 +116,16 @@
         {/each}
       </select>
 
-      {#if selected}
-        <div class="selected-pill">
-          <span class="selected-key">{projectKey}-{selected.number}</span>
-          <span class="selected-title">{selected.title}</span>
-          <button type="button" class="clear" onclick={clearSelection} aria-label="Clear selected ticket" disabled={saving}>
-            <X size={12} strokeWidth={2} />
-          </button>
-        </div>
-      {:else}
-        <div class="search-wrap">
-          <input type="text" bind:value={query} placeholder="Search tickets..." class="target-input" disabled={saving} aria-label="Search tickets" autocomplete="off" />
-          {#if query.trim().length >= 2}
-            <ul class="results" role="listbox">
-              {#if searching && results.length === 0}
-                <li class="result muted">Searching...</li>
-              {:else if results.length === 0}
-                <li class="result muted">No matches.</li>
-              {:else}
-                {#each results as result (result.id)}
-                  <li>
-                    <button type="button" class="result" onclick={() => pickResult(result)}>
-                      <span class="result-key">{projectKey}-{result.number}</span>
-                      <span class="result-title">{result.title}</span>
-                    </button>
-                  </li>
-                {/each}
-              {/if}
-            </ul>
-          {/if}
-        </div>
-      {/if}
+      <TicketSearchCombobox
+        {projectKey}
+        excludeTicketNumber={ticketNumber}
+        includeClosed
+        placeholder="Search tickets..."
+        disabled={saving}
+        selected={selected}
+        onpicked={(ticket) => (selected = ticket)}
+        oncleared={() => (selected = null)}
+      />
 
       {#if error}
         <p class="error" role="alert">{error}</p>
@@ -223,20 +146,25 @@
           <h3 class="group-label">{group.label}</h3>
           <ul class="group-list">
             {#each group.entries as link (link.id)}
-              <li class="link-row">
-                <a class="link-target" href={resolve("/projects/[key]/tickets/[num]", { key: link.ticket.projectKey, num: String(link.ticket.number) })}>
-                  <span class="link-key">{link.ticket.projectKey}-{link.ticket.number}</span>
-                  <span class="link-title">{link.ticket.title}</span>
-                </a>
-                <button
-                  type="button"
-                  class="remove"
-                  onclick={() => void removeLink(link)}
-                  disabled={deletingID === link.id}
-                  aria-label={`Remove ${linkLabel(link.linkType, link.direction)} ${link.ticket.projectKey}-${link.ticket.number}`}
+              <li>
+                <TicketRow
+                  ticket={{ id: link.ticket.id, number: link.ticket.number, title: link.ticket.title, projectKey: link.ticket.projectKey }}
+                  status={link.ticket.status}
+                  priority={link.ticket.priority}
+                  assignee={link.ticket.assignee}
                 >
-                  <X size={12} strokeWidth={2} />
-                </button>
+                  {#snippet trailing()}
+                    <button
+                      type="button"
+                      class="remove"
+                      onclick={() => void removeLink(link)}
+                      disabled={deletingID === link.id}
+                      aria-label={`Remove ${linkLabel(link.linkType, link.direction)} ${link.ticket.projectKey}-${link.ticket.number}`}
+                    >
+                      <X size={12} strokeWidth={2} />
+                    </button>
+                  {/snippet}
+                </TicketRow>
               </li>
             {/each}
           </ul>
@@ -319,50 +247,6 @@
     gap: 0.25rem;
   }
 
-  .link-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    min-width: 0;
-    padding: 0.3rem 0.4rem;
-    border-radius: var(--border-radius-inner);
-
-    &:hover {
-      background: var(--colour-bg);
-    }
-  }
-
-  .link-target {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-    flex: 1;
-    text-decoration: none;
-    color: inherit;
-
-    &:hover .link-title {
-      text-decoration: underline;
-    }
-  }
-
-  .link-key {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--accent-base);
-    white-space: nowrap;
-  }
-
-  .link-title {
-    font-size: 0.8rem;
-    color: var(--colour-text);
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .remove {
     display: inline-flex;
     align-items: center;
@@ -388,7 +272,7 @@
     }
   }
 
-  .link-row:hover .remove,
+  .group-list li:hover .remove,
   .remove:focus-visible {
     opacity: 1;
   }
@@ -404,8 +288,7 @@
     background: var(--colour-bg);
   }
 
-  .link-type-select,
-  .target-input {
+  .link-type-select {
     width: 100%;
     padding: 0.35rem 0.45rem;
     border: var(--border);
@@ -414,116 +297,6 @@
     color: var(--colour-text);
     font: inherit;
     font-size: 0.8rem;
-  }
-
-  .target-input::placeholder {
-    color: var(--colour-muted);
-  }
-
-  .search-wrap {
-    position: relative;
-  }
-
-  .results {
-    position: absolute;
-    top: calc(100% + 0.25rem);
-    left: 0;
-    right: 0;
-    z-index: 10;
-    list-style: none;
-    margin: 0;
-    padding: 0.25rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg-lighter);
-    box-shadow: var(--box-shadow);
-    max-height: 14rem;
-    overflow-y: auto;
-  }
-
-  .result {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.35rem 0.45rem;
-    border: 0;
-    background: transparent;
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.8rem;
-    text-align: left;
-    cursor: pointer;
-    border-radius: var(--border-radius-inner);
-
-    &:hover,
-    &:focus-visible {
-      background: var(--colour-bg);
-      outline: none;
-    }
-
-    &.muted {
-      color: var(--colour-muted);
-      cursor: default;
-      font-style: italic;
-    }
-  }
-
-  .result-key {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--accent-base);
-    flex: 0 0 auto;
-  }
-
-  .result-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .selected-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.25rem 0.4rem 0.25rem 0.55rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg-lighter);
-    font-size: 0.8rem;
-  }
-
-  .selected-key {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    color: var(--accent-base);
-  }
-
-  .selected-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--colour-text);
-  }
-
-  .clear {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1rem;
-    height: 1rem;
-    margin-left: auto;
-    border: 0;
-    background: transparent;
-    color: var(--colour-muted);
-    border-radius: 50%;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--colour-text);
-      background: var(--colour-bg);
-    }
   }
 
   .form-actions {
