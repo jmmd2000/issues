@@ -10,7 +10,7 @@
   import MarkdownEditor from "$lib/components/markdown/MarkdownEditor.svelte";
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
   import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
-  import ParentTicketCombobox from "$lib/components/tickets/ParentTicketCombobox.svelte";
+  import TicketSearchCombobox, { type TicketRef } from "$lib/components/tickets/TicketSearchCombobox.svelte";
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
   import type { PageProps } from "./$types";
@@ -24,7 +24,8 @@
   let priority = $state<Priority>("none");
   let assigneeID = $state<string | undefined>(undefined);
   let labelIDs = $state<string[]>([]);
-  let parentTicketID = $state<string | undefined>(undefined);
+  // svelte-ignore state_referenced_locally
+  let parentTicket = $state<TicketRef | null>(data.parentTicket ?? null);
   let visibility = $state<"public" | "private">("public");
   let submitting = $state(false);
   let formMessage = $state<FormMessageType | null>(null);
@@ -57,7 +58,7 @@
           priority,
           assigneeID: assigneeID || undefined,
           labelIDs: labelIDs.length ? labelIDs : undefined,
-          parentTicketID: parentTicketID || undefined,
+          parentTicketID: parentTicket?.id,
           visibility,
         },
       });
@@ -162,7 +163,13 @@
 
     <div class="input-row">
       <label class="form-label" for="parent-ticket">Parent ticket</label>
-      <ParentTicketCombobox projectKey={data.project.key} inputID="parent-ticket" bind:value={parentTicketID} />
+      <TicketSearchCombobox
+        projectKey={data.project.key}
+        inputID="parent-ticket"
+        selected={parentTicket}
+        onpicked={(ticket) => (parentTicket = ticket)}
+        oncleared={() => (parentTicket = null)}
+      />
     </div>
 
     <div class="input-row">
