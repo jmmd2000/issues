@@ -35,6 +35,7 @@ export type {
   ProjectDetail,
   Ticket,
   TicketDetail,
+  TicketChild,
   TicketSummary,
   TicketUser,
   Comment,

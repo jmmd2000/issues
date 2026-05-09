@@ -66,6 +66,9 @@ export type LinkedTicketRef = {
   number: number;
   title: string;
   projectKey: string;
+  status: { name: string; category: StatusCategory };
+  priority: Priority;
+  assignee: TicketUser | null;
 };
 
 export type TicketLink = {
@@ -109,12 +112,18 @@ export type TicketSummary = Jsonified<Pick<TicketRow, "id" | "number" | "title" 
   assignee: TicketUser | null;
 };
 
+export type TicketChild = Jsonified<Pick<TicketRow, "id" | "number" | "title" | "priority" | "statusID">> & {
+  status: { id: string; name: string; category: StatusCategory };
+  assignee: TicketUser | null;
+};
+
 export type TicketDetail = Ticket & {
   status: Status;
   labels: Label[];
   reporter: TicketUser;
   assignee: TicketUser | null;
   parent: Pick<Ticket, "id" | "number" | "title"> | null;
+  children: TicketChild[];
 };
 
 export type TicketFieldRef = { id: string; name: string };

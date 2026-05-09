@@ -172,13 +172,32 @@ export class TicketService {
         assignee: { columns: { id: true, name: true, avatarURL: true } },
         parent: { columns: { id: true, number: true, title: true } },
         labels: { with: { label: true } },
+        children: {
+          columns: { id: true, number: true, title: true, priority: true, statusID: true, deletedAt: true },
+          with: {
+            status: { columns: { id: true, name: true, category: true } },
+            assignee: { columns: { id: true, name: true, avatarURL: true } },
+          },
+        },
       },
     });
 
     if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found` });
+
+    const categoryRank: Record<string, number> = { backlog: 0, active: 1, done: 2, cancelled: 3 };
+    const children = ticket.children
+      .filter((child) => !child.deletedAt)
+      .map(({ deletedAt: _deletedAt, ...child }) => child)
+      .sort((a, b) => {
+        const rankDelta = (categoryRank[a.status.category] ?? 99) - (categoryRank[b.status.category] ?? 99);
+        if (rankDelta !== 0) return rankDelta;
+        return a.number - b.number;
+      });
+
     return {
       ...ticket,
       labels: ticket.labels.map(({ label }) => label),
+      children,
     };
   }
 
@@ -318,6 +337,13 @@ export class TicketService {
 
       const { labelIDs, ...fields } = data;
       let ticket: typeof tickets.$inferSelect | undefined;
+
+      if (fields.parentTicketID !== undefined && fields.parentTicketID !== null) {
+        if (fields.parentTicketID === ticketID) {
+          throw new HTTPException(400, { message: "A ticket cannot be its own parent." });
+        }
+        await this.assertNoParentCycle(tx, ticketID, fields.parentTicketID);
+      }
 
       if (Object.keys(fields).length) {
         const setData: Record<string, unknown> = { ...fields };
@@ -472,6 +498,28 @@ export class TicketService {
     });
     if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found.` });
     return ticket;
+  }
+
+  /**
+   * Walks up the proposed parent's ancestor chain. Throws 400 if `ticketID`
+   * (the ticket being patched) appears anywhere above the proposed parent --
+   * setting that parent would form a cycle. Bounded by tree depth, with a
+   * hard cap on hops as a safety net against malformed data.
+   * @param tx Active transaction
+   * @param ticketID The ticket whose parent is being changed
+   * @param proposedParentID The candidate new parent
+   */
+  private static async assertNoParentCycle(tx: Transaction, ticketID: string, proposedParentID: string) {
+    const MAX_DEPTH = 100;
+    let cursor: string | null = proposedParentID;
+    for (let depth = 0; depth < MAX_DEPTH && cursor; depth += 1) {
+      if (cursor === ticketID) {
+        throw new HTTPException(400, { message: "Setting this parent would create a cycle." });
+      }
+      const [row] = await tx.select({ parentTicketID: tickets.parentTicketID }).from(tickets).where(eq(tickets.id, cursor)).limit(1);
+      if (!row) return;
+      cursor = row.parentTicketID;
+    }
   }
 
   /**

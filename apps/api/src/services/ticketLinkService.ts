@@ -1,8 +1,8 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { projects, ticketLinks, tickets } from "../db/schema";
-import type { LinkType, TicketLink } from "../lib/types";
+import { projects, statuses, ticketLinks, tickets, users } from "../db/schema";
+import type { LinkType, Priority, StatusCategory, TicketLink } from "../lib/types";
 import { ActivityService } from "./activityService";
 
 const TICKET_REF_RE = /^([A-Z]{2,6})-(\d+)$/;
@@ -11,8 +11,10 @@ type LinkRow = {
   id: string;
   linkType: LinkType;
   createdAt: Date;
-  ticket: { id: string; number: number; title: string; deletedAt: Date | null };
+  ticket: { id: string; number: number; title: string; priority: Priority; deletedAt: Date | null };
   project: { key: string };
+  status: { name: string; category: StatusCategory };
+  assignee: { id: string; name: string; avatarURL: string | null } | null;
 };
 
 function shape(row: LinkRow, direction: "outgoing" | "incoming"): TicketLink {
@@ -25,6 +27,9 @@ function shape(row: LinkRow, direction: "outgoing" | "incoming"): TicketLink {
       number: row.ticket.number,
       title: row.ticket.title,
       projectKey: row.project.key,
+      status: row.status,
+      priority: row.ticket.priority,
+      assignee: row.assignee ? { id: row.assignee.id, name: row.assignee.name, avatarURL: row.assignee.avatarURL } : null,
     },
     createdAt: row.createdAt.toISOString(),
   };
@@ -44,8 +49,10 @@ export class TicketLinkService {
       id: ticketLinks.id,
       linkType: ticketLinks.linkType,
       createdAt: ticketLinks.createdAt,
-      ticket: { id: tickets.id, number: tickets.number, title: tickets.title, deletedAt: tickets.deletedAt },
+      ticket: { id: tickets.id, number: tickets.number, title: tickets.title, priority: tickets.priority, deletedAt: tickets.deletedAt },
       project: { key: projects.key },
+      status: { name: statuses.name, category: statuses.category },
+      assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
     } as const;
 
     const outgoing = await db
@@ -53,6 +60,8 @@ export class TicketLinkService {
       .from(ticketLinks)
       .innerJoin(tickets, eq(ticketLinks.targetTicketID, tickets.id))
       .innerJoin(projects, eq(tickets.projectID, projects.id))
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .leftJoin(users, eq(tickets.assigneeID, users.id))
       .where(eq(ticketLinks.sourceTicketID, ticketID))
       .orderBy(asc(ticketLinks.createdAt));
 
@@ -61,6 +70,8 @@ export class TicketLinkService {
       .from(ticketLinks)
       .innerJoin(tickets, eq(ticketLinks.sourceTicketID, tickets.id))
       .innerJoin(projects, eq(tickets.projectID, projects.id))
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .leftJoin(users, eq(tickets.assigneeID, users.id))
       .where(eq(ticketLinks.targetTicketID, ticketID))
       .orderBy(asc(ticketLinks.createdAt));
 
@@ -78,9 +89,20 @@ export class TicketLinkService {
     const number = Number(numberStr);
 
     const row = await db
-      .select({ id: tickets.id, number: tickets.number, title: tickets.title, projectID: tickets.projectID, projectKey: projects.key })
+      .select({
+        id: tickets.id,
+        number: tickets.number,
+        title: tickets.title,
+        priority: tickets.priority,
+        projectID: tickets.projectID,
+        projectKey: projects.key,
+        status: { name: statuses.name, category: statuses.category },
+        assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
+      })
       .from(tickets)
       .innerJoin(projects, eq(tickets.projectID, projects.id))
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .leftJoin(users, eq(tickets.assigneeID, users.id))
       .where(and(eq(projects.key, projectKey), eq(tickets.number, number)))
       .limit(1);
 
@@ -137,7 +159,17 @@ export class TicketLinkService {
         id: inserted.id,
         linkType,
         direction,
-        ticket: { id: partner.id, number: partner.number, title: partner.title, projectKey: partner.projectKey },
+        ticket: {
+          id: partner.id,
+          number: partner.number,
+          title: partner.title,
+          projectKey: partner.projectKey,
+          status: partner.status,
+          priority: partner.priority,
+          assignee: partner.assignee?.id
+            ? { id: partner.assignee.id, name: partner.assignee.name, avatarURL: partner.assignee.avatarURL }
+            : null,
+        },
         createdAt: inserted.createdAt.toISOString(),
       };
     });
