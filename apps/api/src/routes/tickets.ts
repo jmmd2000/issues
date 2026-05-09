@@ -188,4 +188,13 @@ export const tickets = new Hono()
     const existing = await TicketService.getTicketByNumber(project.id, num);
     await TicketService.softDeleteTicket(existing.id, project.id, userID);
     return c.body(null, 204);
+  })
+  .post("/api/projects/:key/tickets/:num/restore", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+    const project = c.get("project");
+    const userID = c.get("userID");
+    const { num } = c.req.valid("param");
+
+    const deleted = await TicketService.getDeletedByNumber(project.id, num);
+    const ticket = await TicketService.restoreTicket(deleted.id, project.id, userID);
+    return c.json({ ticket });
   });

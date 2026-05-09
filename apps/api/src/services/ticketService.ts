@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { statuses, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
@@ -435,6 +435,8 @@ export class TicketService {
 
   /**
    * Restores a soft deleted ticket and writes a `restored` activity row.
+   * Returns 404 if the ticket does not exist or was not soft-deleted at the
+   * time of the call.
    * @param ticketID The ID of the ticket to restore
    * @param projectID The ID of the project the ticket belongs to
    * @param userID The ID of the user performing the restore (attributed on the activity row)
@@ -446,13 +448,30 @@ export class TicketService {
       const [ticket] = await tx
         .update(tickets)
         .set({ deletedAt: null })
-        .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID)))
+        .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNotNull(tickets.deletedAt)))
         .returning();
       if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
 
       await ActivityService.logRestore(tx, userID, ticket);
       return ticket;
     });
+  }
+
+  /**
+   * Looks up a soft-deleted ticket by its project-specific number. Used by
+   * the restore route, which receives the ticket number rather than its id.
+   * @param projectID The ID of the project the ticket belongs to
+   * @param number The project-specific ticket number
+   * @throws HTTPException 404
+   * @returns The ticket id
+   */
+  static async getDeletedByNumber(projectID: string, number: number) {
+    const ticket = await db.query.tickets.findFirst({
+      columns: { id: true },
+      where: and(eq(tickets.projectID, projectID), eq(tickets.number, number), isNotNull(tickets.deletedAt)),
+    });
+    if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found.` });
+    return ticket;
   }
 
   /**
