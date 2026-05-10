@@ -5,9 +5,9 @@ import { requireAuth } from "$lib/auth";
 import { createClient } from "$lib/api/client";
 import type { PageLoad } from "./$types";
 
-export const load: PageLoad = async ({ fetch, params, parent }) => {
+export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   const { user } = await parent();
-  requireAuth(user);
+  requireAuth(user, url);
 
   const api = createClient(fetch).api.projects[":key"];
 

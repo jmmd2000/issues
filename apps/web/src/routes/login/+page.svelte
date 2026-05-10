@@ -1,6 +1,7 @@
 <script lang="ts">
   import "$lib/styles/form.css";
   import { goto, invalidateAll } from "$app/navigation";
+  import { page } from "$app/state";
   import { resolve } from "$app/paths";
   import { onDestroy } from "svelte";
   import { client } from "$lib/api/client";
@@ -13,6 +14,15 @@
   let message: FormMessageType | null = $state(null);
   let fieldErrors: Record<string, string> = $state({});
   let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Only honour same-origin paths so a malicious `?next=//attacker` can't
+  // bounce the user off-site after sign-in.
+  function safeNext(): string {
+    const raw = page.url.searchParams.get("next");
+    if (!raw) return resolve("/");
+    if (!raw.startsWith("/") || raw.startsWith("//")) return resolve("/");
+    return raw;
+  }
 
   onDestroy(() => {
     if (redirectTimer) clearTimeout(redirectTimer);
@@ -35,8 +45,10 @@
         return;
       }
       message = { type: "success", text: "Login successful!" };
+      const target = safeNext();
       await invalidateAll();
-      redirectTimer = setTimeout(() => goto(resolve("/")), 1500);
+      // eslint-disable-next-line svelte/no-navigation-without-resolve
+      redirectTimer = setTimeout(() => goto(target), 1500);
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
     } finally {
