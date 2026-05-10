@@ -10,10 +10,13 @@
 
   export type TicketListColumnID = (typeof LIST_COLUMNS)[number]["id"];
   export type TicketListSortDirection = "asc" | "desc";
+
+  export const LIST_COLUMN_IDS = LIST_COLUMNS.map((column) => column.id) as readonly TicketListColumnID[] as readonly [TicketListColumnID, ...TicketListColumnID[]];
 </script>
 
 <script lang="ts">
   import { resolve } from "$app/paths";
+  import type { Snippet } from "svelte";
   import type { ProjectMember, Status, Ticket } from "@issues/api";
   import { ArrowDown, ArrowUp } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -31,6 +34,8 @@
     sortDirection,
     page,
     hasNextPage,
+    readonly = false,
+    rowActions,
     onSortChange,
     onPageChange,
   }: {
@@ -43,6 +48,10 @@
     sortDirection: TicketListSortDirection;
     page: number;
     hasNextPage: boolean;
+    /** When true, key + title cells render as plain text rather than links. Used by the trash view since soft-deleted tickets 404 on the detail page. */
+    readonly?: boolean;
+    /** Optional trailing cell renderer for per-row buttons (Restore, Delete forever, etc). */
+    rowActions?: Snippet<[Ticket]>;
     onSortChange: (columnID: TicketListColumnID, direction: TicketListSortDirection) => void;
     onPageChange: (page: number) => void;
   } = $props();
@@ -91,6 +100,9 @@
               </button>
             </th>
           {/each}
+          {#if rowActions}
+            <th class="actions-col" aria-label="Actions"></th>
+          {/if}
         </tr>
       </thead>
       <tbody>
@@ -99,9 +111,9 @@
           <tr>
             {#each visibleColumns as column (column.id)}
               {#if column.id === "key"}
-                <td class="key"><a href={ticketHref}>{projectKey}-{ticket.number}</a></td>
+                <td class="key">{#if readonly}{projectKey}-{ticket.number}{:else}<a href={ticketHref}>{projectKey}-{ticket.number}</a>{/if}</td>
               {:else if column.id === "title"}
-                <td class="title"><a href={ticketHref}>{ticket.title}</a></td>
+                <td class="title">{#if readonly}{ticket.title}{:else}<a href={ticketHref}>{ticket.title}</a>{/if}</td>
               {:else if column.id === "status"}
                 {@const status = statusByID.get(ticket.statusID)}
                 <td>
@@ -129,10 +141,13 @@
                 <td class="date">{formatDate(ticket.updatedAt)}</td>
               {/if}
             {/each}
+            {#if rowActions}
+              <td class="actions-cell">{@render rowActions(ticket)}</td>
+            {/if}
           </tr>
         {:else}
           <tr>
-            <td colspan={visibleColumns.length} class="empty">No tickets match this view.</td>
+            <td colspan={visibleColumns.length + (rowActions ? 1 : 0)} class="empty">No tickets match this view.</td>
           </tr>
         {/each}
       </tbody>
@@ -268,6 +283,17 @@
     text-align: center;
     color: var(--colour-muted);
     padding-block: 2em;
+  }
+
+  .actions-col {
+    width: 1px;
+    white-space: nowrap;
+  }
+
+  .actions-cell {
+    text-align: right;
+    white-space: nowrap;
+    padding-right: 0.6em;
   }
 
   .pager {

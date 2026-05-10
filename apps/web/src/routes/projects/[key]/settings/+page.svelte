@@ -6,6 +6,7 @@
   import GeneralSettingsForm from "$lib/components/forms/GeneralSettingsForm.svelte";
   import LabelForm from "$lib/components/forms/LabelForm.svelte";
   import StatusForm from "$lib/components/forms/StatusForm.svelte";
+  import TrashSection from "$lib/components/tickets/TrashSection.svelte";
 
   let { data }: PageProps = $props();
 </script>
@@ -35,6 +36,21 @@
     <h2>Statuses</h2>
     <StatusForm statuses={data.project.statuses} projectKey={data.project.key} />
   </section>
+  {#if data.isOwner}
+    <section class="settings-card-container">
+      <h2>Trash</h2>
+      <TrashSection
+        projectKey={data.project.key}
+        statuses={data.project.statuses}
+        members={data.project.members}
+        tickets={data.trashTickets}
+        page={data.trashPage}
+        hasNextPage={data.hasNextTrashPage}
+        sortColumn={data.trashSortBy}
+        sortDirection={data.trashSortDirection}
+      />
+    </section>
+  {/if}
 </div>
 
 <style>
