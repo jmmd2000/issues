@@ -6,6 +6,7 @@
   import type { LayoutProps } from "./$types";
   import favicon from "$lib/assets/favicon.svg";
   import UserMenu from "$lib/components/UserMenu.svelte";
+  import Toaster from "$lib/components/ui/Toaster.svelte";
 
   let { data, children }: LayoutProps & { children: Snippet } = $props();
 </script>
@@ -29,6 +30,8 @@
 <main>
   {@render children()}
 </main>
+
+<Toaster />
 
 <style>
   nav {
