@@ -1,12 +1,17 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import type { PageProps } from "./$types";
-  import { invalidateAll } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { client } from "$lib/api/client";
-  import { ChevronRight } from "@lucide/svelte";
+  import { ChevronRight, Copy, MoreHorizontal, Pencil, Trash2, X } from "@lucide/svelte";
   import type { Priority } from "@issues/api";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
+  import Popover from "$lib/components/ui/Popover.svelte";
+  import VisibilityToggle from "$lib/components/ui/VisibilityToggle.svelte";
   import TicketChildren from "$lib/components/tickets/TicketChildren.svelte";
+  import TicketModal from "$lib/components/tickets/TicketModal.svelte";
   import TicketDescription from "$lib/components/tickets/TicketDescription.svelte";
   import TicketTitle from "$lib/components/tickets/TicketTitle.svelte";
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
@@ -14,11 +19,10 @@
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
   import TicketSearchModal from "$lib/components/tickets/TicketSearchModal.svelte";
-  import { Pencil, X } from "@lucide/svelte";
   import TicketHistory from "$lib/components/tickets/TicketHistory.svelte";
   import TicketLinks from "$lib/components/tickets/TicketLinks.svelte";
   import TicketAttachments from "$lib/components/tickets/TicketAttachments.svelte";
-  import { Eye, EyeOff } from "@lucide/svelte";
+  import { pushToast } from "$lib/stores/toast.svelte";
 
   let { data }: PageProps = $props();
   let ticket = $derived(data.ticket);
@@ -43,6 +47,50 @@
   let savingVisibility = $state(false);
   let savingParent = $state(false);
   let parentSearchOpen = $state(false);
+  let actionsOpen = $state(false);
+  let deleteConfirmOpen = $state(false);
+  let deleting = $state(false);
+  let cloneOpen = $state(false);
+
+  async function deleteTicket() {
+    if (deleting) return;
+    deleting = true;
+    const projectKey = project.key;
+    const ticketKey = `${projectKey}-${ticket.number}`;
+    const ticketNumber = ticket.number;
+    try {
+      const res = await client.api.projects[":key"].tickets[":num"].$delete({
+        param: { key: projectKey, num: String(ticketNumber) },
+      });
+
+      if (!res.ok) {
+        pushToast({ message: `Failed to delete ${ticketKey}.`, kind: "error" });
+        return;
+      }
+
+      deleteConfirmOpen = false;
+      actionsOpen = false;
+      await goto(resolve("/projects/[key]", { key: projectKey }));
+      pushToast({
+        message: `Deleted ${ticketKey}.`,
+        action: {
+          label: "Undo",
+          run: async () => {
+            const restoreRes = await client.api.projects[":key"].tickets[":num"].restore.$post({
+              param: { key: projectKey, num: String(ticketNumber) },
+            });
+            if (!restoreRes.ok) {
+              pushToast({ message: `Failed to restore ${ticketKey}.`, kind: "error" });
+              return;
+            }
+            await goto(resolve("/projects/[key]/tickets/[num]", { key: projectKey, num: String(ticketNumber) }));
+          },
+        },
+      });
+    } finally {
+      deleting = false;
+    }
+  }
 
   const dateFormatter = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -205,11 +253,8 @@
     }
   }
 
-  async function toggleVisibility() {
+  async function saveVisibility(next: "public" | "private", previous: "public" | "private") {
     if (savingVisibility) return;
-    const next = visibility === "public" ? "private" : "public";
-    const previous = visibility;
-    visibility = next;
     savingVisibility = true;
     try {
       const res = await client.api.projects[":key"].tickets[":num"].$patch({
@@ -246,6 +291,41 @@
         <TicketTitle title={ticket.title} saving={savingTitle} onsave={saveTitle} />
       </div>
     </div>
+
+    <div class="ticket-actions">
+      <Popover bind:open={actionsOpen} menuRole="menu" menuLabel="Ticket actions">
+        {#snippet trigger({ toggle, open: isOpen })}
+          <Button size="sm" onclick={toggle} aria-haspopup="menu" aria-expanded={isOpen} aria-label="Ticket actions">
+            <MoreHorizontal size={16} strokeWidth={2.5} />
+          </Button>
+        {/snippet}
+        {#snippet menu()}
+          <button
+            type="button"
+            class="action-item"
+            role="menuitem"
+            onclick={() => {
+              actionsOpen = false;
+              cloneOpen = true;
+            }}
+          >
+            <Copy size={14} strokeWidth={2} /> Clone ticket
+          </button>
+          <div class="action-separator" role="separator"></div>
+          <button
+            type="button"
+            class="action-item action-item--danger"
+            role="menuitem"
+            onclick={() => {
+              actionsOpen = false;
+              deleteConfirmOpen = true;
+            }}
+          >
+            <Trash2 size={14} strokeWidth={2} /> Delete ticket
+          </button>
+        {/snippet}
+      </Popover>
+    </div>
   </div>
 
   <div class="ticket-content">
@@ -256,8 +336,11 @@
         projectKey={project.key}
         parentTicketID={ticket.id}
         parentTicketNumber={ticket.number}
+        parentTicketTitle={ticket.title}
         statuses={project.statuses}
+        labels={project.labels}
         members={project.members}
+        currentUserID={data.user.id}
         onmutated={() => invalidateAll()}
       />
       <TicketAttachments {attachments} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
@@ -374,21 +457,7 @@
           <div class="property-row">
             <dt>Visibility</dt>
             <dd>
-              <button
-                type="button"
-                class="visibility-pill"
-                class:private={visibility === "private"}
-                onclick={() => void toggleVisibility()}
-                disabled={savingVisibility}
-                aria-pressed={visibility === "private"}
-                title={visibility === "public" ? "Public — visible to anyone if the project is public" : "Private — members only"}
-              >
-                {#if visibility === "private"}
-                  <EyeOff size={14} strokeWidth={2} /> Private
-                {:else}
-                  <Eye size={14} strokeWidth={2} /> Public
-                {/if}
-              </button>
+              <VisibilityToggle bind:value={visibility} size="sm" disabled={savingVisibility} onchange={(next, previous) => void saveVisibility(next, previous)} />
             </dd>
           </div>
         </dl>
@@ -432,6 +501,30 @@
   onclose={() => (parentSearchOpen = false)}
 />
 
+<Modal open={deleteConfirmOpen} title="Delete {project.key}-{ticket.number}?" onclose={() => (deleteConfirmOpen = false)} maxWidth="28rem">
+  <p class="confirm-body">
+    Soft delete <strong>{project.key}-{ticket.number}</strong>. The ticket can be restored from project settings -> Trash.
+  </p>
+  {#snippet footer()}
+    <Button type="button" variant="secondary" onclick={() => (deleteConfirmOpen = false)} disabled={deleting}>Cancel</Button>
+    <Button type="button" variant="danger" onclick={() => void deleteTicket()} disabled={deleting}>
+      {deleting ? "Deleting..." : "Delete ticket"}
+    </Button>
+  {/snippet}
+</Modal>
+
+<TicketModal
+  open={cloneOpen}
+  mode="clone"
+  source={ticket}
+  projectKey={project.key}
+  statuses={project.statuses}
+  labels={project.labels}
+  members={project.members}
+  currentUserID={data.user.id}
+  onclose={() => (cloneOpen = false)}
+/>
+
 <style>
   .ticket-page {
     padding-top: 0.5em;
@@ -450,6 +543,55 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+
+  .ticket-actions {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  :global(.action-item) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 0;
+    background: transparent;
+    color: var(--colour-text);
+    font: inherit;
+    font-size: 0.85rem;
+    border-radius: var(--border-radius-inner);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  :global(.action-item:hover),
+  :global(.action-item:focus-visible) {
+    background: var(--colour-bg-hover);
+    outline: none;
+  }
+
+  :global(.action-item--danger) {
+    color: var(--colour-error);
+  }
+
+  :global(.action-item--danger:hover),
+  :global(.action-item--danger:focus-visible) {
+    background: var(--colour-error-bg);
+  }
+
+  :global(.action-separator) {
+    height: 1px;
+    background: var(--colour-border);
+    margin: 0.2rem 0;
+  }
+
+  .confirm-body {
+    margin: 0;
+    color: var(--colour-text);
+    font-size: 0.9rem;
+    line-height: 1.5;
   }
 
   .ticket-topline {
@@ -644,38 +786,6 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
-  }
-
-  .visibility-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-left: -0.4rem;
-    padding: 0.25rem 0.45rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg);
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.7rem;
-    font-weight: 650;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .visibility-pill:hover:not(:disabled) {
-    background: var(--colour-bg-hover);
-  }
-
-  .visibility-pill.private {
-    color: var(--accent-shade-200);
-    background: var(--accent-tint-800);
-    border-color: var(--accent-tint-600);
-  }
-
-  .visibility-pill:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 
   @media (max-width: 900px) {
