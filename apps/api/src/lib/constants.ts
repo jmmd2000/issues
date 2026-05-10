@@ -5,6 +5,7 @@ export const ACTIVITY_ACTIONS = [
   "updated",
   "deleted",
   "restored",
+  "cloned_from",
   "label_added",
   "label_removed",
   "comment_added",

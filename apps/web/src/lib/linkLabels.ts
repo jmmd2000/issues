@@ -2,10 +2,17 @@ import type { LinkType } from "@issues/api";
 
 export type LinkDirection = "outgoing" | "incoming";
 
+/**
+ * Link types selectable from the manual "Add link" picker. Mirrors the API's
+ * `MANUAL_LINK_TYPES`: `clones` is omitted because clone links are written
+ * exclusively by the clone action.
+ */
+export type ManualLinkType = Exclude<LinkType, "clones">;
+
 export type LinkOption = {
   /** Stable composite key for select inputs. */
   key: string;
-  linkType: LinkType;
+  linkType: ManualLinkType;
   direction: LinkDirection;
   label: string;
 };
@@ -15,6 +22,7 @@ const FORWARD: Record<LinkType, string> = {
   depends_on: "depends on",
   duplicates: "duplicates",
   relates_to: "relates to",
+  clones: "clones",
 };
 
 const INVERSE: Record<LinkType, string> = {
@@ -22,9 +30,12 @@ const INVERSE: Record<LinkType, string> = {
   depends_on: "is depended on by",
   duplicates: "is duplicated by",
   relates_to: "relates to",
+  clones: "is cloned by",
 };
 
-// `relates_to` is symmetric, only need it once.
+// `relates_to` is symmetric, only need it once. `clones` is intentionally
+// excluded so the manual "Add link" picker cannot create or invert one --
+// clone links are written by the Clone action and locked thereafter.
 export const LINK_OPTIONS: ReadonlyArray<LinkOption> = [
   { key: "blocks:outgoing", linkType: "blocks", direction: "outgoing", label: FORWARD.blocks },
   { key: "blocks:incoming", linkType: "blocks", direction: "incoming", label: INVERSE.blocks },

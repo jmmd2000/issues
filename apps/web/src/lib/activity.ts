@@ -24,6 +24,12 @@ export function formatActivity(row: TicketActivity): string {
     case "restored":
       return "restored this ticket";
 
+    case "cloned_from": {
+      const src = row.newValue;
+      const ref = src?.projectKey && typeof src.number === "number" ? `${src.projectKey}-${src.number}` : (src?.title ?? "another ticket");
+      return `cloned from ${ref}`;
+    }
+
     case "label_added":
       return `added label ${refName(row.newValue) ?? "(unknown)"}`;
     case "label_removed":
