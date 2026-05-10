@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { statuses, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
+import { attachments, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
 import type { Priority, StatusCategory, TicketSnapshot, Transaction } from "../lib/types";
 import { ActivityService } from "./activityService";
@@ -73,6 +73,19 @@ type CommonFilters = {
   titleSearch?: string;
 };
 
+export type TicketCreateInput = {
+  projectID: string;
+  reporterID: string;
+  title: string;
+  description?: string;
+  statusID: string;
+  priority?: Priority;
+  assigneeID?: string;
+  labelIDs?: string[];
+  parentTicketID?: string;
+  visibility?: "public" | "private";
+};
+
 export class TicketService {
   /**
    * Create a ticket in a project. Increments the project's ticket counter,
@@ -82,62 +95,132 @@ export class TicketService {
    * @throws HTTPException 500
    * @returns The created ticket
    */
-  static async createTicket(data: {
-    projectID: string;
-    reporterID: string;
-    title: string;
-    description?: string;
-    statusID: string;
-    priority?: Priority;
-    assigneeID?: string;
-    labelIDs?: string[];
-    parentTicketID?: string;
-    visibility?: "public" | "private";
-  }) {
+  static async createTicket(data: TicketCreateInput) {
+    return await db.transaction((tx) => this.insertTicket(tx, data));
+  }
+
+  /**
+   * Internal helper that performs the counter bump, insert, label attach, and
+   * `created` activity write on the supplied transaction. Shared between the
+   * top-level `createTicket` route handler path and `cloneTicket`, which adds
+   * link + activity rows on the same transaction so a clone is atomic.
+   */
+  private static async insertTicket(tx: Transaction, data: TicketCreateInput) {
+    const [counter] = await tx
+      .update(ticketCounters)
+      .set({ lastNumber: sql`${ticketCounters.lastNumber} + 1` })
+      .where(eq(ticketCounters.projectID, data.projectID))
+      .returning({ nextNumber: ticketCounters.lastNumber });
+
+    if (!counter) throw new HTTPException(500, { message: "Ticket counter missing for project." });
+
+    const [tail] = await tx
+      .select({ position: tickets.position })
+      .from(tickets)
+      .where(and(eq(tickets.projectID, data.projectID), eq(tickets.statusID, data.statusID), isNull(tickets.deletedAt)))
+      .orderBy(desc(tickets.position))
+      .limit(1);
+
+    const [status] = await tx.select({ category: statuses.category }).from(statuses).where(eq(statuses.id, data.statusID)).limit(1);
+    const isClosed = status ? CLOSED_CATEGORIES.includes(status.category) : false;
+
+    const [ticket] = await tx
+      .insert(tickets)
+      .values({
+        projectID: data.projectID,
+        number: counter.nextNumber,
+        title: data.title,
+        description: data.description ?? "",
+        statusID: data.statusID,
+        priority: data.priority ?? "medium",
+        position: positionAfter(tail?.position ?? null),
+        reporterID: data.reporterID,
+        assigneeID: data.assigneeID ?? null,
+        parentTicketID: data.parentTicketID ?? null,
+        visibility: data.visibility ?? "public",
+        completedAt: isClosed ? new Date() : null,
+      })
+      .returning();
+
+    if (data.labelIDs?.length) {
+      await tx.insert(ticketLabels).values(data.labelIDs.map((labelID) => ({ ticketID: ticket.id, labelID })));
+    }
+
+    await ActivityService.logCreate(tx, data.reporterID, ticket);
+
+    return ticket;
+  }
+
+  /**
+   * Clones a source ticket into a new ticket in the same project. The new
+   * ticket's fields come from `data` (the user's edits to the prefilled
+   * form). When `copyAttachments` is true, every attachment row on the source
+   * is duplicated against the clone -- the underlying storage_key is reused
+   * via Postgres FK, so the bytes are not re-uploaded. A `clones` link is
+   * always inserted from source to clone, and a `cloned_from` activity row is
+   * always emitted on the clone. The `link_added` audit pair is emitted on
+   * both sides via {@link ActivityService.logLink}, matching the manual-link
+   * flow.
+   * @throws HTTPException 404 if the source is missing or soft-deleted
+   * @returns The new clone ticket
+   */
+  static async cloneTicket(sourceID: string, projectID: string, userID: string, data: TicketCreateInput & { copyAttachments?: boolean }) {
     return await db.transaction(async (tx) => {
-      const [counter] = await tx
-        .update(ticketCounters)
-        .set({ lastNumber: sql`${ticketCounters.lastNumber} + 1` })
-        .where(eq(ticketCounters.projectID, data.projectID))
-        .returning({ nextNumber: ticketCounters.lastNumber });
+      const source = await tx.query.tickets.findFirst({
+        where: and(eq(tickets.id, sourceID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)),
+        columns: { id: true, number: true, title: true, projectID: true },
+      });
+      if (!source) throw new HTTPException(404, { message: `Source ticket ${sourceID} not found.` });
 
-      if (!counter) throw new HTTPException(500, { message: "Ticket counter missing for project." });
+      const clone = await this.insertTicket(tx, { ...data, projectID });
 
-      const [tail] = await tx
-        .select({ position: tickets.position })
-        .from(tickets)
-        .where(and(eq(tickets.projectID, data.projectID), eq(tickets.statusID, data.statusID), isNull(tickets.deletedAt)))
-        .orderBy(desc(tickets.position))
-        .limit(1);
+      if (data.copyAttachments) {
+        const sourceAttachments = await tx
+          .select({
+            uploaderID: attachments.uploaderID,
+            filename: attachments.filename,
+            storageKey: attachments.storageKey,
+            contentHash: attachments.contentHash,
+            sizeBytes: attachments.sizeBytes,
+            width: attachments.width,
+            height: attachments.height,
+            mimeType: attachments.mimeType,
+            isImage: attachments.isImage,
+          })
+          .from(attachments)
+          .where(eq(attachments.ticketID, sourceID));
 
-      const [status] = await tx.select({ category: statuses.category }).from(statuses).where(eq(statuses.id, data.statusID)).limit(1);
-      const isClosed = status ? CLOSED_CATEGORIES.includes(status.category) : false;
-
-      const [ticket] = await tx
-        .insert(tickets)
-        .values({
-          projectID: data.projectID,
-          number: counter.nextNumber,
-          title: data.title,
-          description: data.description ?? "",
-          statusID: data.statusID,
-          priority: data.priority ?? "medium",
-          position: positionAfter(tail?.position ?? null),
-          reporterID: data.reporterID,
-          assigneeID: data.assigneeID ?? null,
-          parentTicketID: data.parentTicketID ?? null,
-          visibility: data.visibility ?? "public",
-          completedAt: isClosed ? new Date() : null,
-        })
-        .returning();
-
-      if (data.labelIDs?.length) {
-        await tx.insert(ticketLabels).values(data.labelIDs.map((labelID) => ({ ticketID: ticket.id, labelID })));
+        if (sourceAttachments.length) {
+          await tx.insert(attachments).values(sourceAttachments.map((row) => ({ ...row, ticketID: clone.id, commentID: null, uploaderID: userID })));
+        }
       }
 
-      await ActivityService.logCreate(tx, data.reporterID, ticket);
+      const [project] = await tx.select({ key: projects.key }).from(projects).where(eq(projects.id, projectID)).limit(1);
+      const projectKey = project?.key ?? "";
 
-      return ticket;
+      // The clone is the link's source ("clones X"), the original is the
+      // target ("is cloned by Y") -- this matches how a reader expects to read
+      // the relationship from either side.
+      await tx.insert(ticketLinks).values({ sourceTicketID: clone.id, targetTicketID: source.id, linkType: "clones", createdByID: userID });
+
+      await tx.insert(ticketActivity).values({
+        ticketID: clone.id,
+        userID,
+        action: "cloned_from",
+        fieldName: null,
+        oldValue: null,
+        newValue: { id: source.id, number: source.number, title: source.title, projectKey },
+      });
+
+      await ActivityService.logLink(tx, {
+        userID,
+        kind: "added",
+        linkType: "clones",
+        source: { ticketID: clone.id, number: clone.number, title: clone.title, projectKey },
+        target: { ticketID: source.id, number: source.number, title: source.title, projectKey },
+      });
+
+      return clone;
     });
   }
 
@@ -170,7 +253,7 @@ export class TicketService {
         status: true,
         reporter: { columns: { id: true, name: true, avatarURL: true } },
         assignee: { columns: { id: true, name: true, avatarURL: true } },
-        parent: { columns: { id: true, number: true, title: true } },
+        parent: { columns: { id: true, number: true, title: true, deletedAt: true } },
         labels: { with: { label: true } },
         children: {
           columns: { id: true, number: true, title: true, priority: true, statusID: true, deletedAt: true },
@@ -194,8 +277,11 @@ export class TicketService {
         return a.number - b.number;
       });
 
+    const parent = ticket.parent && !ticket.parent.deletedAt ? { id: ticket.parent.id, number: ticket.parent.number, title: ticket.parent.title } : null;
+
     return {
       ...ticket,
+      parent,
       labels: ticket.labels.map(({ label }) => label),
       children,
     };
@@ -283,6 +369,52 @@ export class TicketService {
   }
 
   /**
+   * Lists soft-deleted tickets for a project, newest deletions first by default.
+   * Reuses the same filter + sort plumbing as {@link listForProject} but
+   * inverts the deletion predicate and skips the archive cutoff (the trash
+   * has no notion of "stale closed work" -- everything in here is explicitly
+   * pending a hard delete or restore).
+   * @param projectID The project to list trash for
+   * @param filters Optional filters, pagination, and sorting
+   */
+  static async listTrashForProject(
+    projectID: string,
+    filters: CommonFilters & {
+      page?: number;
+      perPage?: number;
+      sortBy?: TicketListSortColumn;
+      sortDirection?: TicketListSortDirection;
+    }
+  ) {
+    const page = filters.page ?? 1;
+    const perPage = filters.perPage ?? 25;
+    const sortBy = filters.sortBy ?? "updatedAt";
+    const sortDirection = filters.sortDirection ?? "desc";
+
+    const where = and(
+      eq(tickets.projectID, projectID),
+      isNotNull(tickets.deletedAt),
+      statusCondition(filters.statusID),
+      titleSearchCondition(filters.titleSearch),
+      priorityCondition(filters.priority),
+      assigneeCondition(filters.assigneeID),
+      labelCondition(filters.labelID)
+    );
+
+    const rows = await db
+      .select({ ticket: tickets })
+      .from(tickets)
+      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+      .leftJoin(users, eq(tickets.assigneeID, users.id))
+      .where(where)
+      .orderBy(...buildListOrderBy(sortBy, sortDirection))
+      .limit(perPage)
+      .offset((page - 1) * perPage);
+
+    return rows.map(({ ticket }) => ticket);
+  }
+
+  /**
    * Lists tickets in backlog statuses for a project, sorted by priority (desc)
    * then creation time (desc). Excludes soft-deleted tickets. Used by the
    * kanban backlog drawer.
@@ -341,6 +473,14 @@ export class TicketService {
       if (fields.parentTicketID !== undefined && fields.parentTicketID !== null) {
         if (fields.parentTicketID === ticketID) {
           throw new HTTPException(400, { message: "A ticket cannot be its own parent." });
+        }
+        const [proposedParent] = await tx
+          .select({ id: tickets.id })
+          .from(tickets)
+          .where(and(eq(tickets.id, fields.parentTicketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
+          .limit(1);
+        if (!proposedParent) {
+          throw new HTTPException(400, { message: "Parent ticket not found in this project." });
         }
         await this.assertNoParentCycle(tx, ticketID, fields.parentTicketID);
       }
@@ -451,12 +591,16 @@ export class TicketService {
   }
 
   /**
-   * Hard deletes a ticket.
+   * Hard deletes a ticket. Defensive: only soft-deleted tickets can be hard-
+   * deleted via this path (the trash UI's "Delete forever" action). Returns
+   * 404 if the ticket is missing or still active.
    * @param ticketID The ID of the ticket to delete
    * @param projectID The ID of the project the ticket belongs to
+   * @throws HTTPException 404
    */
   static async hardDeleteTicket(ticketID: string, projectID: string) {
-    await db.delete(tickets).where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID)));
+    const result = await db.delete(tickets).where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNotNull(tickets.deletedAt))).returning({ id: tickets.id });
+    if (!result.length) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
   }
 
   /**
@@ -559,7 +703,7 @@ export class TicketService {
         status: { columns: { id: true, name: true } },
         reporter: { columns: { id: true, name: true } },
         assignee: { columns: { id: true, name: true } },
-        parent: { columns: { id: true, title: true } },
+        parent: { columns: { id: true, title: true, deletedAt: true } },
         labels: { with: { label: { columns: { id: true, name: true } } } },
       },
     });
@@ -579,7 +723,7 @@ export class TicketService {
       status: { id: row.status.id, name: row.status.name },
       reporter: { id: row.reporter.id, name: row.reporter.name },
       assignee: row.assignee ? { id: row.assignee.id, name: row.assignee.name } : null,
-      parent: row.parent ? { id: row.parent.id, name: row.parent.title } : null,
+      parent: row.parent && !row.parent.deletedAt ? { id: row.parent.id, name: row.parent.title } : null,
       labels: row.labels.map((l) => ({ id: l.label.id, name: l.label.name })),
     };
   }

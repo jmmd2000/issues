@@ -42,6 +42,13 @@ const moveSchema = z
   })
   .strict();
 
+const cloneSchema = z
+  .object({
+    ticket: createSchema,
+    copyAttachments: z.boolean().optional().default(false),
+  })
+  .strict();
+
 const arrayParam = <T extends z.ZodTypeAny>(item: T) =>
   z
     .union([item, z.array(item)])
@@ -108,6 +115,20 @@ export const tickets = new Hono()
       const query = c.req.valid("query");
 
       const tickets = await TicketService.listForProject(project.id, query);
+      return c.json({ tickets });
+    }
+  )
+  .get(
+    "/api/projects/:key/tickets/trash",
+    requireAuth,
+    zValidator("param", projectKeyParamSchema, validationHook),
+    zValidator("query", listQuerySchema, validationHook),
+    requireProjectAccess("owner"),
+    async (c) => {
+      const project = c.get("project");
+      const query = c.req.valid("query");
+
+      const tickets = await TicketService.listTrashForProject(project.id, query);
       return c.json({ tickets });
     }
   )
@@ -197,4 +218,40 @@ export const tickets = new Hono()
     const deleted = await TicketService.getDeletedByNumber(project.id, num);
     const ticket = await TicketService.restoreTicket(deleted.id, project.id, userID);
     return c.json({ ticket });
-  });
+  })
+  .delete(
+    "/api/projects/:key/tickets/:num/permanent",
+    requireAuth,
+    zValidator("param", ticketParamSchema, validationHook),
+    requireProjectAccess("owner"),
+    async (c) => {
+      const project = c.get("project");
+      const { num } = c.req.valid("param");
+
+      const deleted = await TicketService.getDeletedByNumber(project.id, num);
+      await TicketService.hardDeleteTicket(deleted.id, project.id);
+      return c.body(null, 204);
+    }
+  )
+  .post(
+    "/api/projects/:key/tickets/:num/clone",
+    requireAuth,
+    zValidator("json", cloneSchema, validationHook),
+    zValidator("param", ticketParamSchema, validationHook),
+    requireProjectAccess("member"),
+    async (c) => {
+      const project = c.get("project");
+      const userID = c.get("userID");
+      const { num } = c.req.valid("param");
+      const { ticket: input, copyAttachments } = c.req.valid("json");
+
+      const source = await TicketService.getTicketByNumber(project.id, num);
+      const clone = await TicketService.cloneTicket(source.id, project.id, userID, {
+        ...input,
+        projectID: project.id,
+        reporterID: userID,
+        copyAttachments,
+      });
+      return c.json({ ticket: clone }, 201);
+    }
+  );
