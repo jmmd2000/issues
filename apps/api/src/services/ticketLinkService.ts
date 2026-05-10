@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { projects, statuses, ticketLinks, tickets, users } from "../db/schema";
@@ -11,7 +11,7 @@ type LinkRow = {
   id: string;
   linkType: LinkType;
   createdAt: Date;
-  ticket: { id: string; number: number; title: string; priority: Priority; deletedAt: Date | null };
+  ticket: { id: string; number: number; title: string; priority: Priority };
   project: { key: string };
   status: { name: string; category: StatusCategory };
   assignee: { id: string; name: string; avatarURL: string | null } | null;
@@ -49,7 +49,7 @@ export class TicketLinkService {
       id: ticketLinks.id,
       linkType: ticketLinks.linkType,
       createdAt: ticketLinks.createdAt,
-      ticket: { id: tickets.id, number: tickets.number, title: tickets.title, priority: tickets.priority, deletedAt: tickets.deletedAt },
+      ticket: { id: tickets.id, number: tickets.number, title: tickets.title, priority: tickets.priority },
       project: { key: projects.key },
       status: { name: statuses.name, category: statuses.category },
       assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
@@ -62,7 +62,7 @@ export class TicketLinkService {
       .innerJoin(projects, eq(tickets.projectID, projects.id))
       .innerJoin(statuses, eq(tickets.statusID, statuses.id))
       .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(eq(ticketLinks.sourceTicketID, ticketID))
+      .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt)))
       .orderBy(asc(ticketLinks.createdAt));
 
     const incoming = await db
@@ -72,10 +72,10 @@ export class TicketLinkService {
       .innerJoin(projects, eq(tickets.projectID, projects.id))
       .innerJoin(statuses, eq(tickets.statusID, statuses.id))
       .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(eq(ticketLinks.targetTicketID, ticketID))
+      .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt)))
       .orderBy(asc(ticketLinks.createdAt));
 
-    return [...outgoing.filter((row) => !row.ticket.deletedAt).map((row) => shape(row, "outgoing")), ...incoming.filter((row) => !row.ticket.deletedAt).map((row) => shape(row, "incoming"))];
+    return [...outgoing.map((row) => shape(row, "outgoing")), ...incoming.map((row) => shape(row, "incoming"))];
   }
 
   /**
@@ -103,7 +103,7 @@ export class TicketLinkService {
       .innerJoin(projects, eq(tickets.projectID, projects.id))
       .innerJoin(statuses, eq(tickets.statusID, statuses.id))
       .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(and(eq(projects.key, projectKey), eq(tickets.number, number)))
+      .where(and(eq(projects.key, projectKey), eq(tickets.number, number), isNull(tickets.deletedAt)))
       .limit(1);
 
     if (!row.length || !row[0]) throw new HTTPException(404, { message: `Ticket ${targetRef} not found.` });
@@ -200,6 +200,9 @@ export class TicketLinkService {
       if (!link) throw new HTTPException(404, { message: `Link ${linkID} not found.` });
       if (link.sourceTicketID !== requestingTicketID && link.targetTicketID !== requestingTicketID) {
         throw new HTTPException(404, { message: `Link ${linkID} not found.` });
+      }
+      if (link.linkType === "clones") {
+        throw new HTTPException(403, { message: "Clone links cannot be deleted manually." });
       }
 
       const sides = await tx

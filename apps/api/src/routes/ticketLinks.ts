@@ -17,6 +17,12 @@ const linkParamSchema = ticketParamSchema.extend({
   id: z.uuid(),
 });
 
+// Manual links cannot be of type `clones` -- those are written exclusively by
+// the clone action so they always describe a real ancestral relationship.
+// The cast keeps the imported LINK_TYPES as the source of truth for the rest
+// of the type (and trips at compile time if a real type is ever added).
+const MANUAL_LINK_TYPES = ["blocks", "depends_on", "duplicates", "relates_to"] as const satisfies ReadonlyArray<Exclude<(typeof LINK_TYPES)[number], "clones">>;
+
 const createLinkSchema = z
   .object({
     targetRef: z
@@ -24,7 +30,7 @@ const createLinkSchema = z
       .trim()
       .min(1)
       .transform((value) => value.toUpperCase()),
-    linkType: z.enum(LINK_TYPES),
+    linkType: z.enum(MANUAL_LINK_TYPES),
     direction: z.enum(["outgoing", "incoming"]).default("outgoing"),
   })
   .strict();

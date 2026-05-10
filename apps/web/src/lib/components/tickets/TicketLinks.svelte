@@ -154,15 +154,17 @@
                   assignee={link.ticket.assignee}
                 >
                   {#snippet trailing()}
-                    <button
-                      type="button"
-                      class="remove"
-                      onclick={() => void removeLink(link)}
-                      disabled={deletingID === link.id}
-                      aria-label={`Remove ${linkLabel(link.linkType, link.direction)} ${link.ticket.projectKey}-${link.ticket.number}`}
-                    >
-                      <X size={12} strokeWidth={2} />
-                    </button>
+                    {#if link.linkType !== "clones"}
+                      <button
+                        type="button"
+                        class="remove"
+                        onclick={() => void removeLink(link)}
+                        disabled={deletingID === link.id}
+                        aria-label={`Remove ${linkLabel(link.linkType, link.direction)} ${link.ticket.projectKey}-${link.ticket.number}`}
+                      >
+                        <X size={12} strokeWidth={2} />
+                      </button>
+                    {/if}
                   {/snippet}
                 </TicketRow>
               </li>
