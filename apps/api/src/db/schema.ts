@@ -155,6 +155,9 @@ export const tickets = pgTable(
     index("idx_tickets_visibility")
       .on(table.projectID)
       .where(sql`${table.visibility} = 'private'`),
+    index("idx_tickets_project_trash")
+      .on(table.projectID, table.deletedAt)
+      .where(sql`${table.deletedAt} IS NOT NULL`),
     check("ck_tickets_title_nonempty", sql`length(trim(${table.title})) > 0`),
   ]
 );
