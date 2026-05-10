@@ -237,4 +237,29 @@ describe("Ticket links", () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe("clones link type is internal-only", () => {
+    it("rejects POST /links with linkType=clones (400)", async () => {
+      const a = await createTicket(cookies, "TEST", "A");
+      const b = await createTicket(cookies, "TEST", "B");
+      const res = await createLink(`TEST-${b.number}`, "clones", a.number);
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects DELETE /links/:id when the link is a clones link (403)", async () => {
+      const source = await createTicket(cookies, "TEST", "Source");
+
+      const cloneRes = await app.request(`/api/projects/TEST/tickets/${source.number}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookies },
+        body: JSON.stringify({ ticket: { title: "Clone", statusID } }),
+      });
+      const clone = (await cloneRes.json()).ticket;
+
+      const [link] = await db.select().from(ticketLinks).where(and(eq(ticketLinks.sourceTicketID, clone.id), eq(ticketLinks.targetTicketID, source.id)));
+
+      const res = await app.request(`/api/projects/TEST/tickets/${source.number}/links/${link.id}`, { method: "DELETE", headers: { Cookie: cookies } });
+      expect(res.status).toBe(403);
+    });
+  });
 });

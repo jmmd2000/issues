@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { labels, statuses, ticketActivity, ticketLabels, tickets } from "../db/schema";
+import { attachments, labels, projectMembers, statuses, ticketActivity, ticketLabels, ticketLinks, tickets } from "../db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
 
@@ -940,5 +940,220 @@ describe("POST /api/projects/:key/tickets/:num/restore", () => {
   it("returns 400 for a non-numeric ticket number", async () => {
     const res = await app.request("/api/projects/TEST/tickets/abc/restore", { method: "POST", headers: { Cookie: cookies } });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/projects/:key/tickets/:num/clone", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function cloneRequest(num: number, body: object, authCookies = cookies) {
+    return app.request(`/api/projects/TEST/tickets/${num}/clone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: authCookies },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("creates a clone, links it, and emits cloned_from + link_added activity rows on both sides", async () => {
+    const source = await createTicket({ title: "Source" });
+
+    const res = await cloneRequest(source.number, {
+      ticket: { title: "Cloned title", statusID, priority: "high" },
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    const clone = body.ticket;
+    expect(clone.id).not.toBe(source.id);
+    expect(clone.title).toBe("Cloned title");
+    expect(clone.priority).toBe("high");
+
+    // The clone owns the canonical link as source -- "clones <original>" --
+    // so reading from either side renders correctly.
+    const links = await db.select().from(ticketLinks).where(eq(ticketLinks.sourceTicketID, clone.id));
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ targetTicketID: source.id, linkType: "clones" });
+
+    const cloneActivity = await db.select().from(ticketActivity).where(eq(ticketActivity.ticketID, clone.id));
+    const cloneActions = cloneActivity.map((row) => row.action).sort();
+    expect(cloneActions).toContain("cloned_from");
+    expect(cloneActions).toContain("link_added");
+
+    const clonedFrom = cloneActivity.find((row) => row.action === "cloned_from");
+    expect(clonedFrom?.newValue).toMatchObject({ id: source.id, number: source.number, title: "Source", projectKey: "TEST" });
+
+    const sourceActivity = await db
+      .select()
+      .from(ticketActivity)
+      .where(and(eq(ticketActivity.ticketID, source.id), eq(ticketActivity.action, "link_added")));
+    expect(sourceActivity).toHaveLength(1);
+    expect(sourceActivity[0].fieldName).toBe("clones");
+  });
+
+  it("copies attachment rows when copyAttachments is true and skips them otherwise", async () => {
+    const source = await createTicket({ title: "Has attachments" });
+
+    const sample = {
+      uploaderID: (await db.select({ id: tickets.reporterID }).from(tickets).where(eq(tickets.id, source.id)))[0].id,
+      ticketID: source.id,
+      filename: "a.png",
+      storageKey: "deadbeef.png",
+      contentHash: "deadbeef",
+      sizeBytes: 100,
+      width: 10,
+      height: 10,
+      mimeType: "image/png",
+      isImage: true,
+    };
+    await db.insert(attachments).values(sample);
+
+    const skipRes = await cloneRequest(source.number, { ticket: { title: "Clone no attach", statusID } });
+    const skipClone = (await skipRes.json()).ticket;
+    const skipRows = await db.select().from(attachments).where(eq(attachments.ticketID, skipClone.id));
+    expect(skipRows).toHaveLength(0);
+
+    const copyRes = await cloneRequest(source.number, { ticket: { title: "Clone with attach", statusID }, copyAttachments: true });
+    const copyClone = (await copyRes.json()).ticket;
+    const copyRows = await db.select().from(attachments).where(eq(attachments.ticketID, copyClone.id));
+    expect(copyRows).toHaveLength(1);
+    // The new row reuses the storage_key so we don't double-store the bytes.
+    expect(copyRows[0].storageKey).toBe(sample.storageKey);
+  });
+
+  it("returns 404 when cloning a soft-deleted ticket", async () => {
+    const source = await createTicket({ title: "Doomed" });
+    await app.request(`/api/projects/TEST/tickets/${source.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await cloneRequest(source.number, { ticket: { title: "Clone", statusID } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 401 for non-authenticated requests", async () => {
+    const source = await createTicket();
+    const res = await app.request(`/api/projects/TEST/tickets/${source.number}/clone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticket: { title: "Clone", statusID } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 for non-member", async () => {
+    const source = await createTicket();
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    const res = await cloneRequest(source.number, { ticket: { title: "Clone", statusID } }, otherCookies);
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects unknown fields", async () => {
+    const source = await createTicket();
+    const res = await cloneRequest(source.number, { ticket: { title: "Clone", statusID }, rogue: 1 });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /api/projects/:key/tickets/trash", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function softDelete(num: number) {
+    await app.request(`/api/projects/TEST/tickets/${num}`, { method: "DELETE", headers: { Cookie: cookies } });
+  }
+
+  it("lists soft-deleted tickets and excludes active ones", async () => {
+    const a = await createTicket({ title: "Trashed" });
+    const b = await createTicket({ title: "Active" });
+    await softDelete(a.number);
+    void b;
+
+    const res = await app.request("/api/projects/TEST/tickets/trash", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tickets).toHaveLength(1);
+    expect(body.tickets[0].id).toBe(a.id);
+  });
+
+  it("supports pagination", async () => {
+    for (let i = 1; i <= 3; i += 1) {
+      const ticket = await createTicket({ title: `T${i}` });
+      await softDelete(ticket.number);
+    }
+    const res = await app.request("/api/projects/TEST/tickets/trash?page=2&perPage=2", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tickets).toHaveLength(1);
+  });
+
+  it("returns 403 for non-owner members", async () => {
+    const ticket = await createTicket({ title: "Doomed" });
+    await softDelete(ticket.number);
+    const { user, cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    await db.insert(projectMembers).values({ projectID, userID: user.id, role: "member" });
+
+    const res = await app.request("/api/projects/TEST/tickets/trash", { headers: { Cookie: otherCookies } });
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 404 for non-members", async () => {
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    const res = await app.request("/api/projects/TEST/tickets/trash", { headers: { Cookie: otherCookies } });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/projects/:key/tickets/:num/permanent", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function softDelete(num: number) {
+    await app.request(`/api/projects/TEST/tickets/${num}`, { method: "DELETE", headers: { Cookie: cookies } });
+  }
+
+  it("hard-deletes a soft-deleted ticket and returns 204", async () => {
+    const ticket = await createTicket({ title: "Goner" });
+    await softDelete(ticket.number);
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/permanent`, { method: "DELETE", headers: { Cookie: cookies } });
+    expect(res.status).toBe(204);
+
+    const rows = await db.select().from(tickets).where(eq(tickets.id, ticket.id));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("returns 404 when the ticket is still active", async () => {
+    const ticket = await createTicket({ title: "Alive" });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/permanent`, { method: "DELETE", headers: { Cookie: cookies } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for a non-existent ticket number", async () => {
+    const res = await app.request("/api/projects/TEST/tickets/999/permanent", { method: "DELETE", headers: { Cookie: cookies } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 for non-owner members", async () => {
+    const ticket = await createTicket({ title: "Doomed" });
+    await softDelete(ticket.number);
+    const { user, cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    await db.insert(projectMembers).values({ projectID, userID: user.id, role: "member" });
+
+    const res = await app.request(`/api/projects/TEST/tickets/${ticket.number}/permanent`, { method: "DELETE", headers: { Cookie: otherCookies } });
+    expect(res.status).toBe(403);
   });
 });
