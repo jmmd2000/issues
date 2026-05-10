@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
-  import { resolve } from "$app/paths";
   import { Plus } from "@lucide/svelte";
-  import type { ProjectMember, Status, TicketChild } from "@issues/api";
+  import type { Label, ProjectMember, Status, TicketChild } from "@issues/api";
   import { client } from "$lib/api/client";
+  import TicketModal from "./TicketModal.svelte";
   import TicketRow from "./TicketRow.svelte";
   import TicketSearchModal from "./TicketSearchModal.svelte";
 
@@ -12,12 +11,15 @@
     projectKey: string;
     parentTicketID: string;
     parentTicketNumber: number;
+    parentTicketTitle: string;
     statuses: Status[];
+    labels: Label[];
     members: ProjectMember[];
+    currentUserID: string;
     onmutated: () => void | Promise<void>;
   }
 
-  let { children, projectKey, parentTicketID, parentTicketNumber, statuses, members, onmutated }: TicketChildrenProps = $props();
+  let { children, projectKey, parentTicketID, parentTicketNumber, parentTicketTitle, statuses, labels, members, currentUserID, onmutated }: TicketChildrenProps = $props();
 
   const total = $derived(children.length);
   const done = $derived(children.filter((child) => child.status.category === "done" || child.status.category === "cancelled").length);
@@ -26,6 +28,7 @@
   const excludeNumbers = $derived([parentTicketNumber, ...children.map((child) => child.number)]);
 
   let searchOpen = $state(false);
+  let createOpen = $state(false);
   let attaching = $state(false);
 
   async function attachExisting(ticket: { number: number }) {
@@ -44,8 +47,9 @@
     }
   }
 
-  function createNew() {
-    goto(resolve("/projects/[key]/tickets/new", { key: projectKey }) + `?parent=${parentTicketNumber}`);
+  function openCreate() {
+    searchOpen = false;
+    createOpen = true;
   }
 </script>
 
@@ -96,7 +100,23 @@
   excludeTicketNumbers={excludeNumbers}
   onpicked={(ticket) => void attachExisting(ticket)}
   onclose={() => (searchOpen = false)}
-  primaryAction={{ label: "+ Create new", run: createNew }}
+  primaryAction={{ label: "+ Create new", run: openCreate }}
+/>
+
+<TicketModal
+  open={createOpen}
+  mode="create"
+  {projectKey}
+  {statuses}
+  {labels}
+  {members}
+  {currentUserID}
+  title="New sub-ticket"
+  initialValues={{ parentTicket: { id: parentTicketID, number: parentTicketNumber, title: parentTicketTitle } }}
+  excludeParentNumber={parentTicketNumber}
+  onSuccess="stay"
+  oncreated={() => void onmutated()}
+  onclose={() => (createOpen = false)}
 />
 
 <style>

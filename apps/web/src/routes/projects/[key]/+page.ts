@@ -2,15 +2,15 @@ import { error } from "@sveltejs/kit";
 import { z } from "zod";
 import type { ProjectActivity, ProjectDetail, ProjectStats, Ticket } from "@issues/api";
 import { createClient } from "$lib/api/client";
+import { requireAuth } from "$lib/auth";
+import { LIST_COLUMN_IDS } from "$lib/components/tickets/TicketList.svelte";
 import type { PageLoad } from "./$types";
-
-const ticketListSortColumns = ["key", "title", "status", "priority", "assignee", "updatedAt"] as const;
 
 const searchSchema = z.object({
   view: z.enum(["kanban", "list"]).catch("kanban"),
   page: z.coerce.number().int().min(1).catch(1),
   perPage: z.coerce.number().int().min(1).max(100).catch(25),
-  sortBy: z.enum(ticketListSortColumns).catch("updatedAt"),
+  sortBy: z.enum(LIST_COLUMN_IDS).catch("updatedAt"),
   sortDirection: z.enum(["asc", "desc"]).catch("desc"),
   q: z.string().trim().min(1).max(200).nullable().catch(null),
   status: z.string().nullable().catch(null),
@@ -29,7 +29,10 @@ function parseList(value: string | null): string[] {
     .filter(Boolean);
 }
 
-export const load: PageLoad = async ({ fetch, params, url }) => {
+export const load: PageLoad = async ({ fetch, params, parent, url }) => {
+  const { user } = await parent();
+  requireAuth(user, url);
+
   const api = createClient(fetch).api.projects[":key"];
   const parsed = searchSchema.parse({
     view: url.searchParams.get("view"),
@@ -127,6 +130,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
   }
 
   return {
+    user,
     project,
     ticketView: view,
     ticketData:

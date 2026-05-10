@@ -28,8 +28,11 @@ const baseProps = {
   projectKey: "TEST",
   parentTicketID: "p-1",
   parentTicketNumber: 7,
+  parentTicketTitle: "Parent ticket",
   statuses: [makeStatus()],
+  labels: [],
   members: [makeMember()],
+  currentUserID: "u-1",
   onmutated: () => Promise.resolve(),
 };
 

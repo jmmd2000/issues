@@ -5,12 +5,15 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Tabs from "$lib/components/ui/Tabs.svelte";
   import TicketsView from "$lib/components/tickets/TicketsView.svelte";
+  import TicketModal from "$lib/components/tickets/TicketModal.svelte";
   import ProjectOverview from "$lib/components/ProjectOverview.svelte";
   import ProjectMembers from "$lib/components/ProjectMembers.svelte";
 
   let { data }: PageProps = $props();
   let project = $derived(data.project);
   let statuses = $derived(data.statuses);
+
+  let createOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -41,7 +44,7 @@
 
     <div class="supplemental-info">
       <Button size="md" variant="secondary" href={resolve("/projects/[key]/settings", { key: project.key })} aria-label="Project settings"><Settings size={14} /> Settings</Button>
-      <Button href={resolve("/projects/[key]/tickets/new", { key: project.key })}><Plus size={13} strokeWidth={4} /> New ticket</Button>
+      <Button onclick={() => (createOpen = true)}><Plus size={13} strokeWidth={4} /> New ticket</Button>
     </div>
   </div>
 
@@ -66,6 +69,17 @@
     />
   </div>
 </section>
+
+<TicketModal
+  open={createOpen}
+  mode="create"
+  projectKey={project.key}
+  statuses={data.statuses}
+  labels={data.labels}
+  members={data.members}
+  currentUserID={data.user.id}
+  onclose={() => (createOpen = false)}
+/>
 
 <style>
   .project-page {
