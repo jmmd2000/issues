@@ -152,6 +152,8 @@
       priorities: [],
       labelNames: [],
       assigneeIDs: [],
+      sortBy: "updatedAt",
+      sortDirection: "desc",
     });
   }
 

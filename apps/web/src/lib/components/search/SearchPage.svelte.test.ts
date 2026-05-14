@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte";
 import type { SearchFilterOptions, SearchResult } from "@issues/api";
 import { defaultSearchSortColumn, defaultSearchSortDirection, type SearchPageResult, type SearchPageState } from "$lib/api/search";
@@ -92,6 +93,10 @@ function expectGoto(path: string): void {
   expect(mockApp.goto).toHaveBeenCalledWith(path, { keepFocus: true, noScroll: true });
 }
 
+async function selectSearchOption(screen: ReturnType<typeof render>, label: string, value: string): Promise<void> {
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: new RegExp(`^${label}`) }), value);
+}
+
 beforeEach(() => {
   mockApp.goto.mockReset();
   mockApp.goto.mockResolvedValue(undefined);
@@ -164,6 +169,79 @@ describe("SearchPage", () => {
     mockApp.goto.mockClear();
     await screen.getByRole("button", { name: "Previous" }).click();
     expectGoto("/search?q=api");
+  });
+
+  it("updates the URL when the sort column changes", async () => {
+    const screen = render(SearchPage, { search: makeSearch() });
+
+    await selectSearchOption(screen, "Sort", "title");
+
+    await vi.waitFor(() => {
+      expectGoto("/search?sortBy=title");
+    });
+  });
+
+  it("updates the URL when the sort direction changes", async () => {
+    const screen = render(SearchPage, { search: makeSearch() });
+
+    await selectSearchOption(screen, "Direction", "asc");
+
+    expectGoto("/search?sortDirection=asc");
+  });
+
+  it("only offers relevance sorting when there is a text query", async () => {
+    const emptyScreen = render(SearchPage, { search: makeSearch() });
+    expect(emptyScreen.getByText("Relevance").elements()).toHaveLength(0);
+
+    const queryScreen = render(
+      SearchPage,
+      {
+        search: makeSearch({
+          state: makeState({ searchTerm: "api" }),
+          searched: true,
+          tickets: [ticket],
+        }),
+      }
+    );
+
+    expect(queryScreen.getByText("Relevance").elements()).toHaveLength(1);
+    expect(queryScreen.getByText("Most relevant").elements()).toHaveLength(1);
+    expect(queryScreen.getByText("Least relevant").elements()).toHaveLength(1);
+  });
+
+  it("shows title-specific direction labels when sorting by title", async () => {
+    const screen = render(
+      SearchPage,
+      {
+        search: makeSearch({
+          state: makeState({ sortBy: "title" }),
+        }),
+      }
+    );
+
+    expect(screen.getByText("A-Z").elements()).toHaveLength(1);
+    expect(screen.getByText("Z-A").elements()).toHaveLength(1);
+  });
+
+  it("clears sorting back to latest updated when clearing the search", async () => {
+    const screen = render(
+      SearchPage,
+      {
+        search: makeSearch({
+          state: makeState({
+            searchTerm: "api",
+            sortBy: "title",
+            sortDirection: "desc",
+          }),
+          searched: true,
+          tickets: [ticket],
+        }),
+      }
+    );
+
+    await screen.getByRole("button", { name: "Clear" }).click();
+
+    expectGoto("/search");
   });
 
   it("hides the project filter and omits project params on a project-scoped search page", async () => {

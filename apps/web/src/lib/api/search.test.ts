@@ -116,6 +116,15 @@ describe("parseSearchPageState", () => {
       projectKey: "CORE",
     });
   });
+
+  it("parses explicit sort params", () => {
+    const url = makeUrl("/search?sortBy=title&sortDirection=desc");
+
+    expect(parseSearchPageState(url)).toMatchObject({
+      sortBy: "title",
+      sortDirection: "desc",
+    });
+  });
 });
 
 describe("serialiseSearchPageState", () => {
@@ -138,6 +147,14 @@ describe("serialiseSearchPageState", () => {
     const params = serialiseSearchPageState(makeState({ projectKey: "CORE", page: 3, perPage: 10 }), "CORE");
 
     expect(params.toString()).toBe("page=3&perPage=10");
+  });
+
+  it("serialises non-default sort params", () => {
+    const titleParams = serialiseSearchPageState(makeState({ sortBy: "title", sortDirection: "desc" }));
+    expect(titleParams.toString()).toBe("sortBy=title&sortDirection=desc");
+
+    const queryParams = serialiseSearchPageState(makeState({ searchTerm: "api", sortBy: "updatedAt", sortDirection: "asc" }));
+    expect(queryParams.toString()).toBe("q=api&sortBy=updatedAt&sortDirection=asc");
   });
 });
 
@@ -171,7 +188,7 @@ describe("loadSearchPageResult", () => {
   });
 
   it("forwards text, filters, pagination, and locked project scope to the search endpoint", async () => {
-    const url = makeUrl("/projects/core/search?q=api&status=todo&priority=high&label=bug&assignee=u-1&page=2");
+    const url = makeUrl("/projects/core/search?q=api&status=todo&priority=high&label=bug&assignee=u-1&page=2&sortBy=updatedAt&sortDirection=asc");
     const result = await loadSearchPageResult({ fetch: fetchStub(), url, lockedProjectKey: "core" });
 
     expect(mockClientState.filtersGet).toHaveBeenCalledWith({ query: { project: "CORE" } });
@@ -185,8 +202,8 @@ describe("loadSearchPageResult", () => {
         assignee: ["u-1"],
         page: "2",
         perPage: "25",
-        sortBy: "relevance",
-        sortDirection: "desc",
+        sortBy: "updatedAt",
+        sortDirection: "asc",
       },
     });
     expect(result).toMatchObject({
@@ -198,6 +215,8 @@ describe("loadSearchPageResult", () => {
         labelNames: ["bug"],
         assigneeIDs: ["u-1"],
         page: 2,
+        sortBy: "updatedAt",
+        sortDirection: "asc",
       }),
       filters,
       tickets: [ticket],
