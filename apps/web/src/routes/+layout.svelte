@@ -2,6 +2,7 @@
 <script lang="ts">
   import "$lib/../app.css";
   import { resolve } from "$app/paths";
+  import { Search } from "@lucide/svelte";
   import type { Snippet } from "svelte";
   import type { LayoutProps } from "./$types";
   import favicon from "$lib/assets/favicon.svg";
@@ -23,6 +24,11 @@
     <img src={favicon} alt="" width="24" height="24" />
     <a href={resolve("/")}>Issues</a>
   </span>
+
+  <a class="nav-link" href={resolve("/search")}>
+    <Search size={14} strokeWidth={2.4} />
+    Search
+  </a>
 
   <div class="user-menu-container"><UserMenu user={data.user} /></div>
 </nav>
@@ -52,6 +58,24 @@
 
   .user-menu-container {
     margin-left: auto;
+  }
+
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 1rem;
+    padding: 0.35em 0.55em;
+    border-radius: var(--border-radius-inner);
+    color: var(--colour-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      background: var(--colour-bg-hover);
+      color: var(--colour-text);
+    }
   }
 
   main {

@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { resolve } from "$app/paths";
   import type { ProjectDetail } from "@issues/api";
-  import { Columns3, List as ListIcon, Plus } from "@lucide/svelte";
+  import { Columns3, List as ListIcon, Plus, Search } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import ColumnPicker from "$lib/components/kanban/ColumnPicker.svelte";
   import type { TicketListColumnID } from "$lib/components/tickets/TicketList.svelte";
@@ -29,6 +30,8 @@
     onToggleListColumn,
     onOpenCreate,
   }: WorkHeaderProps = $props();
+
+  const projectSearchHref = $derived(resolve("/projects/[key]/search", { key: project.key }));
 </script>
 
 <header class="pane-head">
@@ -61,6 +64,11 @@
         variant="secondary"
       />
     {/if}
+
+    <Button variant="secondary" size="md" href={projectSearchHref}>
+      <Search size={13} strokeWidth={3} />
+      Search
+    </Button>
 
     <Button variant="primary" size="md" onclick={onOpenCreate}>
       <Plus size={13} strokeWidth={4} />
