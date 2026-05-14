@@ -1,8 +1,7 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import type { Label, LinkType, Priority, ProjectMember, Status, TicketActivity } from "@issues/api";
-  import { LINK_TYPES, PRIORITIES } from "@issues/shared";
-  import { formatActivity } from "$lib/activity";
+  import type { Label, ProjectMember, Status, TicketActivity } from "@issues/api";
+  import { asLinkType, formatActivity, isPriority, labelColour, memberAvatar, statusCategory } from "$lib/activity";
   import { linkLabel } from "$lib/linkLabels";
   import { formatAbsolute, timeAgo } from "$lib/time";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
@@ -24,27 +23,6 @@
   }
 
   let { row, statuses, labels, members, ticketRef = null, expandedBody = null, expandedTombstone = false }: ActivityRowProps = $props();
-
-  function isPriority(v: string | undefined | null): v is Priority {
-    return typeof v === "string" && (PRIORITIES as readonly string[]).includes(v);
-  }
-
-  function asLinkType(v: string | null | undefined): LinkType | null {
-    return v && (LINK_TYPES as readonly string[]).includes(v) ? (v as LinkType) : null;
-  }
-
-  function statusCategory(id: string | undefined | null): Status["category"] {
-    return (id && statuses.find((s) => s.id === id)?.category) || "backlog";
-  }
-
-  function labelColour(id: string | undefined | null): string {
-    return (id && labels.find((l) => l.id === id)?.colour) || "var(--colour-muted)";
-  }
-
-  function memberAvatar(id: string | undefined | null): string | null {
-    if (!id) return null;
-    return members.find((m) => m.user.id === id)?.user.avatarURL ?? null;
-  }
 
   const sentence = $derived(formatActivity(row));
   const updatedField = $derived(row.action === "updated" ? row.fieldName : null);
@@ -84,18 +62,18 @@
       {/if}
     {:else if row.action === "label_added" && row.newValue?.id && row.newValue?.name}
       <span class="activity-verb">added label</span>
-      <LabelChip name={row.newValue.name} colour={labelColour(row.newValue.id)} />
+      <LabelChip name={row.newValue.name} colour={labelColour(labels, row.newValue.id)} />
     {:else if row.action === "label_removed" && row.oldValue?.id && row.oldValue?.name}
       <span class="activity-verb">removed label</span>
-      <LabelChip name={row.oldValue.name} colour={labelColour(row.oldValue.id)} />
+      <LabelChip name={row.oldValue.name} colour={labelColour(labels, row.oldValue.id)} />
     {:else if updatedField === "statusID"}
       <span class="activity-verb">changed status</span>
       {#if row.oldValue?.name}
-        <StatusChip name={row.oldValue.name} category={statusCategory(row.oldValue.id)} />
+        <StatusChip name={row.oldValue.name} category={statusCategory(statuses, row.oldValue.id)} />
       {/if}
       <ArrowRight size={12} color="var(--colour-muted)" />
       {#if row.newValue?.name}
-        <StatusChip name={row.newValue.name} category={statusCategory(row.newValue.id)} />
+        <StatusChip name={row.newValue.name} category={statusCategory(statuses, row.newValue.id)} />
       {/if}
     {:else if updatedField === "priority"}
       <span class="activity-verb">changed priority</span>
@@ -112,18 +90,18 @@
       {:else if !row.oldValue}
         <span class="activity-verb">assigned</span>
         <span class="person-pill">
-          <UserAvatar name={row.newValue.name ?? "?"} avatarURL={memberAvatar(row.newValue.id)} size="sm" />
+          <UserAvatar name={row.newValue.name ?? "?"} avatarURL={memberAvatar(members, row.newValue.id)} size="sm" />
           <span>{row.newValue.name}</span>
         </span>
       {:else}
         <span class="activity-verb">reassigned from</span>
         <span class="person-pill">
-          <UserAvatar name={row.oldValue.name ?? "?"} avatarURL={memberAvatar(row.oldValue.id)} size="sm" />
+          <UserAvatar name={row.oldValue.name ?? "?"} avatarURL={memberAvatar(members, row.oldValue.id)} size="sm" />
           <span>{row.oldValue.name}</span>
         </span>
         <span class="activity-verb">to</span>
         <span class="person-pill">
-          <UserAvatar name={row.newValue.name ?? "?"} avatarURL={memberAvatar(row.newValue.id)} size="sm" />
+          <UserAvatar name={row.newValue.name ?? "?"} avatarURL={memberAvatar(members, row.newValue.id)} size="sm" />
           <span>{row.newValue.name}</span>
         </span>
       {/if}

@@ -55,7 +55,6 @@
   }
 
   main {
-    max-width: 95em;
     margin: 2rem auto;
     padding: 0 2rem;
     font-size: clamp(1rem, 0.18vw + 0.85rem, 1.25rem);

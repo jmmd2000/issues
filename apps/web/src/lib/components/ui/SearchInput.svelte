@@ -49,13 +49,15 @@
     padding: 0.45em 0.7em 0.45em 2.2em;
     border: var(--border);
     border-radius: var(--border-radius-inner);
-    background: var(--colour-bg);
+    background: var(--colour-bg-lighter);
     color: var(--colour-text);
     font: inherit;
     font-size: 0.85em;
     line-height: 1.2;
     outline: none;
-    box-shadow: 0 1px 2px rgb(from var(--colour-text) r g b / 0.05);
+    box-shadow:
+      0 1px 2px rgba(30, 34, 41, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
     transition:
       border-color 0.15s,
       box-shadow 0.15s,
@@ -72,7 +74,9 @@
 
   .search-input:focus {
     border-color: var(--accent-base);
-    background: var(--colour-bg);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-base) 14%, transparent 86%);
+    background: var(--colour-bg-lighter);
+    box-shadow:
+      0 0 0 3px color-mix(in oklch, var(--accent-base) 14%, transparent 86%),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 </style>

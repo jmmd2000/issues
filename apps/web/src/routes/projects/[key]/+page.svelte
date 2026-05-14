@@ -1,182 +1,284 @@
 <script lang="ts">
-  import { resolve } from "$app/paths";
-  import { Info, Plus, Settings, Ticket as TicketIcon, UsersRound } from "@lucide/svelte";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import type { PageProps } from "./$types";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Tabs from "$lib/components/ui/Tabs.svelte";
-  import TicketsView from "$lib/components/tickets/TicketsView.svelte";
+  import type { Priority, Ticket } from "@issues/api";
+  import FiltersPane from "$lib/components/projectDetail/FiltersPane.svelte";
+  import WorkHeader from "$lib/components/projectDetail/WorkHeader.svelte";
+  import InfoPane from "$lib/components/projectDetail/InfoPane.svelte";
+  import TicketKanban from "$lib/components/kanban/TicketKanban.svelte";
+  import TicketList, { LIST_COLUMNS, type TicketListColumnID, type TicketListSortDirection } from "$lib/components/tickets/TicketList.svelte";
   import TicketModal from "$lib/components/tickets/TicketModal.svelte";
-  import ProjectOverview from "$lib/components/ProjectOverview.svelte";
-  import ProjectMembers from "$lib/components/ProjectMembers.svelte";
 
   let { data }: PageProps = $props();
-  let project = $derived(data.project);
-  let statuses = $derived(data.statuses);
+
+  const project = $derived(data.project);
+
+  // The slug "backlog" identifies the dedicated Backlog status seeded with
+  // every project. The "Include backlog" toggle gates this specific status;
+  // other backlog-category statuses (e.g. "Todo") stay visible regardless.
+  const backlogStatusID = $derived(project.statuses.find((s) => s.slug === "backlog")?.id ?? null);
+
+  const view = $derived(data.view);
+  const showClosed = $derived(data.showClosed);
+  const includeBacklog = $derived(data.includeBacklog);
+  const titleSearch = $derived(data.titleSearch);
+  const selectedStatusIDs = $derived(data.filters.statusID);
+  const selectedPriorities = $derived(data.filters.priority);
+  const selectedAssigneeIDs = $derived(data.filters.assigneeID);
+  const selectedLabelIDs = $derived(data.filters.labelID);
+  const sortBy = $derived(data.sort.by);
+  const sortDir = $derived(data.sort.dir);
+  const listPage = $derived(data.pagination.page);
+
+  function updateParams(updates: Record<string, string | null>) {
+    const next = new URL(page.url);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "") next.searchParams.delete(key);
+      else next.searchParams.set(key, value);
+    }
+    void goto(`${next.pathname}${next.search}`, { keepFocus: true, noScroll: true });
+  }
+
+  function toggleEntry(current: readonly string[], value: string): string[] {
+    return current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+  }
+
+  function setView(next: "kanban" | "list") {
+    updateParams({ view: next === "list" ? "list" : null, page: null });
+  }
+  function setShowClosed(next: boolean) {
+    updateParams({ showClosed: next ? "true" : null, page: null });
+  }
+  function setIncludeBacklog(next: boolean) {
+    updateParams({ includeBacklog: next ? null : "false", page: null });
+  }
+  function toggleStatusFilter(id: string) {
+    const next = toggleEntry(selectedStatusIDs, id);
+    updateParams({ status: next.length ? next.join(",") : null, page: null });
+  }
+  function togglePriorityFilter(p: Priority) {
+    const next = toggleEntry(selectedPriorities, p);
+    updateParams({ priority: next.length ? next.join(",") : null, page: null });
+  }
+  function toggleAssigneeFilter(id: string) {
+    const next = toggleEntry(selectedAssigneeIDs, id);
+    updateParams({ assignee: next.length ? next.join(",") : null, page: null });
+  }
+  function toggleLabelFilter(id: string) {
+    const next = toggleEntry(selectedLabelIDs, id);
+    updateParams({ label: next.length ? next.join(",") : null, page: null });
+  }
+  function handleSortChange(column: TicketListColumnID, direction: TicketListSortDirection) {
+    updateParams({ sortBy: column, sortDir: direction, page: null });
+  }
+  function handleListPageChange(nextPage: number) {
+    updateParams({ view: "list", page: String(nextPage) });
+  }
+
+  // svelte-ignore state_referenced_locally
+  let searchInput = $state(titleSearch);
+  let searchTimer: ReturnType<typeof setTimeout> | null = null;
+  // Re-sync from the URL when not mid-debounce. Skip when nothing changed
+  $effect(() => {
+    if (searchTimer === null && searchInput !== titleSearch) searchInput = titleSearch;
+  });
+  function handleSearchInput(value: string) {
+    searchInput = value;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchTimer = null;
+      updateParams({ q: value.trim() || null, page: null });
+    }, 200);
+  }
+
+  // svelte-ignore state_referenced_locally
+  const kanbanColumnsKey = `kanban-columns:${data.project.id}`;
+  // svelte-ignore state_referenced_locally
+  const listColumnsKey = `list-columns:${data.project.id}`;
+
+  function readVisibleSet<T extends string>(key: string, fallback: T[]): Set<T> {
+    if (typeof localStorage === "undefined") return new Set(fallback);
+    const raw = localStorage.getItem(key);
+    if (!raw) return new Set(fallback);
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Set(fallback);
+      const allowed = new Set(fallback);
+      const filtered = parsed.filter((v): v is T => typeof v === "string" && allowed.has(v as T));
+      return new Set(filtered.length > 0 ? filtered : fallback);
+    } catch {
+      return new Set(fallback);
+    }
+  }
+  function writeVisibleSet(key: string, value: Set<string>) {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(key, JSON.stringify([...value]));
+  }
+
+  // svelte-ignore state_referenced_locally
+  let visibleKanbanStatusIDs = $state<Set<string>>(
+    readVisibleSet(
+      kanbanColumnsKey,
+      data.project.statuses.map((s) => s.id)
+    )
+  );
+  let visibleListColumnIDs = $state<Set<TicketListColumnID>>(readVisibleSet<TicketListColumnID>(listColumnsKey, LIST_COLUMNS.map((c) => c.id) as TicketListColumnID[]));
+
+  function toggleKanbanColumn(id: string) {
+    const next = new Set(visibleKanbanStatusIDs);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    visibleKanbanStatusIDs = next;
+    writeVisibleSet(kanbanColumnsKey, next);
+  }
+  function toggleListColumn(id: string) {
+    const columnID = id as TicketListColumnID;
+    const next = new Set(visibleListColumnIDs);
+    if (next.has(columnID)) {
+      if (next.size === 1) return;
+      next.delete(columnID);
+    } else {
+      next.add(columnID);
+    }
+    visibleListColumnIDs = next;
+    writeVisibleSet(listColumnsKey, next as Set<string>);
+  }
 
   let createOpen = $state(false);
+  let filtersCollapsed = $state(false);
+  let infoCollapsed = $state(false);
+
+  // Server-side filters already applied, the only client filter left is the
+  // "Include backlog" toggle hiding tickets in the dedicated Backlog status.
+  function applyBacklogToggle(tickets: Ticket[]): Ticket[] {
+    if (includeBacklog || !backlogStatusID) return tickets;
+    return tickets.filter((t) => t.statusID !== backlogStatusID);
+  }
+
+  // /board excludes backlog-category tickets, so merge /backlog in for kanban.
+  const kanbanTickets = $derived(applyBacklogToggle([...data.boardTickets, ...data.backlogTickets]));
+  const listTickets = $derived(applyBacklogToggle(data.listTickets));
+
+  const kanbanVisibleStatuses = $derived(
+    project.statuses.filter((s) => {
+      if (!showClosed && s.category === "cancelled") return false;
+      if (!includeBacklog && s.id === backlogStatusID) return false;
+      if (!visibleKanbanStatusIDs.has(s.id)) return false;
+      return true;
+    })
+  );
+
+  const kanbanPickerStatuses = $derived(project.statuses.filter((s) => includeBacklog || s.id !== backlogStatusID).map((s) => ({ id: s.id, label: s.name })));
 </script>
 
 <svelte:head>
-  <title>{data.project.name} · Issues</title>
+  <title>{project.name} · Issues</title>
 </svelte:head>
 
-<section class="project-page">
-  <div class="project-header">
-    <div class="project-info">
-      <div class="project-topline">
-        <p>{project.key}</p>
-        <span class="visibility">{project.visibility}</span>
-      </div>
+<section class="project-detail" style:--left-col={filtersCollapsed ? "3rem" : "clamp(260px, 18vw, 360px)"} style:--right-col={infoCollapsed ? "3rem" : "clamp(360px, 26vw, 480px)"}>
+  <FiltersPane
+    {searchInput}
+    {showClosed}
+    {includeBacklog}
+    {selectedStatusIDs}
+    {selectedPriorities}
+    {selectedAssigneeIDs}
+    {selectedLabelIDs}
+    statuses={project.statuses}
+    members={project.members}
+    labels={project.labels}
+    collapsed={filtersCollapsed}
+    onSearchInput={handleSearchInput}
+    onShowClosedChange={setShowClosed}
+    onIncludeBacklogChange={setIncludeBacklog}
+    onToggleStatus={toggleStatusFilter}
+    onTogglePriority={togglePriorityFilter}
+    onToggleAssignee={toggleAssigneeFilter}
+    onToggleLabel={toggleLabelFilter}
+    onToggleCollapsed={() => (filtersCollapsed = !filtersCollapsed)}
+  />
 
-      <div class="project-headline">
-        <h1>{project.name}</h1>
-        <p>{project.description || "No project description yet."}</p>
-      </div>
+  <main class="work">
+    <WorkHeader
+      {project}
+      {view}
+      {kanbanPickerStatuses}
+      {visibleKanbanStatusIDs}
+      {visibleListColumnIDs}
+      onSetView={setView}
+      onToggleKanbanColumn={toggleKanbanColumn}
+      onToggleListColumn={toggleListColumn}
+      onOpenCreate={() => (createOpen = true)}
+    />
 
-      {#if project.stack.length > 0}
-        <div class="stack">
-          {#each project.stack as item (item)}
-            <span class="stack-item">{item}</span>
-          {/each}
-        </div>
+    <div class="work-body">
+      {#if view === "kanban"}
+        <TicketKanban projectKey={project.key} statuses={kanbanVisibleStatuses} tickets={kanbanTickets} members={project.members} />
+      {:else}
+        <TicketList
+          projectKey={project.key}
+          statuses={project.statuses}
+          members={project.members}
+          tickets={listTickets}
+          visibleColumnIDs={visibleListColumnIDs}
+          sortColumn={sortBy}
+          sortDirection={sortDir}
+          page={listPage}
+          hasNextPage={data.listHasNextPage}
+          onSortChange={handleSortChange}
+          onPageChange={handleListPageChange}
+        />
       {/if}
     </div>
+  </main>
 
-    <div class="supplemental-info">
-      <Button size="md" variant="secondary" href={resolve("/projects/[key]/settings", { key: project.key })} aria-label="Project settings"><Settings size={14} /> Settings</Button>
-      <Button onclick={() => (createOpen = true)}><Plus size={13} strokeWidth={4} /> New ticket</Button>
-    </div>
-  </div>
-
-  <div class="project-content">
-    {#snippet ticketsPanel()}
-      <TicketsView project={data.project} {statuses} labels={data.labels} members={data.members} view={data.ticketView} ticketData={data.ticketData} backlog={data.backlog} filters={data.filters} />
-    {/snippet}
-    {#snippet overviewPanel()}
-      <ProjectOverview project={data.project} stats={data.stats} activity={data.activity} statuses={data.statuses} labels={data.labels} members={data.members} />
-    {/snippet}
-    {#snippet membersPanel()}
-      <ProjectMembers members={data.members} stats={data.stats} />
-    {/snippet}
-
-    <Tabs
-      tabs={[
-        { id: "tickets", label: "Tickets", icon: TicketIcon },
-        { id: "overview", label: "Overview", icon: Info },
-        { id: "members", label: "Members", icon: UsersRound },
-      ]}
-      panels={{ tickets: ticketsPanel, overview: overviewPanel, members: membersPanel }}
-    />
-  </div>
+  <InfoPane {project} stats={data.stats} activity={data.activity} collapsed={infoCollapsed} onToggleCollapsed={() => (infoCollapsed = !infoCollapsed)} />
 </section>
 
 <TicketModal
   open={createOpen}
   mode="create"
   projectKey={project.key}
-  statuses={data.statuses}
-  labels={data.labels}
-  members={data.members}
+  statuses={project.statuses}
+  labels={project.labels}
+  members={project.members}
   currentUserID={data.user.id}
   onclose={() => (createOpen = false)}
 />
 
 <style>
-  .project-page {
-    padding-top: 0.5em;
+  .project-detail {
+    display: grid;
+    grid-template-columns: var(--left-col) minmax(0, 1fr) var(--right-col);
+    gap: 0;
+    margin: -2rem -2rem 0;
+    transition: grid-template-columns 180ms ease;
   }
 
-  .project-header {
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .project-headline h1 {
-    max-width: 20em;
-    color: var(--colour-text);
-    font-size: clamp(1.8rem, 1.6vw + 1.3rem, 3rem);
-    line-height: 1.05;
-    overflow-wrap: anywhere;
-  }
-
-  .project-info {
+  .work {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    background: var(--colour-bg-lighter);
   }
 
-  .project-topline {
-    display: flex;
-    align-items: center;
-    gap: 0.75em;
-    margin-bottom: 0.4em;
+  .work-body {
+    padding: 0.9em 1.3em 2em;
+  }
 
-    & p {
-      font-family: var(--font-mono);
-      font-weight: 600;
-      color: var(--accent-base);
-      font-size: 0.85em;
-      letter-spacing: 0.01em;
+  @media (max-width: 1100px) {
+    .project-detail {
+      grid-template-columns: var(--left-col) minmax(0, 1fr);
     }
-
-    & .visibility {
-      color: var(--accent-shade-200);
-      padding: 0.2em 0.6em;
-      border-radius: 999px;
-      background: var(--accent-tint-800);
-      text-transform: capitalize;
-      font-size: 0.85em;
-      font-weight: 600;
+    .project-detail :global(.pane[aria-label="Project info"]) {
+      display: none;
     }
   }
 
-  .project-headline {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4em;
-    margin-bottom: 0.65em;
-
-    & h1 {
-      font-size: 2.2em;
-      letter-spacing: -0.01em;
-    }
-
-    & p {
-      font-size: 0.9em;
-      color: var(--colour-text-secondary);
-      max-width: 65ch;
-      line-height: 1.5;
-      letter-spacing: 0.01em;
-    }
-  }
-
-  .stack {
-    display: flex;
-    gap: 0.4em;
-  }
-
-  .stack-item {
-    font-size: 0.8em;
-    font-weight: 600;
-    color: var(--colour-text-secondary);
-    padding: 0.3em 0.7em;
-    border-radius: 999px;
-    border: var(--border);
-  }
-
-  .project-content {
-    margin-top: 1.2em;
-  }
-
-  .supplemental-info {
-    display: flex;
-    align-items: center;
-    gap: 0.6em;
-  }
-
-  @media (max-width: 640px) {
-    .project-header {
-      flex-direction: column;
-      gap: 1em;
+  @media (max-width: 720px) {
+    .project-detail {
+      grid-template-columns: 1fr;
     }
   }
 </style>
