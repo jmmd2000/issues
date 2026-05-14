@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import { boolean, pgEnum, pgTable, uuid, text, timestamp, jsonb, integer, primaryKey, unique, index, check, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, STATUS_CATEGORIES } from "../lib/constants";
 import type { ActivityValue } from "../lib/types";
+import { tsvector } from "./types";
 
 export const statusCategoryEnum = pgEnum("status_category", STATUS_CATEGORIES);
 export const priorityEnum = pgEnum("priority", PRIORITIES);
@@ -118,6 +119,9 @@ export const tickets = pgTable(
     number: integer("number").notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description").notNull().default(""),
+    descriptionSearch: tsvector("description_search").generatedAlwaysAs(
+      sql`to_tsvector('english', title || ' ' || coalesce(description, ''))`
+    ),
     statusID: uuid("status_id")
       .notNull()
       .references(() => statuses.id),
@@ -158,6 +162,7 @@ export const tickets = pgTable(
     index("idx_tickets_project_trash")
       .on(table.projectID, table.deletedAt)
       .where(sql`${table.deletedAt} IS NOT NULL`),
+    index("idx_tickets_search").using("gin", table.descriptionSearch),
     check("ck_tickets_title_nonempty", sql`length(trim(${table.title})) > 0`),
   ]
 );
