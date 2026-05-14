@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { and, eq } from "drizzle-orm";
 import app from "../index";
 import { db } from "../db";
-import { labels, projectMembers, statuses } from "../db/schema";
+import { labels, projectMembers, statuses, tickets } from "../db/schema";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
 
 let cookies: string;
@@ -54,6 +54,10 @@ async function createTicket(
   return body.ticket;
 }
 
+async function setTicketTimes(ticketID: string, times: { createdAt: Date; updatedAt: Date }): Promise<void> {
+  await db.update(tickets).set(times).where(eq(tickets.id, ticketID));
+}
+
 function highlightedText(parts: Array<{ text: string; highlighted: boolean }>) {
   return parts.filter((part) => part.highlighted).map((part) => part.text);
 }
@@ -90,7 +94,7 @@ describe("GET /api/search", () => {
     await createTicket("TEST", { title: "Authentication note", description: "authentication" });
     await createTicket("TEST", { title: "Authentication authentication authentication", description: "authentication authentication" });
 
-    const res = await app.request("/api/search?q=authentication", { headers: { Cookie: cookies } });
+    const res = await app.request("/api/search?q=authentication&sortBy=relevance", { headers: { Cookie: cookies } });
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -165,6 +169,70 @@ describe("GET /api/search", () => {
     expect(body.tickets.every((ticket: { highlights: { title: Array<{ highlighted: boolean }> } }) => ticket.highlights.title.every((part) => !part.highlighted))).toBe(true);
   });
 
+  it("sorts results by updated time in both directions", async () => {
+    const oldest = await createTicket("TEST", { title: "Oldest update" });
+    const newest = await createTicket("TEST", { title: "Newest update" });
+
+    await setTicketTimes(oldest.id, {
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-03T00:00:00.000Z"),
+    });
+    await setTicketTimes(newest.id, {
+      createdAt: new Date("2026-01-02T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-05T00:00:00.000Z"),
+    });
+
+    const ascendingRes = await app.request("/api/search?sortBy=updatedAt&sortDirection=asc", { headers: { Cookie: cookies } });
+    expect(ascendingRes.status).toBe(200);
+    const ascendingBody = await ascendingRes.json();
+    expect(ascendingBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Oldest update", "Newest update"]);
+
+    const descendingRes = await app.request("/api/search?sortBy=updatedAt&sortDirection=desc", { headers: { Cookie: cookies } });
+    expect(descendingRes.status).toBe(200);
+    const descendingBody = await descendingRes.json();
+    expect(descendingBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Newest update", "Oldest update"]);
+  });
+
+  it("sorts results by created time in both directions", async () => {
+    const first = await createTicket("TEST", { title: "First created" });
+    const second = await createTicket("TEST", { title: "Second created" });
+
+    await setTicketTimes(first.id, {
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-05T00:00:00.000Z"),
+    });
+    await setTicketTimes(second.id, {
+      createdAt: new Date("2026-01-04T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+    });
+
+    const ascendingRes = await app.request("/api/search?sortBy=createdAt&sortDirection=asc", { headers: { Cookie: cookies } });
+    expect(ascendingRes.status).toBe(200);
+    const ascendingBody = await ascendingRes.json();
+    expect(ascendingBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["First created", "Second created"]);
+
+    const descendingRes = await app.request("/api/search?sortBy=createdAt&sortDirection=desc", { headers: { Cookie: cookies } });
+    expect(descendingRes.status).toBe(200);
+    const descendingBody = await descendingRes.json();
+    expect(descendingBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Second created", "First created"]);
+  });
+
+  it("sorts results by title and defaults title sorting to ascending", async () => {
+    await createTicket("TEST", { title: "Beta task" });
+    await createTicket("TEST", { title: "Alpha task" });
+    await createTicket("TEST", { title: "Gamma task" });
+
+    const defaultDirectionRes = await app.request("/api/search?sortBy=title", { headers: { Cookie: cookies } });
+    expect(defaultDirectionRes.status).toBe(200);
+    const defaultDirectionBody = await defaultDirectionRes.json();
+    expect(defaultDirectionBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Alpha task", "Beta task", "Gamma task"]);
+
+    const descendingRes = await app.request("/api/search?sortBy=title&sortDirection=desc", { headers: { Cookie: cookies } });
+    expect(descendingRes.status).toBe(200);
+    const descendingBody = await descendingRes.json();
+    expect(descendingBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Gamma task", "Beta task", "Alpha task"]);
+  });
+
   it("paginates with hasNextPage", async () => {
     for (let i = 1; i <= 26; i += 1) {
       await createTicket("TEST", { title: `Paged result ${i}`, description: "pagination target" });
@@ -216,6 +284,14 @@ describe("GET /api/search", () => {
   it("rejects invalid priority filters", async () => {
     const res = await app.request("/api/search?priority=urgent", { headers: { Cookie: cookies } });
     expect(res.status).toBe(400);
+  });
+
+  it("rejects invalid sort options", async () => {
+    const sortByRes = await app.request("/api/search?sortBy=number", { headers: { Cookie: cookies } });
+    expect(sortByRes.status).toBe(400);
+
+    const sortDirectionRes = await app.request("/api/search?sortBy=title&sortDirection=sideways", { headers: { Cookie: cookies } });
+    expect(sortDirectionRes.status).toBe(400);
   });
 });
 
