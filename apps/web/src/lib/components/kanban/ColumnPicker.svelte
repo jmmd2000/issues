@@ -11,11 +11,14 @@
     visible,
     onToggle,
     triggerLabel = "Columns",
+    variant = "ghost",
   }: {
     items: ColumnPickerItem[];
     visible: Set<string>;
     onToggle: (id: string) => void;
     triggerLabel?: string;
+    /** "ghost" sits transparently inside its parent; "secondary" matches the secondary button surface. */
+    variant?: "ghost" | "secondary";
   } = $props();
 
   let open = $state(false);
@@ -34,7 +37,7 @@
 <svelte:window onclick={handleOutside} onkeydown={handleKeydown} />
 
 <div class="column-picker">
-  <button type="button" class="trigger" onclick={() => (open = !open)} aria-expanded={open} aria-haspopup="menu">
+  <button type="button" class="trigger" data-variant={variant} onclick={() => (open = !open)} aria-expanded={open} aria-haspopup="menu">
     <Columns3 size={14} />
     {triggerLabel}
   </button>
@@ -76,6 +79,24 @@
     &[aria-expanded="true"] {
       color: var(--colour-text);
       background: var(--colour-bg-hover);
+    }
+
+    &[data-variant="secondary"] {
+      padding: 0.45em 0.75em;
+      font-size: 0.8em;
+      font-weight: 500;
+      color: var(--colour-text);
+      background: var(--colour-bg-lighter);
+      border: var(--border);
+      box-shadow:
+        0 1px 2px rgba(30, 34, 41, 0.07),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+      &:hover,
+      &[aria-expanded="true"] {
+        background: var(--colour-bg-hover);
+        color: var(--colour-text);
+      }
     }
   }
 

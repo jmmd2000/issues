@@ -67,7 +67,6 @@
     border-radius: var(--border-radius-inner);
     flex: 1 1 0;
     min-width: 16rem;
-    max-width: 22rem;
   }
 
   .column-header {

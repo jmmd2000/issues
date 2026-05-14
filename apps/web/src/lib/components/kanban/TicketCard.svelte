@@ -102,7 +102,7 @@
     color: var(--colour-text);
     display: -webkit-box;
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.35;
     overflow-wrap: anywhere;
     -webkit-box-orient: vertical;

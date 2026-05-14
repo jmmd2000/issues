@@ -51,12 +51,14 @@
         items={kanbanPickerStatuses}
         visible={visibleKanbanStatusIDs}
         onToggle={onToggleKanbanColumn}
+        variant="secondary"
       />
     {:else}
       <ColumnPicker
         items={LIST_COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
         visible={visibleListColumnIDs as Set<string>}
         onToggle={onToggleListColumn}
+        variant="secondary"
       />
     {/if}
 
@@ -111,24 +113,6 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5em;
-
-    :global(.column-picker .trigger) {
-      padding: 0.45em 0.75em;
-      font-size: 0.8em;
-      font-weight: 500;
-      color: var(--colour-text);
-      background: var(--colour-bg-lighter);
-      border: var(--border);
-      box-shadow:
-        0 1px 2px rgba(30, 34, 41, 0.07),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    }
-
-    :global(.column-picker .trigger:hover),
-    :global(.column-picker .trigger[aria-expanded="true"]) {
-      background: var(--colour-bg-hover);
-      color: var(--colour-text);
-    }
   }
 
   .view-toggle {

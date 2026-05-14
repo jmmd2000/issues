@@ -87,14 +87,13 @@
 
       <FilterSection title="Status" open={open.status} count={selectedStatusIDs.length} onToggle={() => toggleOpen("status")}>
         {#each orderedStatuses as status (status.id)}
-          <li class="status-li">
+          <li>
             <Checkbox checked={selectedStatusIDs.includes(status.id)} onchange={() => onToggleStatus(status.id)}>
               <span class="row">
                 <span class="dot" style:--dot={statusColour[status.category]}></span>
                 <span class="row-label">{status.name}</span>
               </span>
             </Checkbox>
-            <span class="status-hint">{status.category}</span>
           </li>
         {/each}
       </FilterSection>
@@ -221,20 +220,6 @@
 
   .row-label {
     overflow-wrap: anywhere;
-  }
-
-  .status-li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5em;
-    padding-right: 0.35em;
-  }
-
-  .status-hint {
-    font-size: 0.5em;
-    color: var(--colour-muted);
-    text-transform: capitalize;
   }
 
   .dot {

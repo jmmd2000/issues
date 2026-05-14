@@ -1,10 +1,11 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import type { ProjectActivity, ProjectDetail, ProjectStats } from "@issues/api";
-  import { ChevronDown, ChevronRight, ExternalLink, PanelRightClose, PanelRightOpen, Settings } from "@lucide/svelte";
+  import { ExternalLink, PanelRightClose, PanelRightOpen, Settings } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import ProjectActivityCard from "$lib/components/projectDetail/ProjectActivityCard.svelte";
+  import SectionToggle from "$lib/components/projectDetail/SectionToggle.svelte";
   import { formatAbsolute, timeAgo } from "$lib/time";
 
   interface InfoPaneProps {
@@ -26,14 +27,6 @@
     open[key] = !open[key];
   }
 </script>
-
-{#snippet sectionHead(title: string, key: keyof typeof open, count?: number)}
-  <button type="button" class="section-head" onclick={() => toggleSection(key)} aria-expanded={open[key]}>
-    {#if open[key]}<ChevronDown size={11} />{:else}<ChevronRight size={11} />{/if}
-    <h3>{title}</h3>
-    {#if count !== undefined}<span class="section-count">{count}</span>{/if}
-  </button>
-{/snippet}
 
 <aside class="pane" class:collapsed aria-label="Project info">
   <header class="pane-head">
@@ -58,7 +51,7 @@
   {#if !collapsed}
     <div class="pane-scroll">
       <section class="info-section">
-        {@render sectionHead("Project info", "projectInfo")}
+        <SectionToggle title="Project info" open={open.projectInfo} onToggle={() => toggleSection("projectInfo")} />
         {#if open.projectInfo}
           <div class="section-body">
             {#if project.description}
@@ -128,7 +121,7 @@
       </section>
 
       <section class="info-section">
-        {@render sectionHead("Members", "members", project.members.length)}
+        <SectionToggle title="Members" open={open.members} onToggle={() => toggleSection("members")} count={project.members.length} />
         {#if open.members}
           <ul class="member-list">
             {#each project.members as member (member.userID)}
@@ -153,7 +146,7 @@
       </section>
 
       <section class="info-section">
-        {@render sectionHead("Recent activity", "recent")}
+        <SectionToggle title="Recent activity" open={open.recent} onToggle={() => toggleSection("recent")} />
         {#if open.recent}
           {#if activity.length === 0}
             <p class="muted-empty">No activity yet.</p>
@@ -241,40 +234,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.5em;
-  }
-
-  .section-head {
-    display: flex;
-    align-items: center;
-    gap: 0.4em;
-    width: 100%;
-    background: transparent;
-    border: none;
-    padding: 0.35em 0.25em;
-    cursor: pointer;
-    border-radius: var(--border-radius-inner);
-    text-align: left;
-    color: var(--colour-text-secondary);
-
-    &:hover {
-      background: var(--colour-bg-lighter);
-    }
-
-    h3 {
-      font-size: 0.7em;
-      font-weight: 600;
-      color: var(--colour-muted);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      flex: 1;
-    }
-  }
-
-  .section-count {
-    font-family: var(--font-mono);
-    font-size: 0.8em;
-    color: var(--colour-muted);
-    font-weight: 500;
   }
 
   .section-body {
@@ -395,9 +354,6 @@
       background: var(--colour-bg-lighter);
       border: var(--border);
       border-radius: var(--border-radius-inner);
-      box-shadow:
-        0 1px 2px rgba(30, 34, 41, 0.05),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6);
     }
   }
 
@@ -462,8 +418,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.55em;
-    max-height: 60vh;
-    overflow-y: auto;
   }
 
   .muted-empty {

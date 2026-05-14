@@ -215,9 +215,6 @@
     background: var(--colour-bg-lighter);
     border: var(--border);
     border-radius: var(--border-radius-inner);
-    box-shadow:
-      0 1px 2px rgba(30, 34, 41, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
     :global(.avatar) {
       grid-row: 1;
