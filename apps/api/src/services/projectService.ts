@@ -39,6 +39,29 @@ export class ProjectService {
   }
 
   /**
+   * Lists every public project on the instance along with its count of open
+   * tickets. Used by the unauthenticated homepage; deliberately limited to
+   * `id`, `key`, `name`, `description`, and `openCount` so sensitive fields
+   * (repo, stack, owner, timestamps) are not exposed to anonymous viewers.
+   * @returns Public projects with their open ticket counts
+   */
+  static async getPublicProjectsWithCounts() {
+    return await db
+      .select({
+        id: projects.id,
+        key: projects.key,
+        name: projects.name,
+        description: projects.description,
+        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
+      })
+      .from(projects)
+      .leftJoin(tickets, eq(tickets.projectID, projects.id))
+      .leftJoin(statuses, eq(statuses.id, tickets.statusID))
+      .where(eq(projects.visibility, "public"))
+      .groupBy(projects.id);
+  }
+
+  /**
    * Lists every project the user can see (their own + public projects) along
    * with each project's count of open tickets. A ticket is open when its
    * status category is `backlog` or `active` and it has not been soft-deleted.

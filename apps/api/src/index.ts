@@ -27,6 +27,7 @@ export type {
   User,
   Project,
   ProjectWithCount,
+  PublicProject,
   CurrentUser,
   Status,
   Label,

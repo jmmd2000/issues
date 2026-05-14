@@ -33,6 +33,7 @@ export type Visibility = "public" | "private";
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
 export type ProjectWithCount = Project & { openCount: number };
+export type PublicProject = Pick<Project, "id" | "key" | "name" | "description"> & { openCount: number };
 export type CurrentUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type Status = Jsonified<StatusRow>;
 export type Label = Jsonified<LabelRow>;
