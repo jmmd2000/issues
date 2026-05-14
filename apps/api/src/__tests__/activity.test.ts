@@ -497,3 +497,110 @@ describe("GET /api/projects/:key/activity", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("GET /api/feed", () => {
+  beforeEach(setupFixture);
+
+  async function seedProjectStatusID(pid: string, slug = "backlog"): Promise<string> {
+    const [row] = await db
+      .select({ id: statuses.id })
+      .from(statuses)
+      .where(and(eq(statuses.projectID, pid), eq(statuses.slug, slug)))
+      .limit(1);
+    return row.id;
+  }
+
+  async function createTicketIn(projectKey: string, title: string, projectStatusID: string) {
+    const res = await app.request(`/api/projects/${projectKey}/tickets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title, statusID: projectStatusID }),
+    });
+    const body = await res.json();
+    return body.ticket;
+  }
+
+  it("returns 401 when unauthenticated", async () => {
+    const res = await app.request("/api/feed");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns events newest-first across every project", async () => {
+    const projectOne = await createProject(cookies, { key: "ONE", name: "One" });
+    const projectTwo = await createProject(cookies, { key: "TWO", name: "Two" });
+    const statusOne = await seedProjectStatusID(projectOne.id);
+    const statusTwo = await seedProjectStatusID(projectTwo.id);
+
+    await createTicketIn("ONE", "First", statusOne);
+    await createTicketIn("TWO", "Second", statusTwo);
+    await createTicketIn("ONE", "Third", statusOne);
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    const titles = body.events.map((event: { ticket: { title: string } }) => event.ticket.title);
+    expect(titles).toEqual(["Third", "Second", "First"]);
+  });
+
+  it("applies the default limit of 20", async () => {
+    for (let i = 0; i < 25; i++) await createTicket({ title: `Ticket ${i}` });
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.events).toHaveLength(20);
+  });
+
+  it("honours the limit query parameter", async () => {
+    for (let i = 0; i < 10; i++) await createTicket({ title: `Ticket ${i}` });
+
+    const res = await app.request("/api/feed?limit=5", { headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.events).toHaveLength(5);
+  });
+
+  it("rejects a limit above the max", async () => {
+    const res = await app.request("/api/feed?limit=51", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a non-positive limit", async () => {
+    const res = await app.request("/api/feed?limit=0", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(400);
+  });
+
+  it("excludes activity rows for soft-deleted tickets", async () => {
+    const kept = await createTicket({ title: "Kept" });
+    const deleted = await createTicket({ title: "Deleted" });
+
+    await app.request(`/api/projects/TEST/tickets/${deleted.number}`, {
+      method: "DELETE",
+      headers: { Cookie: cookies },
+    });
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    const ticketIDs = body.events.map((event: { ticket: { id: string } }) => event.ticket.id);
+    expect(ticketIDs).toContain(kept.id);
+    expect(ticketIDs).not.toContain(deleted.id);
+  });
+
+  it("populates project.key on every event", async () => {
+    const projectOne = await createProject(cookies, { key: "ONE", name: "One" });
+    const projectTwo = await createProject(cookies, { key: "TWO", name: "Two" });
+    const statusOne = await seedProjectStatusID(projectOne.id);
+    const statusTwo = await seedProjectStatusID(projectTwo.id);
+    await createTicketIn("ONE", "From one", statusOne);
+    await createTicketIn("TWO", "From two", statusTwo);
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    const keysByTitle = new Map<string, string>(
+      body.events.map((event: { project: { key: string }; ticket: { title: string } }) => [event.ticket.title, event.project.key])
+    );
+    expect(keysByTitle.get("From one")).toBe("ONE");
+    expect(keysByTitle.get("From two")).toBe("TWO");
+  });
+});
