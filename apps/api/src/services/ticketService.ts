@@ -320,17 +320,24 @@ export class TicketService {
       archiveCutoffCondition(filters.includeClosed ?? false)
     );
 
-    const rows = await db
-      .select({ ticket: tickets })
-      .from(tickets)
-      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
-      .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(where)
-      .orderBy(...buildListOrderBy(sortBy, sortDirection))
-      .limit(perPage)
-      .offset((page - 1) * perPage);
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select({ ticket: tickets })
+        .from(tickets)
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .leftJoin(users, eq(tickets.assigneeID, users.id))
+        .where(where)
+        .orderBy(...buildListOrderBy(sortBy, sortDirection))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(tickets)
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .where(where),
+    ]);
 
-    return rows.map(({ ticket }) => ticket);
+    return { tickets: rows.map(({ ticket }) => ticket), total: totalRow[0]?.total ?? 0 };
   }
 
   /**
@@ -401,17 +408,24 @@ export class TicketService {
       labelCondition(filters.labelID)
     );
 
-    const rows = await db
-      .select({ ticket: tickets })
-      .from(tickets)
-      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
-      .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(where)
-      .orderBy(...buildListOrderBy(sortBy, sortDirection))
-      .limit(perPage)
-      .offset((page - 1) * perPage);
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select({ ticket: tickets })
+        .from(tickets)
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .leftJoin(users, eq(tickets.assigneeID, users.id))
+        .where(where)
+        .orderBy(...buildListOrderBy(sortBy, sortDirection))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(tickets)
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .where(where),
+    ]);
 
-    return rows.map(({ ticket }) => ticket);
+    return { tickets: rows.map(({ ticket }) => ticket), total: totalRow[0]?.total ?? 0 };
   }
 
   /**

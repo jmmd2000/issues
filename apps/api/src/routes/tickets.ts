@@ -114,8 +114,8 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listForProject(project.id, query);
-      return c.json({ tickets });
+      const result = await TicketService.listForProject(project.id, query);
+      return c.json(result);
     }
   )
   .get(
@@ -128,8 +128,8 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listTrashForProject(project.id, query);
-      return c.json({ tickets });
+      const result = await TicketService.listTrashForProject(project.id, query);
+      return c.json(result);
     }
   )
   .get(
