@@ -52,6 +52,12 @@ export const projects = new Hono()
 
     return c.json({ projects }, 200);
   })
+  .get("/api/projects/with-counts", requireAuth, async (c) => {
+    const userID = c.get("userID");
+    const projects = await ProjectService.getAllProjectsWithCounts(userID);
+
+    return c.json({ projects }, 200);
+  })
   .get("/api/projects/:key", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
     const userID = c.get("userID");
     const { key } = c.req.valid("param");

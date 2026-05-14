@@ -39,6 +39,37 @@ export class ProjectService {
   }
 
   /**
+   * Lists every project the user can see (their own + public projects) along
+   * with each project's count of open tickets. A ticket is open when its
+   * status category is `backlog` or `active` and it has not been soft-deleted.
+   * @param userID The current user's ID
+   * @returns Project rows newest-first with an `openCount` column
+   */
+  static async getAllProjectsWithCounts(userID: string) {
+    const memberProjects = db.select({ id: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
+    return await db
+      .select({
+        id: projects.id,
+        key: projects.key,
+        name: projects.name,
+        description: projects.description,
+        repo: projects.repo,
+        stack: projects.stack,
+        metadata: projects.metadata,
+        visibility: projects.visibility,
+        ownerID: projects.ownerID,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
+      })
+      .from(projects)
+      .leftJoin(tickets, eq(tickets.projectID, projects.id))
+      .leftJoin(statuses, eq(statuses.id, tickets.statusID))
+      .where(or(eq(projects.visibility, "public"), inArray(projects.id, memberProjects)))
+      .groupBy(projects.id);
+  }
+
+  /**
    * Gets a specific project by its key, enforcing visibility rules for the caller.
    * Strips member emails for anonymous viewers.
    * @param userID The ID of the current user, if there is one

@@ -26,6 +26,7 @@ export type {
   LabelRow,
   User,
   Project,
+  ProjectWithCount,
   CurrentUser,
   Status,
   Label,
