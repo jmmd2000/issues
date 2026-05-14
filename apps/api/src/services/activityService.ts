@@ -306,4 +306,39 @@ export class ActivityService {
       },
     });
   }
+
+  /**
+   * Returns recent activity rows across every non-deleted ticket in every
+   * project. Each row carries the acting user, the parent ticket's number and
+   * title, and the project key so the homepage feed can link straight to the
+   * source ticket without any client-side join.
+   * @param limit Maximum number of rows to return (default 20)
+   * @returns Activity rows newest-first with user, ticket, and project joins
+   */
+  static async listGlobal(limit = 20) {
+    const rows = await db.query.ticketActivity.findMany({
+      where: (activity, { exists }) =>
+        exists(
+          db
+            .select({ id: tickets.id })
+            .from(tickets)
+            .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt)))
+        ),
+      orderBy: [desc(ticketActivity.createdAt)],
+      limit,
+      with: {
+        user: { columns: { id: true, name: true, avatarURL: true } },
+        ticket: {
+          columns: { id: true, number: true, title: true },
+          with: { project: { columns: { key: true } } },
+        },
+      },
+    });
+
+    return rows.map(({ ticket, ...rest }) => ({
+      ...rest,
+      ticket: { id: ticket.id, number: ticket.number, title: ticket.title },
+      project: { key: ticket.project.key },
+    }));
+  }
 }

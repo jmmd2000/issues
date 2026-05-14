@@ -49,6 +49,7 @@ export type {
   ActivityAction,
   ActivityValue,
   ProjectActivity,
+  GlobalActivity,
   ProjectStats,
   MemberStats,
   TicketLink,

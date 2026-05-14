@@ -16,6 +16,10 @@ const projectActivityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
+const feedQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
 export const activity = new Hono()
   .get("/api/projects/:key/tickets/:num/activity", requireAuth, zValidator("param", activityParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
     const project = c.get("project");
@@ -38,4 +42,9 @@ export const activity = new Hono()
       const rows = await ActivityService.listForProject(project.id, limit);
       return c.json({ activity: rows });
     }
-  );
+  )
+  .get("/api/feed", requireAuth, zValidator("query", feedQuerySchema, validationHook), async (c) => {
+    const { limit } = c.req.valid("query");
+    const events = await ActivityService.listGlobal(limit);
+    return c.json({ events });
+  });

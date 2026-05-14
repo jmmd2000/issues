@@ -63,6 +63,10 @@ export type ProjectActivity = TicketActivity & {
   ticket: { id: string; number: number; title: string };
 };
 
+export type GlobalActivity = ProjectActivity & {
+  project: { key: string };
+};
+
 export type LinkedTicketRef = {
   id: string;
   number: number;
