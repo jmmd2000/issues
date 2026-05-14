@@ -43,8 +43,9 @@ export const activity = new Hono()
       return c.json({ activity: rows });
     }
   )
-  .get("/api/feed", requireAuth, zValidator("query", feedQuerySchema, validationHook), async (c) => {
+  .get("/api/feed", optionalAuth, zValidator("query", feedQuerySchema, validationHook), async (c) => {
     const { limit } = c.req.valid("query");
-    const events = await ActivityService.listGlobal(limit);
+    const userID = c.get("userID");
+    const events = await ActivityService.listGlobal(limit, { publicOnly: !userID });
     return c.json({ events });
   });

@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
-import { ticketActivity, tickets } from "../db/schema";
+import { projects, ticketActivity, tickets } from "../db/schema";
 import type { LinkType, TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 
 const VALUE_FIELDS = ["title", "description", "priority", "visibility"] as const;
@@ -311,18 +311,28 @@ export class ActivityService {
    * Returns recent activity rows across every non-deleted ticket in every
    * project. Each row carries the acting user, the parent ticket's number and
    * title, and the project key so the homepage feed can link straight to the
-   * source ticket without any client-side join.
+   * source ticket without any client-side join. When `publicOnly` is set,
+   * events from private projects are filtered out so the result is safe to
+   * expose to anonymous viewers.
    * @param limit Maximum number of rows to return (default 20)
+   * @param options.publicOnly When true, restricts results to events whose project visibility is `public`
    * @returns Activity rows newest-first with user, ticket, and project joins
    */
-  static async listGlobal(limit = 20) {
+  static async listGlobal(limit = 20, options: { publicOnly?: boolean } = {}) {
     const rows = await db.query.ticketActivity.findMany({
       where: (activity, { exists }) =>
         exists(
           db
             .select({ id: tickets.id })
             .from(tickets)
-            .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt)))
+            .innerJoin(projects, eq(tickets.projectID, projects.id))
+            .where(
+              and(
+                eq(tickets.id, activity.ticketID),
+                isNull(tickets.deletedAt),
+                options.publicOnly ? eq(projects.visibility, "public") : undefined
+              )
+            )
         ),
       orderBy: [desc(ticketActivity.createdAt)],
       limit,
