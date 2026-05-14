@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
 import { labels, projectMembers, sessions, statuses } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase, updateProject } from "./helpers";
 
 let cookies: string;
@@ -229,6 +229,172 @@ describe("GET /api/projects/", () => {
     });
 
     expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/projects/with-counts", () => {
+  let cookies: string;
+
+  async function createTicket(projectKey: string, statusID: string, title = "Ticket") {
+    const res = await app.request(`/api/projects/${projectKey}/tickets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title, statusID }),
+    });
+    const body = await res.json();
+    return body.ticket;
+  }
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+  });
+
+  it("rejects unauthenticated requests with 401", async () => {
+    const res = await app.request("/api/projects/with-counts", { method: "GET" });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns projects with openCount = 0 when there are no tickets", async () => {
+    await createProject(cookies, { key: "ALPHA", name: "Alpha" });
+    await createProject(cookies, { key: "BETA", name: "Beta" });
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.projects).toHaveLength(2);
+    for (const project of body.projects) {
+      expect(project.openCount).toBe(0);
+    }
+  });
+
+  it("counts only tickets in backlog or active status categories", async () => {
+    const project = await createProject(cookies, { key: "MIX" });
+    const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, project.id));
+    const backlog = projectStatuses.find((status) => status.slug === "backlog")!.id;
+    const inProgress = projectStatuses.find((status) => status.slug === "in_progress")!.id;
+    const done = projectStatuses.find((status) => status.slug === "done")!.id;
+    const cancelled = projectStatuses.find((status) => status.slug === "cancelled")!.id;
+
+    await createTicket("MIX", backlog, "Backlog A");
+    await createTicket("MIX", backlog, "Backlog B");
+    await createTicket("MIX", inProgress, "Active");
+    await createTicket("MIX", done, "Closed");
+    await createTicket("MIX", cancelled, "Cancelled");
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    const mix = body.projects.find((p: { key: string; openCount: number }) => p.key === "MIX");
+    expect(mix.openCount).toBe(3);
+  });
+
+  it("excludes soft-deleted tickets from the count", async () => {
+    const project = await createProject(cookies, { key: "DEL" });
+    const [{ id: backlog }] = await db
+      .select({ id: statuses.id })
+      .from(statuses)
+      .where(and(eq(statuses.projectID, project.id), eq(statuses.slug, "backlog")));
+    await createTicket("DEL", backlog, "Kept");
+    const deleted = await createTicket("DEL", backlog, "Deleted");
+
+    await app.request(`/api/projects/DEL/tickets/${deleted.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    const del = body.projects.find((p: { key: string; openCount: number }) => p.key === "DEL");
+    expect(del.openCount).toBe(1);
+  });
+
+  it("returns public projects and member private projects, omits non-member private", async () => {
+    await createProject(cookies, { key: "PUB", visibility: "public" });
+    await createProject(cookies, { key: "MINE", visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    await createProject(otherCookies, { key: "THEIRS", visibility: "private" });
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    const keys = body.projects.map((p: { key: string }) => p.key).sort();
+    expect(keys).toEqual(["MINE", "PUB"]);
+  });
+});
+
+describe("GET /api/projects/public", () => {
+  let cookies: string;
+
+  async function createTicket(projectKey: string, statusID: string, title = "Ticket") {
+    const res = await app.request(`/api/projects/${projectKey}/tickets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title, statusID }),
+    });
+    const body = await res.json();
+    return body.ticket;
+  }
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+  });
+
+  it("returns 200 with no auth cookie", async () => {
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    expect(res.status).toBe(200);
+  });
+
+  it("returns identical payload with or without a session cookie", async () => {
+    await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
+
+    const anon = await app.request("/api/projects/public", { method: "GET" });
+    const authed = await app.request("/api/projects/public", { method: "GET", headers: { Cookie: cookies } });
+
+    expect(anon.status).toBe(200);
+    expect(authed.status).toBe(200);
+    const anonBody = await anon.json();
+    const authedBody = await authed.json();
+    expect(anonBody).toEqual(authedBody);
+  });
+
+  it("omits private projects entirely", async () => {
+    await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
+    await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private" });
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+    const keys = body.projects.map((p: { key: string }) => p.key);
+    expect(keys).toEqual(["PUB"]);
+  });
+
+  it("counts only open tickets and excludes soft-deleted", async () => {
+    const project = await createProject(cookies, { key: "PUB", visibility: "public" });
+    const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, project.id));
+    const backlog = projectStatuses.find((status) => status.slug === "backlog")!.id;
+    const done = projectStatuses.find((status) => status.slug === "done")!.id;
+    await createTicket("PUB", backlog, "Open");
+    await createTicket("PUB", done, "Closed");
+    const deleted = await createTicket("PUB", backlog, "Deleted");
+    await app.request(`/api/projects/PUB/tickets/${deleted.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+    expect(body.projects[0].openCount).toBe(1);
+  });
+
+  it("returns only the whitelisted fields", async () => {
+    await createProject(cookies, { key: "PUB", name: "Public", description: "Hello", visibility: "public", repo: "https://example.com/repo", stack: ["ts"] });
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+    const project = body.projects[0];
+
+    expect(Object.keys(project).sort()).toEqual(["description", "id", "key", "name", "openCount"]);
+    expect(project).not.toHaveProperty("repo");
+    expect(project).not.toHaveProperty("stack");
+    expect(project).not.toHaveProperty("ownerID");
+    expect(project).not.toHaveProperty("visibility");
+    expect(project).not.toHaveProperty("metadata");
+    expect(project).not.toHaveProperty("createdAt");
+    expect(project).not.toHaveProperty("updatedAt");
   });
 });
 
