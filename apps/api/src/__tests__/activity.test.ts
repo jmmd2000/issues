@@ -533,9 +533,39 @@ describe("GET /api/feed", () => {
     return body.ticket;
   }
 
-  it("returns 401 when unauthenticated", async () => {
+  it("allows anonymous reads", async () => {
     const res = await app.request("/api/feed");
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+  });
+
+  it("returns only public-project events when unauthenticated", async () => {
+    const publicProject = await createProject(cookies, { key: "PUB", visibility: "public" });
+    const privateProject = await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const publicStatus = await seedProjectStatusID(publicProject.id);
+    const privateStatus = await seedProjectStatusID(privateProject.id);
+    await createTicketIn("PUB", "Public visible", publicStatus);
+    await createTicketIn("PRIV", "Private hidden", privateStatus);
+
+    const res = await app.request("/api/feed");
+    const body = await res.json();
+    const projectKeys = new Set(body.events.map((event: { project: { key: string } }) => event.project.key));
+    expect(projectKeys.has("PUB")).toBe(true);
+    expect(projectKeys.has("PRIV")).toBe(false);
+  });
+
+  it("returns events from all projects when authenticated", async () => {
+    const publicProject = await createProject(cookies, { key: "PUB", visibility: "public" });
+    const privateProject = await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const publicStatus = await seedProjectStatusID(publicProject.id);
+    const privateStatus = await seedProjectStatusID(privateProject.id);
+    await createTicketIn("PUB", "Public visible", publicStatus);
+    await createTicketIn("PRIV", "Private visible to author", privateStatus);
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    const body = await res.json();
+    const projectKeys = new Set(body.events.map((event: { project: { key: string } }) => event.project.key));
+    expect(projectKeys.has("PUB")).toBe(true);
+    expect(projectKeys.has("PRIV")).toBe(true);
   });
 
   it("returns events newest-first across every project", async () => {
