@@ -55,6 +55,7 @@
     position: absolute;
     right: 0;
     top: 100%;
+    z-index: 100;
     margin-top: 0.5rem;
     background-color: var(--colour-bg-lighter);
     border: var(--border);
