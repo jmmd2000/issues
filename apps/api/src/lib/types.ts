@@ -126,6 +126,29 @@ export type TicketDetail = Ticket & {
   children: TicketChild[];
 };
 
+export type SearchHighlightPart = {
+  text: string;
+  highlighted: boolean;
+};
+
+export type SearchResult = Jsonified<Pick<TicketRow, "id" | "number" | "title" | "description" | "priority" | "visibility" | "createdAt" | "updatedAt">> & {
+  project: Jsonified<Pick<ProjectRow, "id" | "key" | "name" | "visibility">>;
+  status: Jsonified<Pick<StatusRow, "id" | "name" | "slug" | "category">>;
+  assignee: TicketUser | null;
+  labels: Jsonified<Pick<LabelRow, "id" | "name" | "colour">>[];
+  highlights: {
+    title: SearchHighlightPart[];
+    description: SearchHighlightPart[];
+  };
+};
+
+export type SearchFilterOptions = {
+  projects: Jsonified<Pick<ProjectRow, "id" | "key" | "name" | "visibility">>[];
+  statuses: Jsonified<Pick<StatusRow, "slug" | "name" | "category">>[];
+  labels: Jsonified<Pick<LabelRow, "name" | "colour">>[];
+  assignees: TicketUser[];
+};
+
 export type TicketFieldRef = { id: string; name: string };
 export type TicketSnapshot = {
   id: string;
