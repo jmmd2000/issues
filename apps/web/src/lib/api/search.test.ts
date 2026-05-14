@@ -12,7 +12,7 @@ vi.mock("./client", () => ({
   createClient: mockClientState.createClient,
 }));
 
-import { hasSearchCriteria, loadSearchPageResult, parseSearchPageState, serialiseSearchPageState, type SearchPageState } from "./search";
+import { defaultSearchSortColumn, defaultSearchSortDirection, hasSearchCriteria, loadSearchPageResult, parseSearchPageState, serialiseSearchPageState, type SearchPageState } from "./search";
 
 const filters: SearchFilterOptions = {
   projects: [{ id: "p-1", key: "CORE", name: "Core", visibility: "private" }],
@@ -51,8 +51,11 @@ function makeUrl(path: string): URL {
 }
 
 function makeState(overrides: Partial<SearchPageState> = {}): SearchPageState {
+  const searchTerm = overrides.searchTerm ?? "";
+  const sortBy = defaultSearchSortColumn(searchTerm, overrides.sortBy);
+
   return {
-    searchTerm: "",
+    searchTerm,
     projectKey: null,
     statusSlugs: [],
     priorities: [],
@@ -60,6 +63,8 @@ function makeState(overrides: Partial<SearchPageState> = {}): SearchPageState {
     assigneeIDs: [],
     page: 1,
     perPage: 25,
+    sortBy,
+    sortDirection: defaultSearchSortDirection(sortBy, overrides.sortDirection),
     ...overrides,
   };
 }
@@ -98,6 +103,8 @@ describe("parseSearchPageState", () => {
       assigneeIDs: ["u-1", "u-2"],
       page: 2,
       perPage: 50,
+      sortBy: "relevance",
+      sortDirection: "desc",
     });
   });
 
@@ -178,6 +185,8 @@ describe("loadSearchPageResult", () => {
         assignee: ["u-1"],
         page: "2",
         perPage: "25",
+        sortBy: "relevance",
+        sortDirection: "desc",
       },
     });
     expect(result).toMatchObject({

@@ -2,9 +2,9 @@
   import { goto } from "$app/navigation";
   import { navigating, page } from "$app/state";
   import { Search, X } from "@lucide/svelte";
-  import type { Priority } from "@issues/api";
+  import type { Priority, SearchSortColumn, SearchSortDirection } from "@issues/api";
   import type { SearchPageResult, SearchPageState } from "$lib/api/search";
-  import { serialiseSearchPageState } from "$lib/api/search";
+  import { defaultSearchSortColumn, defaultSearchSortDirection, serialiseSearchPageState } from "$lib/api/search";
   import Button from "$lib/components/ui/Button.svelte";
   import SearchInput from "$lib/components/ui/SearchInput.svelte";
   import SearchFiltersPane from "./SearchFiltersPane.svelte";
@@ -23,13 +23,31 @@
   const title = $derived(normalisedLockedProjectKey ? `${selectedProject?.name ?? normalisedLockedProjectKey} search` : "Search");
   const subtitle = $derived(normalisedLockedProjectKey ? normalisedLockedProjectKey : "All visible projects");
   const activeFilterCount = $derived(
-    (normalisedLockedProjectKey || !searchState.projectKey ? 0 : 1) +
-      searchState.statusSlugs.length +
-      searchState.priorities.length +
-      searchState.labelNames.length +
-      searchState.assigneeIDs.length
+    (normalisedLockedProjectKey || !searchState.projectKey ? 0 : 1) + searchState.statusSlugs.length + searchState.priorities.length + searchState.labelNames.length + searchState.assigneeIDs.length
   );
   const hasTypedQuery = $derived(searchState.searchTerm.trim().length > 0);
+  const sortColumns = $derived([
+    ...(hasTypedQuery ? [{ value: "relevance" as const, label: "Relevance" }] : []),
+    { value: "updatedAt" as const, label: "Updated" },
+    { value: "createdAt" as const, label: "Created" },
+    { value: "title" as const, label: "Title" },
+  ] satisfies { value: SearchSortColumn; label: string }[]);
+  const sortDirections = $derived(
+    searchState.sortBy === "relevance"
+      ? [
+          { value: "desc" as const, label: "Most relevant" },
+          { value: "asc" as const, label: "Least relevant" },
+        ]
+      : searchState.sortBy === "title"
+        ? [
+            { value: "asc" as const, label: "A-Z" },
+            { value: "desc" as const, label: "Z-A" },
+        ]
+      : [
+          { value: "desc" as const, label: "Newest" },
+          { value: "asc" as const, label: "Oldest" },
+        ]
+  );
   const isLoading = $derived(Boolean(navigating.to));
   const resultSummary = $derived(search.searched ? `${search.tickets.length}${search.hasNextPage ? "+" : ""} result${search.tickets.length === 1 && !search.hasNextPage ? "" : "s"}` : "No search");
 
@@ -44,12 +62,19 @@
   });
 
   function updateState(updates: Partial<SearchPageState>, resetPage = true) {
-    const projectKey = normalisedLockedProjectKey ?? ("projectKey" in updates ? updates.projectKey ?? null : searchState.projectKey);
+    const projectKey = normalisedLockedProjectKey ?? ("projectKey" in updates ? (updates.projectKey ?? null) : searchState.projectKey);
+    const searchTerm = "searchTerm" in updates ? (updates.searchTerm ?? "") : searchState.searchTerm;
+    const requestedSortBy = "sortBy" in updates ? updates.sortBy : searchState.sortBy;
+    const sortBy = defaultSearchSortColumn(searchTerm, requestedSortBy);
+    const requestedSortDirection = "sortDirection" in updates ? updates.sortDirection : sortBy === searchState.sortBy ? searchState.sortDirection : undefined;
     const nextState: SearchPageState = {
       ...searchState,
       ...updates,
-      page: resetPage ? 1 : updates.page ?? searchState.page,
+      searchTerm,
+      page: resetPage ? 1 : (updates.page ?? searchState.page),
       projectKey,
+      sortBy,
+      sortDirection: defaultSearchSortDirection(sortBy, requestedSortDirection),
     };
     const params = serialiseSearchPageState(nextState, normalisedLockedProjectKey);
     const queryString = params.toString();
@@ -65,8 +90,21 @@
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       searchTimer = null;
-      updateState({ searchTerm: value.trim() });
+      const searchTerm = value.trim();
+      const currentDefaultSortBy = defaultSearchSortColumn(searchState.searchTerm);
+      const sortBy = searchState.sortBy === currentDefaultSortBy ? defaultSearchSortColumn(searchTerm) : searchState.sortBy;
+      const sortDirection = sortBy === searchState.sortBy ? searchState.sortDirection : defaultSearchSortDirection(sortBy);
+      updateState({ searchTerm, sortBy, sortDirection });
     }, 220);
+  }
+
+  function setSortColumn(event: Event) {
+    const sortBy = (event.currentTarget as HTMLSelectElement).value as SearchSortColumn;
+    updateState({ sortBy, sortDirection: defaultSearchSortDirection(sortBy) });
+  }
+
+  function setSortDirection(event: Event) {
+    updateState({ sortDirection: (event.currentTarget as HTMLSelectElement).value as SearchSortDirection });
   }
 
   function setProjectFilter(projectKey: string | null) {
@@ -96,6 +134,8 @@
       priorities: [],
       labelNames: [],
       assigneeIDs: [],
+      sortBy: "updatedAt",
+      sortDirection: "desc",
     });
   }
 
@@ -160,6 +200,25 @@
           <span><kbd>"exact phrase"</kbd></span>
           <span><kbd>-excluded</kbd></span>
           <span><kbd>api or ui</kbd></span>
+        </div>
+        <div class="sort-controls" aria-label="Search result sorting">
+          <label>
+            <span>Sort</span>
+            <select value={searchState.sortBy} onchange={setSortColumn}>
+              {#each sortColumns as option (option.value)}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </label>
+
+          <label>
+            <span>Direction</span>
+            <select value={searchState.sortDirection} onchange={setSortDirection}>
+              {#each sortDirections as option (option.value)}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </label>
         </div>
       </section>
 
@@ -285,6 +344,37 @@
     border: var(--border);
     border-radius: var(--border-radius-outer);
     background: var(--colour-bg);
+  }
+
+  .sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--colour-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    select {
+      min-height: 2rem;
+      padding: 0.25em 1.8em 0.25em 0.55em;
+      border: var(--border);
+      border-radius: var(--border-radius-inner);
+      background: var(--colour-bg-lighter);
+      color: var(--colour-text);
+      font-size: 0.8rem;
+      font-weight: 600;
+      box-shadow:
+        0 1px 2px rgba(30, 34, 41, 0.07),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+    }
   }
 
   .query-row {

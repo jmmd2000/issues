@@ -1,10 +1,13 @@
 import { z } from "zod";
-import type { Priority, SearchFilterOptions, SearchResult } from "@issues/api";
+import type { Priority, SearchFilterOptions, SearchResult, SearchSortColumn, SearchSortDirection } from "@issues/api";
 import { PRIORITIES } from "@issues/shared";
 import { createClient } from "./client";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 25;
+
+export const SEARCH_SORT_COLUMNS = ["relevance", "updatedAt", "createdAt", "title"] as const satisfies readonly SearchSortColumn[];
+export const SEARCH_SORT_DIRECTIONS = ["asc", "desc"] as const satisfies readonly SearchSortDirection[];
 
 const searchParamSchema = z.object({
   q: z.string().trim().max(200).catch(""),
@@ -18,6 +21,8 @@ const searchParamSchema = z.object({
     .catch(null),
   page: z.coerce.number().int().min(1).catch(DEFAULT_PAGE),
   perPage: z.coerce.number().int().min(1).max(100).catch(DEFAULT_PER_PAGE),
+  sortBy: z.enum(SEARCH_SORT_COLUMNS).nullable().catch(null),
+  sortDirection: z.enum(SEARCH_SORT_DIRECTIONS).nullable().catch(null),
 });
 
 export type SearchPageState = {
@@ -29,6 +34,8 @@ export type SearchPageState = {
   assigneeIDs: string[];
   page: number;
   perPage: number;
+  sortBy: SearchSortColumn;
+  sortDirection: SearchSortDirection;
 };
 
 export type SearchPageResult = {
@@ -51,13 +58,26 @@ function parsePriorities(params: URLSearchParams): Priority[] {
   return parseList(params, "priority").filter((value): value is Priority => (PRIORITIES as readonly string[]).includes(value));
 }
 
+export function defaultSearchSortColumn(searchTerm: string, sortBy?: SearchSortColumn | null): SearchSortColumn {
+  if (sortBy === "relevance" && !searchTerm.trim()) return "updatedAt";
+  return sortBy ?? (searchTerm.trim() ? "relevance" : "updatedAt");
+}
+
+export function defaultSearchSortDirection(sortBy: SearchSortColumn, sortDirection?: SearchSortDirection | null): SearchSortDirection {
+  return sortDirection ?? (sortBy === "title" ? "asc" : "desc");
+}
+
 export function parseSearchPageState(url: URL, lockedProjectKey: string | null = null): SearchPageState {
   const parsed = searchParamSchema.parse({
     q: url.searchParams.get("q") ?? "",
     project: lockedProjectKey ?? url.searchParams.get("project"),
     page: url.searchParams.get("page"),
     perPage: url.searchParams.get("perPage"),
+    sortBy: url.searchParams.get("sortBy"),
+    sortDirection: url.searchParams.get("sortDirection"),
   });
+  const sortBy = defaultSearchSortColumn(parsed.q, parsed.sortBy);
+  const sortDirection = defaultSearchSortDirection(sortBy, parsed.sortDirection);
 
   return {
     searchTerm: parsed.q,
@@ -68,6 +88,8 @@ export function parseSearchPageState(url: URL, lockedProjectKey: string | null =
     assigneeIDs: parseList(url.searchParams, "assignee"),
     page: parsed.page,
     perPage: parsed.perPage,
+    sortBy,
+    sortDirection,
   };
 }
 
@@ -80,6 +102,8 @@ export function serialiseSearchPageState(state: SearchPageState, lockedProjectKe
   if (state.priorities.length) params.set("priority", state.priorities.join(","));
   if (state.labelNames.length) params.set("label", state.labelNames.join(","));
   if (state.assigneeIDs.length) params.set("assignee", state.assigneeIDs.join(","));
+  if (state.sortBy !== defaultSearchSortColumn(state.searchTerm)) params.set("sortBy", state.sortBy);
+  if (state.sortDirection !== defaultSearchSortDirection(state.sortBy)) params.set("sortDirection", state.sortDirection);
   if (state.page !== DEFAULT_PAGE) params.set("page", String(state.page));
   if (state.perPage !== DEFAULT_PER_PAGE) params.set("perPage", String(state.perPage));
 
@@ -87,14 +111,7 @@ export function serialiseSearchPageState(state: SearchPageState, lockedProjectKe
 }
 
 export function hasSearchCriteria(state: SearchPageState, lockedProjectKey: string | null = null): boolean {
-  return Boolean(
-    state.searchTerm.trim() ||
-      (!lockedProjectKey && state.projectKey) ||
-      state.statusSlugs.length ||
-      state.priorities.length ||
-      state.labelNames.length ||
-      state.assigneeIDs.length
-  );
+  return Boolean(state.searchTerm.trim() || (!lockedProjectKey && state.projectKey) || state.statusSlugs.length || state.priorities.length || state.labelNames.length || state.assigneeIDs.length);
 }
 
 type SearchRouteQuery = {
@@ -104,6 +121,8 @@ type SearchRouteQuery = {
   assignee: string[];
   q?: string;
   project?: string;
+  sortBy?: SearchSortColumn;
+  sortDirection?: SearchSortDirection;
   page: string;
   perPage: string;
 };
@@ -120,6 +139,8 @@ function searchQuery(state: SearchPageState): SearchRouteQuery {
 
   if (state.searchTerm.trim()) query.q = state.searchTerm.trim();
   if (state.projectKey) query.project = state.projectKey;
+  query.sortBy = state.sortBy;
+  query.sortDirection = state.sortDirection;
 
   return query;
 }

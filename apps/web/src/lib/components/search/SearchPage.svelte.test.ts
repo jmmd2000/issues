@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-svelte";
 import type { SearchFilterOptions, SearchResult } from "@issues/api";
-import type { SearchPageResult, SearchPageState } from "$lib/api/search";
+import { defaultSearchSortColumn, defaultSearchSortDirection, type SearchPageResult, type SearchPageState } from "$lib/api/search";
 
 const mockApp = vi.hoisted(() => ({
   goto: vi.fn(),
@@ -59,8 +59,11 @@ const ticket: SearchResult = {
 };
 
 function makeState(overrides: Partial<SearchPageState> = {}): SearchPageState {
+  const searchTerm = overrides.searchTerm ?? "";
+  const sortBy = defaultSearchSortColumn(searchTerm, overrides.sortBy);
+
   return {
-    searchTerm: "",
+    searchTerm,
     projectKey: null,
     statusSlugs: [],
     priorities: [],
@@ -68,6 +71,8 @@ function makeState(overrides: Partial<SearchPageState> = {}): SearchPageState {
     assigneeIDs: [],
     page: 1,
     perPage: 25,
+    sortBy,
+    sortDirection: defaultSearchSortDirection(sortBy, overrides.sortDirection),
     ...overrides,
   };
 }
