@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { validationHook } from "../lib/validation";
-import { requireAuth } from "../middleware/auth";
-import { requireProjectAccess } from "../middleware/projectAccess";
+import { optionalAuth, requireAuth } from "../middleware/auth";
+import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 import { ActivityService } from "../services/activityService";
 import { TicketService } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
@@ -31,10 +31,10 @@ export const activity = new Hono()
   })
   .get(
     "/api/projects/:key/activity",
-    requireAuth,
+    optionalAuth,
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", projectActivityQuerySchema, validationHook),
-    requireProjectAccess("member"),
+    requireProjectRead,
     async (c) => {
       const project = c.get("project");
       const { limit } = c.req.valid("query");

@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { validationHook } from "../lib/validation";
 import { ProjectService } from "../services/projectService";
 import { optionalAuth, requireAuth } from "../middleware/auth";
-import { requireProjectAccess } from "../middleware/projectAccess";
+import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 
 const projectKeySchema = z
   .string()
@@ -89,7 +89,7 @@ export const projects = new Hono()
 
     return c.body(null, 204);
   })
-  .get("/api/projects/:key/stats", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/stats", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectRead, async (c) => {
     const { id } = c.get("project");
     const stats = await ProjectService.getStats(id);
     return c.json({ stats });

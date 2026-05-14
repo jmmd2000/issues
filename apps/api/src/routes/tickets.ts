@@ -3,8 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { PRIORITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
-import { requireAuth } from "../middleware/auth";
-import { requireProjectAccess } from "../middleware/projectAccess";
+import { optionalAuth, requireAuth } from "../middleware/auth";
+import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 import { TicketService, TICKET_LIST_SORT_COLUMNS } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
 
@@ -106,10 +106,10 @@ export const tickets = new Hono()
   )
   .get(
     "/api/projects/:key/tickets",
-    requireAuth,
+    optionalAuth,
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", listQuerySchema, validationHook),
-    requireProjectAccess("member"),
+    requireProjectRead,
     async (c) => {
       const project = c.get("project");
       const query = c.req.valid("query");
@@ -134,10 +134,10 @@ export const tickets = new Hono()
   )
   .get(
     "/api/projects/:key/tickets/board",
-    requireAuth,
+    optionalAuth,
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", ticketFilterQuerySchema, validationHook),
-    requireProjectAccess("member"),
+    requireProjectRead,
     async (c) => {
       const project = c.get("project");
       const query = c.req.valid("query");
@@ -148,10 +148,10 @@ export const tickets = new Hono()
   )
   .get(
     "/api/projects/:key/tickets/backlog",
-    requireAuth,
+    optionalAuth,
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", backlogQuerySchema, validationHook),
-    requireProjectAccess("member"),
+    requireProjectRead,
     async (c) => {
       const project = c.get("project");
       const query = c.req.valid("query");
