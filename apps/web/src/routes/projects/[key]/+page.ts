@@ -126,11 +126,11 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   }
 
   let listTickets: Ticket[] = [];
-  let listHasNextPage = false;
+  let listTotal = 0;
   if (listRes?.ok) {
-    const body: { tickets: Ticket[] } = await listRes.json();
+    const body: { tickets: Ticket[]; total: number } = await listRes.json();
     listTickets = body.tickets;
-    listHasNextPage = listTickets.length === parsed.perPage;
+    listTotal = body.total;
   } else if (listRes && listRes.status !== 401 && listRes.status !== 404) {
     error(listRes.status, "Failed to load tickets");
   }
@@ -159,7 +159,7 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
     boardTickets,
     backlogTickets,
     listTickets,
-    listHasNextPage,
+    listTotal,
     stats,
     activity,
     view,

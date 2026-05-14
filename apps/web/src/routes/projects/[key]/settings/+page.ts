@@ -29,18 +29,18 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
 
   // Trash list is owner-only -- skip the API call entirely for non-owners so a 403 doesn't surface as a noisy load error.
   let trashTickets: Ticket[] = [];
-  let hasNextTrashPage = false;
+  let trashTotal = 0;
   if (isOwner) {
     const trashRes = await api.tickets.trash.$get({
       param: { key: params.key },
       query: { sortBy: trashSortBy, sortDirection: trashSortDirection, page: String(trashPage), perPage: String(TRASH_PER_PAGE) },
     });
     if (trashRes.ok) {
-      const body: { tickets: Ticket[] } = await trashRes.json();
+      const body: { tickets: Ticket[]; total: number } = await trashRes.json();
       trashTickets = body.tickets;
-      hasNextTrashPage = body.tickets.length === TRASH_PER_PAGE;
+      trashTotal = body.total;
     }
   }
 
-  return { user, project, isOwner, trashTickets, trashPage, hasNextTrashPage, trashSortBy, trashSortDirection };
+  return { user, project, isOwner, trashTickets, trashPage, trashPerPage: TRASH_PER_PAGE, trashTotal, trashSortBy, trashSortDirection };
 };

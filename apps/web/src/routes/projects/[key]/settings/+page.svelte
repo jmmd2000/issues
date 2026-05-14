@@ -45,7 +45,8 @@
         members={data.project.members}
         tickets={data.trashTickets}
         page={data.trashPage}
-        hasNextPage={data.hasNextTrashPage}
+        perPage={data.trashPerPage}
+        total={data.trashTotal}
         sortColumn={data.trashSortBy}
         sortDirection={data.trashSortDirection}
       />

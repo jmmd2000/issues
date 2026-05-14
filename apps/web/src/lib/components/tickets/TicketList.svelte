@@ -33,7 +33,8 @@
     sortColumn,
     sortDirection,
     page,
-    hasNextPage,
+    perPage,
+    total,
     readonly = false,
     rowActions,
     onSortChange,
@@ -47,12 +48,14 @@
     sortColumn: TicketListColumnID;
     sortDirection: TicketListSortDirection;
     page: number;
-    hasNextPage: boolean;
+    perPage: number;
+    total: number;
     /** When true, key + title cells render as plain text rather than links. Used by the trash view since soft-deleted tickets 404 on the detail page. */
     readonly?: boolean;
     /** Optional trailing cell renderer for per-row buttons (Restore, Delete forever, etc). */
     rowActions?: Snippet<[Ticket]>;
-    onSortChange: (columnID: TicketListColumnID, direction: TicketListSortDirection) => void;
+    /** Called with (null, null) when the user clicks past desc to clear the sort and fall back to the page default. */
+    onSortChange: (columnID: TicketListColumnID | null, direction: TicketListSortDirection | null) => void;
     onPageChange: (page: number) => void;
   } = $props();
 
@@ -65,17 +68,32 @@
   const statusByID = $derived(new Map(statuses.map((status) => [status.id, status])));
   const memberByID = $derived(new Map(members.map((member) => [member.userID, member])));
 
+  const totalPages = $derived(total === 0 ? 0 : Math.ceil(total / perPage));
+  const rangeStart = $derived(total === 0 ? 0 : (page - 1) * perPage + 1);
+  const rangeEnd = $derived(Math.min(page * perPage, total));
+  const hasPrev = $derived(page > 1);
+  const hasNext = $derived(page < totalPages);
+
   function formatDate(value: string) {
     return dateFormatter.format(new Date(value));
   }
 
+  function defaultDirectionFor(columnID: TicketListColumnID): TicketListSortDirection {
+    return columnID === "updatedAt" || columnID === "priority" ? "desc" : "asc";
+  }
+
+  // Three-state cycle on repeat clicks: first direction, opposite direction, then cleared.
   function setSort(columnID: TicketListColumnID) {
-    if (sortColumn === columnID) {
-      onSortChange(columnID, sortDirection === "asc" ? "desc" : "asc");
+    const first = defaultDirectionFor(columnID);
+    if (sortColumn !== columnID) {
+      onSortChange(columnID, first);
       return;
     }
-
-    onSortChange(columnID, columnID === "updatedAt" || columnID === "priority" ? "desc" : "asc");
+    if (sortDirection === first) {
+      onSortChange(columnID, first === "asc" ? "desc" : "asc");
+      return;
+    }
+    onSortChange(null, null);
   }
 </script>
 
@@ -154,11 +172,16 @@
     </table>
   </div>
 
-  <div class="pager">
-    <Button type="button" variant="secondary" size="sm" disabled={page <= 1} onclick={() => onPageChange(page - 1)}>Previous</Button>
-    <span>Page {page}</span>
-    <Button type="button" variant="secondary" size="sm" disabled={!hasNextPage} onclick={() => onPageChange(page + 1)}>Next</Button>
-  </div>
+  {#if total > 0}
+    <div class="pager">
+      <span class="range">Showing <strong>{rangeStart}</strong>–<strong>{rangeEnd}</strong> of <strong>{total}</strong></span>
+      <div class="controls">
+        <Button type="button" variant="secondary" size="sm" disabled={!hasPrev} onclick={() => onPageChange(page - 1)}>Previous</Button>
+        <span class="page-of">Page {page} of {totalPages}</span>
+        <Button type="button" variant="secondary" size="sm" disabled={!hasNext} onclick={() => onPageChange(page + 1)}>Next</Button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -299,15 +322,37 @@
   .pager {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.65em;
+    justify-content: space-between;
+    gap: 1em;
     color: var(--colour-text-secondary);
     font-size: 0.8em;
+
+    .range strong {
+      color: var(--colour-text);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65em;
+    }
+
+    .page-of {
+      font-variant-numeric: tabular-nums;
+    }
   }
 
   @media (max-width: 640px) {
     .pager {
-      justify-content: space-between;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5em;
+
+      .controls {
+        justify-content: space-between;
+      }
     }
   }
 </style>

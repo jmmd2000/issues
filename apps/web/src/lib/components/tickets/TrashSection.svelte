@@ -7,6 +7,7 @@
   import Modal from "$lib/components/ui/Modal.svelte";
   import TicketList, { type TicketListColumnID, type TicketListSortDirection } from "./TicketList.svelte";
   import { pushToast } from "$lib/stores/toast.svelte";
+  import { SvelteURLSearchParams } from "svelte/reactivity";
 
   interface TrashSectionProps {
     projectKey: string;
@@ -14,12 +15,13 @@
     members: ProjectMember[];
     tickets: Ticket[];
     page: number;
-    hasNextPage: boolean;
+    perPage: number;
+    total: number;
     sortColumn: TicketListColumnID;
     sortDirection: TicketListSortDirection;
   }
 
-  let { projectKey, statuses, members, tickets, page, hasNextPage, sortColumn, sortDirection }: TrashSectionProps = $props();
+  let { projectKey, statuses, members, tickets, page, perPage, total, sortColumn, sortDirection }: TrashSectionProps = $props();
 
   // Settings page is constrained to ~800px wide, so trim Status + Priority to
   // keep the row legible without horizontal scroll. Updated == delete time
@@ -27,12 +29,13 @@
   const visibleColumnIDs = new Set<TicketListColumnID>(["key", "title", "assignee", "updatedAt"]);
 
   function pushParams(updates: Record<string, string | null>) {
-    const params = new URLSearchParams(pageStore.url.searchParams);
+    const params = new SvelteURLSearchParams(pageStore.url.searchParams);
     for (const [key, value] of Object.entries(updates)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
     const search = params.toString();
+    // eslint-disable-next-line svelte/no-navigation-without-resolve
     void goto(`${pageStore.url.pathname}${search ? `?${search}` : ""}`, { keepFocus: true, noScroll: true });
   }
 
@@ -40,11 +43,10 @@
     pushParams({ trashPage: next <= 1 ? null : String(next) });
   }
 
-  function changeSort(columnID: TicketListColumnID, direction: TicketListSortDirection) {
+  function changeSort(columnID: TicketListColumnID | null, direction: TicketListSortDirection | null) {
     pushParams({
-      trashSortBy: columnID === "updatedAt" ? null : columnID,
-      trashSortDirection: direction === "desc" ? null : direction,
-      trashPage: null,
+      trashSortBy: columnID === null || columnID === "updatedAt" ? null : columnID,
+      trashSortDirection: direction === null || direction === "desc" ? null : direction,
     });
   }
 
@@ -97,20 +99,7 @@
   {#if tickets.length === 0}
     <p class="empty">Trash is empty.</p>
   {:else}
-    <TicketList
-      {projectKey}
-      {statuses}
-      {members}
-      {tickets}
-      {visibleColumnIDs}
-      {sortColumn}
-      {sortDirection}
-      {page}
-      {hasNextPage}
-      readonly
-      onSortChange={changeSort}
-      onPageChange={changePage}
-    >
+    <TicketList {projectKey} {statuses} {members} {tickets} {visibleColumnIDs} {sortColumn} {sortDirection} {page} {perPage} {total} readonly onSortChange={changeSort} onPageChange={changePage}>
       {#snippet rowActions(ticket: Ticket)}
         <div class="row-actions">
           <Button type="button" size="sm" variant="secondary" disabled={restoringNumber === ticket.number} onclick={() => void restore(ticket)}>

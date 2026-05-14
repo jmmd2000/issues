@@ -69,8 +69,8 @@
     const next = toggleEntry(selectedLabelIDs, id);
     updateParams({ label: next.length ? next.join(",") : null, page: null });
   }
-  function handleSortChange(column: TicketListColumnID, direction: TicketListSortDirection) {
-    updateParams({ sortBy: column, sortDir: direction, page: null });
+  function handleSortChange(column: TicketListColumnID | null, direction: TicketListSortDirection | null) {
+    updateParams({ sortBy: column, sortDir: direction });
   }
   function handleListPageChange(nextPage: number) {
     updateParams({ view: "list", page: String(nextPage) });
@@ -169,7 +169,11 @@
     })
   );
 
-  const kanbanPickerStatuses = $derived(project.statuses.filter((s) => includeBacklog || s.id !== backlogStatusID).map((s) => ({ id: s.id, label: s.name })));
+  const kanbanPickerStatuses = $derived(
+    project.statuses
+      .filter((s) => (showClosed || s.category !== "cancelled") && (includeBacklog || s.id !== backlogStatusID))
+      .map((s) => ({ id: s.id, label: s.name }))
+  );
 </script>
 
 <svelte:head>
@@ -225,7 +229,8 @@
           sortColumn={sortBy}
           sortDirection={sortDir}
           page={listPage}
-          hasNextPage={data.listHasNextPage}
+          perPage={data.pagination.perPage}
+          total={data.listTotal}
           onSortChange={handleSortChange}
           onPageChange={handleListPageChange}
         />
