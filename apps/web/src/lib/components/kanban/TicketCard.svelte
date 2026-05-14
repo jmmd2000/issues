@@ -4,6 +4,7 @@
   import { UserRound } from "@lucide/svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import PriorityChip from "../tickets/PriorityChip.svelte";
+  import { formatAbsolute, timeAgo } from "$lib/time";
 
   let { projectKey, ticket, members }: { projectKey: string; ticket: Ticket; members: ProjectMember[] } = $props();
 
@@ -32,19 +33,19 @@
 <a
   class="card"
   href={resolve("/projects/[key]/tickets/[num]", { key: projectKey, num: String(ticket.number) })}
-  style:--priority-colour={`var(--colour-priority-${ticket.priority})`}
   aria-label={`Open ${projectKey}-${ticket.number}: ${ticket.title}`}
   draggable="false"
   onpointerdown={handlePointerdown}
   onpointermove={handlePointermove}
   onclick={handleClick}
 >
+  <span class="number">{projectKey}-{ticket.number}</span>
   <h4 class="title">{ticket.title}</h4>
 
   <div class="footer">
     <div class="meta">
-      <span class="number">{projectKey}-{ticket.number}</span>
       <PriorityChip priority={ticket.priority} />
+      <time class="when" datetime={ticket.updatedAt} title={formatAbsolute(ticket.updatedAt)}>{timeAgo(ticket.updatedAt)}</time>
     </div>
 
     {#if assignee}
@@ -61,39 +62,23 @@
 
 <style>
   .card {
-    --priority-colour: var(--colour-priority-none);
-
-    position: relative;
-    display: grid;
-    gap: 0.55rem;
-    padding: 0.65rem 0.7rem 0.65rem 0.85rem;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.55rem 0.65rem;
     background: var(--colour-bg-lighter);
-    border: 1px solid var(--colour-border);
+    border: var(--border);
     border-radius: var(--border-radius-inner);
-    box-shadow: var(--box-shadow);
-    color: inherit;
+    color: var(--colour-text);
     cursor: grab;
     text-decoration: none;
     user-select: none;
     transition:
-      background 0.12s,
       border-color 0.12s,
-      box-shadow 0.12s,
       transform 0.08s;
 
-    &::before {
-      content: "";
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 3px;
-      background: var(--priority-colour);
-    }
-
     &:hover {
-      background: color-mix(in oklch, var(--colour-bg-lighter) 72%, white 28%);
-      border-color: var(--colour-border);
-      box-shadow: var(--box-shadow);
+      border-color: color-mix(in oklch, var(--accent-base) 30%, white 70%);
     }
 
     &:active {
@@ -102,27 +87,12 @@
     }
   }
 
-  .footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-
-  .meta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-width: 0;
-  }
-
   .number {
     font-family: var(--font-mono);
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--accent-base);
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
     white-space: nowrap;
   }
 
@@ -131,24 +101,47 @@
     overflow: hidden;
     color: var(--colour-text);
     display: -webkit-box;
-    font-size: 0.8rem;
-    font-weight: 650;
-    line-height: 1.4;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.35;
     overflow-wrap: anywhere;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
     line-clamp: 3;
   }
 
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 1.2rem;
+
+    .meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+
+    .when {
+      font-size: 0.7rem;
+      color: var(--colour-muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+  }
+
   .assignee {
     display: inline-flex;
     flex: 0 0 auto;
-  }
 
-  .assignee :global(.avatar) {
-    width: 1.25rem;
-    height: 1.25rem;
-    font-size: 0.6rem;
+    :global(.avatar) {
+      width: 1.25rem;
+      height: 1.25rem;
+      font-size: 0.6rem;
+    }
   }
 
   .unassigned {

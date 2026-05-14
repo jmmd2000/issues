@@ -62,46 +62,50 @@
 
     display: flex;
     flex-direction: column;
-    gap: 0.6em;
-    padding: 0.75em;
+    background: var(--colour-bg);
     border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background-color: var(--colour-bg-lighter);
+    border-radius: var(--border-radius-inner);
     flex: 1 1 0;
-    min-width: 14em;
+    min-width: 16rem;
+    max-width: 22rem;
   }
 
   .column-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-size: 0.75em;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--colour-muted);
-    padding: 0 0.25em 0.25em;
-  }
+    gap: 0.45em;
+    padding: 0.5em 0.7em;
+    border-bottom: var(--border);
+    background: var(--colour-bg-lighter);
+    border-top-left-radius: var(--border-radius-inner);
+    border-top-right-radius: var(--border-radius-inner);
 
-  .name {
-    color: var(--accent-base);
-  }
+    .name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--colour-text);
+      flex: 1;
+    }
 
-  .count {
-    font-family: var(--font-mono);
-    font-weight: 500;
-    color: var(--colour-text-secondary);
+    .count {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--colour-muted);
+    }
   }
 
   .cards-wrap {
     position: relative;
+    flex: 1;
   }
 
   .cards {
     display: flex;
     flex-direction: column;
     justify-content: start;
-    gap: 0.45em;
+    gap: 0.4em;
+    padding: 0.45em;
   }
 
   .cards[data-empty="true"] {
@@ -109,8 +113,6 @@
   }
 
   .cards :global([data-is-dnd-shadow-item-internal="true"]) {
-    --priority-colour: transparent !important;
-
     visibility: visible !important;
     min-height: var(--ticket-drop-target-height);
     border: 1px dashed var(--colour-border) !important;

@@ -146,7 +146,7 @@
   .columns {
     display: flex;
     flex-wrap: nowrap;
-    gap: 0.75em;
+    gap: 0.65em;
     align-items: flex-start;
     padding-bottom: 0.5em;
     overflow-x: auto;
