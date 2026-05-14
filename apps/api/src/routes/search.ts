@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { PRIORITIES } from "../lib/constants";
+import { PRIORITIES, SEARCH_SORT_COLUMNS, SEARCH_SORT_DIRECTIONS } from "../lib/constants";
 import { validationHook } from "../lib/validation";
 import { optionalAuth } from "../middleware/auth";
 import { SearchService } from "../services/searchService";
@@ -34,6 +34,8 @@ const searchQuerySchema = z.object({
   assignee: listParam(z.uuid()),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
+  sortBy: z.enum(SEARCH_SORT_COLUMNS).optional(),
+  sortDirection: z.enum(SEARCH_SORT_DIRECTIONS).optional(),
 });
 
 const filterOptionsQuerySchema = z.object({
@@ -60,6 +62,8 @@ export const search = new Hono()
         assigneeIDs: query.assignee,
         page: query.page,
         perPage: query.perPage,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
       },
       userID
     );

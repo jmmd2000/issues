@@ -42,6 +42,8 @@ export type {
   SearchFilterOptions,
   SearchHighlightPart,
   SearchResult,
+  SearchSortColumn,
+  SearchSortDirection,
   Comment,
   TicketActivity,
   ActivityAction,

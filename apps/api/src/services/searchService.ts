@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-
 import { db } from "../db";
 import { labels as labelsTable, projectMembers, projects, statuses, ticketLabels, tickets, users } from "../db/schema";
 import { STATUS_CATEGORIES } from "../lib/constants";
-import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult } from "../lib/types";
+import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult, SearchSortColumn, SearchSortDirection } from "../lib/types";
 
 const HIGHLIGHT_START = "[[issues-highlight-start]]";
 const HIGHLIGHT_END = "[[issues-highlight-end]]";
@@ -18,6 +18,8 @@ export type SearchParams = {
   assigneeIDs?: string[];
   page?: number;
   perPage?: number;
+  sortBy?: SearchSortColumn;
+  sortDirection?: SearchSortDirection;
 };
 
 type SearchRow = {
@@ -179,6 +181,26 @@ function uniqueBy<T>(rows: T[], key: (row: T) => string): T[] {
   return unique;
 }
 
+function defaultSearchSortColumn(query: string | undefined, sortBy: SearchSortColumn | undefined): SearchSortColumn {
+  return sortBy ?? (query ? "relevance" : "updatedAt");
+}
+
+function defaultSearchSortDirection(sortBy: SearchSortColumn, sortDirection: SearchSortDirection | undefined): SearchSortDirection {
+  return sortDirection ?? (sortBy === "title" ? "asc" : "desc");
+}
+
+function buildSearchOrderBy(sortBy: SearchSortColumn, sortDirection: SearchSortDirection, rank: SQL<number>, hasQuery: boolean): SQL[] {
+  const order = sortDirection === "asc" ? asc : desc;
+  const fallback = [asc(projects.key), desc(tickets.number)];
+
+  if (sortBy === "relevance") {
+    return hasQuery ? [order(rank), desc(tickets.updatedAt), ...fallback] : [desc(tickets.updatedAt), ...fallback];
+  }
+  if (sortBy === "title") return [order(sql`lower(${tickets.title})`), ...fallback];
+  if (sortBy === "createdAt") return [order(tickets.createdAt), ...fallback];
+  return [order(tickets.updatedAt), ...fallback];
+}
+
 export class SearchService {
   /**
    * Searches visible tickets with optional full-text and structured filters.
@@ -192,6 +214,8 @@ export class SearchService {
     const query = params.q?.trim() || undefined;
     const page = params.page ?? 1;
     const perPage = params.perPage ?? 25;
+    const sortBy = defaultSearchSortColumn(query, params.sortBy);
+    const sortDirection = defaultSearchSortDirection(sortBy, params.sortDirection);
     const rank = query ? sql<number>`ts_rank(${tickets.descriptionSearch}, websearch_to_tsquery('english', ${query}))` : sql<number>`0`;
     const titleHeadline = query ? sql<string>`ts_headline('english', ${tickets.title}, websearch_to_tsquery('english', ${query}), ${HEADLINE_OPTIONS})` : tickets.title;
     const descriptionHeadline = query
@@ -209,7 +233,7 @@ export class SearchService {
       labelCondition(params.labelNames)
     );
 
-    const orderBy = query ? [desc(rank), desc(tickets.updatedAt)] : [desc(tickets.updatedAt)];
+    const orderBy = buildSearchOrderBy(sortBy, sortDirection, rank, Boolean(query));
     const rows = await db
       .select({
         id: tickets.id,

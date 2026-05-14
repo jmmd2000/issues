@@ -1,11 +1,13 @@
 import { db } from "../db";
 import { attachments, comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
-import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, STATUS_CATEGORIES } from "./constants";
+import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, SEARCH_SORT_COLUMNS, SEARCH_SORT_DIRECTIONS, STATUS_CATEGORIES } from "./constants";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
 export type Priority = (typeof PRIORITIES)[number];
+export type SearchSortColumn = (typeof SEARCH_SORT_COLUMNS)[number];
+export type SearchSortDirection = (typeof SEARCH_SORT_DIRECTIONS)[number];
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 export type LinkType = (typeof LINK_TYPES)[number];
 
