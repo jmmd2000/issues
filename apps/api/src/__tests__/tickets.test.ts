@@ -273,14 +273,27 @@ describe("GET /api/projects/:key/tickets", () => {
     expect(body.tickets).toHaveLength(0);
   });
 
-  it("returns 401 for non-authenticated requests", async () => {
+  it("allows anonymous reads of public projects", async () => {
     const res = await app.request("/api/projects/TEST/tickets");
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
-  it("returns 404 for non-member", async () => {
+  it("allows non-member reads of public projects", async () => {
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
     const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: otherCookies } });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects anonymous reads of private projects with 404", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const res = await app.request("/api/projects/PRIV/tickets");
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects non-member reads of private projects with 404", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+    const res = await app.request("/api/projects/PRIV/tickets", { headers: { Cookie: otherCookies } });
     expect(res.status).toBe(404);
   });
 });

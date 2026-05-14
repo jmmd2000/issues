@@ -486,14 +486,27 @@ describe("GET /api/projects/:key/activity", () => {
     expect(body.activity).toHaveLength(2);
   });
 
-  it("rejects unauthenticated requests with 401", async () => {
+  it("allows anonymous reads when the project is public", async () => {
     const res = await app.request("/api/projects/TEST/activity", { method: "GET" });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
-  it("rejects non-members with 404", async () => {
+  it("allows non-member reads when the project is public", async () => {
     const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
     const res = await app.request("/api/projects/TEST/activity", { method: "GET", headers: { Cookie: outsider } });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects anonymous reads when the project is private", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const res = await app.request("/api/projects/PRIV/activity", { method: "GET" });
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects non-member reads when the project is private", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+    const res = await app.request("/api/projects/PRIV/activity", { method: "GET", headers: { Cookie: outsider } });
     expect(res.status).toBe(404);
   });
 });
