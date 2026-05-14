@@ -89,7 +89,7 @@
       {/if}
     </section>
 
-    {#if data.user && data.feed}
+    {#if data.feed}
       <aside class="rail" aria-labelledby="activity-heading">
         <h2 id="activity-heading" class="rail-heading">Activity</h2>
         {#if data.feed.error}

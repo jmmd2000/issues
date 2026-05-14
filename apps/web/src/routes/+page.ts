@@ -10,11 +10,10 @@ export const load: PageLoad = async ({ fetch, parent }) => {
   const { user } = await parent();
   const api = createClient(fetch);
 
-  if (user) {
-    const projectsPromise = api.api.projects["with-counts"].$get();
-    const feedPromise = api.api.feed.$get({ query: { limit: "8" } }).catch(() => null);
+  const feedPromise = api.api.feed.$get({ query: { limit: "8" } }).catch(() => null);
 
-    const projectsRes = await projectsPromise;
+  if (user) {
+    const projectsRes = await api.api.projects["with-counts"].$get();
     if (!projectsRes.ok) error(projectsRes.status, "Failed to load projects");
     const { projects }: { projects: ProjectWithCount[] } = await projectsRes.json();
 
@@ -24,12 +23,13 @@ export const load: PageLoad = async ({ fetch, parent }) => {
     return { projects, feed, registrationOpen: false };
   }
 
-  const [publicRes, regRes] = await Promise.all([api.api.projects.public.$get(), api.api.auth["registration-status"].$get()]);
+  const [publicRes, regRes, feedRes] = await Promise.all([api.api.projects.public.$get(), api.api.auth["registration-status"].$get(), feedPromise]);
 
   if (!publicRes.ok) error(publicRes.status, "Failed to load projects");
   const { projects }: { projects: PublicProject[] } = await publicRes.json();
 
   const registrationOpen = regRes.ok ? (await regRes.json()).open : false;
+  const feed: HomeFeed = feedRes && feedRes.ok ? { events: (await feedRes.json()).events, error: false } : { events: null, error: true };
 
-  return { projects, feed: null, registrationOpen };
+  return { projects, feed, registrationOpen };
 };
