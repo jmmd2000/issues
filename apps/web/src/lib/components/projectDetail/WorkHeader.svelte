@@ -13,6 +13,7 @@
     kanbanPickerStatuses: { id: string; label: string }[];
     visibleKanbanStatusIDs: Set<string>;
     visibleListColumnIDs: Set<TicketListColumnID>;
+    canEdit: boolean;
     onSetView: (next: "kanban" | "list") => void;
     onToggleKanbanColumn: (id: string) => void;
     onToggleListColumn: (id: string) => void;
@@ -25,6 +26,7 @@
     kanbanPickerStatuses,
     visibleKanbanStatusIDs,
     visibleListColumnIDs,
+    canEdit,
     onSetView,
     onToggleKanbanColumn,
     onToggleListColumn,
@@ -70,10 +72,12 @@
       Search
     </Button>
 
-    <Button variant="primary" size="md" onclick={onOpenCreate}>
-      <Plus size={13} strokeWidth={4} />
-      New ticket
-    </Button>
+    {#if canEdit}
+      <Button variant="primary" size="md" onclick={onOpenCreate}>
+        <Plus size={13} strokeWidth={4} />
+        New ticket
+      </Button>
+    {/if}
   </div>
 </header>
 

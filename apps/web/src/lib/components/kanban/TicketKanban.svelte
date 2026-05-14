@@ -17,6 +17,7 @@
     drawerOpen = false,
     onCloseDrawer,
     members,
+    canEdit = true,
   }: {
     projectKey: string;
     statuses: Status[];
@@ -27,6 +28,7 @@
     drawerOpen?: boolean;
     onCloseDrawer?: () => void;
     members: ProjectMember[];
+    canEdit?: boolean;
   } = $props();
 
   function comparePosition(a: string, b: string) {
@@ -126,7 +128,7 @@
 <div class="kanban" data-drawer-open={drawerOpen}>
   <div class="columns">
     {#each statuses as status (status.id)}
-      <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} {members} onConsider={handleConsider} onFinalize={handleFinalize} />
+      <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} {members} {canEdit} onConsider={handleConsider} onFinalize={handleFinalize} />
     {/each}
     {#if statuses.length === 0}
       <div class="no-columns">No columns selected. Click "Columns" to choose.</div>
@@ -134,7 +136,7 @@
   </div>
 
   {#if drawerOpen && primaryBacklogStatusID}
-    <BacklogDrawer {projectKey} tickets={backlogList} {members} onConsider={handleBacklogConsider} onFinalize={handleBacklogFinalize} onClose={() => onCloseDrawer?.()} />
+    <BacklogDrawer {projectKey} tickets={backlogList} {members} {canEdit} onConsider={handleBacklogConsider} onFinalize={handleBacklogFinalize} onClose={() => onCloseDrawer?.()} />
   {/if}
 </div>
 

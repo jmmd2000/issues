@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { Priority, ProjectActivity, ProjectDetail, ProjectStats, Ticket } from "@issues/api";
 import { PRIORITIES } from "@issues/shared";
 import { createClient } from "$lib/api/client";
-import { requireAuth } from "$lib/auth";
 import { LIST_COLUMN_IDS } from "$lib/components/tickets/TicketList.svelte";
 import type { PageLoad } from "./$types";
 
@@ -33,7 +32,6 @@ function parsePriorities(value: string | null): Priority[] {
 
 export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   const { user } = await parent();
-  requireAuth(user, url);
 
   const api = createClient(fetch).api.projects[":key"];
   const parsed = searchSchema.parse({

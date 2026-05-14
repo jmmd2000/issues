@@ -9,6 +9,7 @@
     projectKey,
     tickets,
     members,
+    canEdit = true,
     onConsider,
     onFinalize,
     onClose,
@@ -16,6 +17,7 @@
     projectKey: string;
     tickets: Ticket[];
     members: ProjectMember[];
+    canEdit?: boolean;
     onConsider: (items: Ticket[]) => void;
     onFinalize: (items: Ticket[], info: DndEvent<Ticket>["info"]) => void;
     onClose: () => void;
@@ -61,6 +63,7 @@
       type: "ticket",
       flipDurationMs: 120,
       dropTargetStyle: {},
+      dragDisabled: !canEdit,
     }}
     onconsider={handleConsider}
     onfinalize={handleFinalize}

@@ -13,6 +13,7 @@
   let { data }: PageProps = $props();
 
   const project = $derived(data.project);
+  const canEdit = $derived(!!data.user);
 
   // The slug "backlog" identifies the dedicated Backlog status seeded with
   // every project. The "Include backlog" toggle gates this specific status;
@@ -210,6 +211,7 @@
       {kanbanPickerStatuses}
       {visibleKanbanStatusIDs}
       {visibleListColumnIDs}
+      {canEdit}
       onSetView={setView}
       onToggleKanbanColumn={toggleKanbanColumn}
       onToggleListColumn={toggleListColumn}
@@ -218,7 +220,7 @@
 
     <div class="work-body">
       {#if view === "kanban"}
-        <TicketKanban projectKey={project.key} statuses={kanbanVisibleStatuses} tickets={kanbanTickets} members={project.members} />
+        <TicketKanban projectKey={project.key} statuses={kanbanVisibleStatuses} tickets={kanbanTickets} members={project.members} {canEdit} />
       {:else}
         <TicketList
           projectKey={project.key}
@@ -241,16 +243,18 @@
   <InfoPane {project} stats={data.stats} activity={data.activity} collapsed={infoCollapsed} onToggleCollapsed={() => (infoCollapsed = !infoCollapsed)} />
 </section>
 
-<TicketModal
-  open={createOpen}
-  mode="create"
-  projectKey={project.key}
-  statuses={project.statuses}
-  labels={project.labels}
-  members={project.members}
-  currentUserID={data.user.id}
-  onclose={() => (createOpen = false)}
-/>
+{#if data.user}
+  <TicketModal
+    open={createOpen}
+    mode="create"
+    projectKey={project.key}
+    statuses={project.statuses}
+    labels={project.labels}
+    members={project.members}
+    currentUserID={data.user.id}
+    onclose={() => (createOpen = false)}
+  />
+{/if}
 
 <style>
   .project-detail {

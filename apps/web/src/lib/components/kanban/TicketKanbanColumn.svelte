@@ -8,6 +8,7 @@
     status,
     tickets,
     members,
+    canEdit = true,
     onConsider,
     onFinalize,
   }: {
@@ -15,6 +16,7 @@
     status: Status;
     tickets: Ticket[];
     members: ProjectMember[];
+    canEdit?: boolean;
     onConsider: (statusID: string, items: Ticket[]) => void;
     onFinalize: (statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) => void;
   } = $props();
@@ -42,6 +44,7 @@
         type: "ticket",
         flipDurationMs: 120,
         dropTargetStyle: {},
+        dragDisabled: !canEdit,
       }}
       onconsider={handleConsider}
       onfinalize={handleFinalize}
