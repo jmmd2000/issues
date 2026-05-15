@@ -33,7 +33,7 @@
       </div>
     </summary>
     <div class="dropdown-menu">
-      <p>Settings</p>
+      <a href={resolve("/settings")} onclick={() => (detailsEl.open = false)}>Settings</a>
       <button onclick={handleLogout}>Logout</button>
     </div>
   </details>
@@ -67,7 +67,7 @@
     gap: 0.5rem;
     padding: 0.5rem;
 
-    p,
+    a,
     button {
       margin: 0;
       padding: 0.5rem;
@@ -76,9 +76,12 @@
       border: none;
       width: 100%;
       cursor: pointer;
+      color: var(--colour-text);
+      text-decoration: none;
+      border-radius: var(--border-radius-inner);
     }
 
-    p:hover,
+    a:hover,
     button:hover {
       background-color: var(--colour-bg);
     }
