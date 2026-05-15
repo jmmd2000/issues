@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { PUBLIC_API_URL } from "$env/static/public";
+
   let {
     name,
     avatarURL = null,
@@ -6,14 +8,15 @@
   }: {
     name: string;
     avatarURL?: string | null;
-    size?: "sm" | "md";
+    size?: "sm" | "md" | "lg";
   } = $props();
 
   const initial = $derived(name.trim().slice(0, 1).toUpperCase() || "?");
+  const resolvedSrc = $derived(avatarURL && !avatarURL.startsWith("http") ? `${PUBLIC_API_URL}${avatarURL}` : avatarURL);
 </script>
 
-{#if avatarURL}
-  <img class="avatar {size}" src={avatarURL} alt={name} />
+{#if resolvedSrc}
+  <img class="avatar {size}" src={resolvedSrc} alt={name} />
 {:else}
   <span class="avatar fallback {size}" aria-label={name}>{initial}</span>
 {/if}
@@ -37,6 +40,12 @@
     width: 32px;
     height: 32px;
     font-size: 0.85rem;
+  }
+
+  .lg {
+    width: 5rem;
+    height: 5rem;
+    font-size: 2rem;
   }
 
   .fallback {

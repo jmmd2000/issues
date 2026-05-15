@@ -2,7 +2,11 @@
   import "$lib/styles/form.css";
   import { resolve } from "$app/paths";
   import { MoveLeft } from "@lucide/svelte";
+  import type { PageProps } from "./$types";
+  import AvatarForm from "$lib/components/forms/AvatarForm.svelte";
   import PasswordForm from "$lib/components/forms/PasswordForm.svelte";
+
+  let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -17,6 +21,11 @@
       <p>Manage your account.</p>
     </div>
   </div>
+
+  <section class="settings-card-container">
+    <h2>Avatar</h2>
+    <AvatarForm user={data.user} />
+  </section>
 
   <section class="settings-card-container">
     <h2>Password</h2>
@@ -69,7 +78,7 @@
       font-weight: 600;
     }
 
-    &p {
+    & p {
       color: var(--colour-text-secondary);
       font-weight: 300;
     }

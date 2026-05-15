@@ -1,4 +1,4 @@
-import type { Attachment } from "@issues/api";
+import type { Attachment, CurrentUser } from "@issues/api";
 import { PUBLIC_API_URL } from "$env/static/public";
 
 /**
@@ -33,4 +33,50 @@ export async function uploadTicketAttachment(projectKey: string, ticketNumber: n
  */
 export function attachmentURL(attachment: { url: string }): string {
   return attachment.url.startsWith("http") ? attachment.url : `${PUBLIC_API_URL}${attachment.url}`;
+}
+
+/**
+ * Uploads an avatar image for the signed-in user via multipart/form-data and
+ * returns the updated user (with the new avatarURL).
+ *
+ * Throws an Error whose `.message` is the server-supplied reason on non-2xx.
+ */
+export async function uploadUserAvatar(file: File): Promise<CurrentUser> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${PUBLIC_API_URL}/api/users/me/avatar`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `Upload failed (${res.status}).`);
+  }
+
+  const { user }: { user: CurrentUser } = await res.json();
+  return user;
+}
+
+/**
+ * Clears the signed-in user's avatar. Returns the updated user with
+ * `avatarURL: null`.
+ *
+ * Throws an Error whose `.message` is the server-supplied reason on non-2xx.
+ */
+export async function deleteUserAvatar(): Promise<CurrentUser> {
+  const res = await fetch(`${PUBLIC_API_URL}/api/users/me/avatar`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `Remove failed (${res.status}).`);
+  }
+
+  const { user }: { user: CurrentUser } = await res.json();
+  return user;
 }
