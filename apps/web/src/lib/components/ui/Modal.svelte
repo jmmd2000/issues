@@ -72,10 +72,46 @@
     background: var(--colour-bg-lighter);
     color: var(--colour-text);
     box-shadow: var(--box-shadow);
+    opacity: 0;
+    transform: scale(0.96);
+    transition:
+      opacity var(--motion-base) var(--ease-out-quart),
+      transform var(--motion-base) var(--ease-out-quart),
+      overlay var(--motion-base) allow-discrete,
+      display var(--motion-base) allow-discrete;
+
+    &[open] {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @starting-style {
+      &[open] {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+    }
 
     &::backdrop {
+      background: rgb(from var(--colour-text) r g b / 0);
+      backdrop-filter: blur(0);
+      transition:
+        background var(--motion-base) var(--ease-out-quart),
+        backdrop-filter var(--motion-base) var(--ease-out-quart),
+        overlay var(--motion-base) allow-discrete,
+        display var(--motion-base) allow-discrete;
+    }
+
+    &[open]::backdrop {
       background: rgb(from var(--colour-text) r g b / 0.4);
       backdrop-filter: blur(2px);
+    }
+
+    @starting-style {
+      &[open]::backdrop {
+        background: rgb(from var(--colour-text) r g b / 0);
+        backdrop-filter: blur(0);
+      }
     }
   }
 
@@ -107,11 +143,14 @@
     color: var(--colour-muted);
     cursor: pointer;
 
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
+
     &:hover,
     &:focus-visible {
       background: var(--colour-bg-hover);
       color: var(--colour-text);
-      outline: none;
     }
   }
 

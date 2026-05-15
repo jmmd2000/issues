@@ -1,7 +1,11 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import Button from "$lib/components/ui/Button.svelte";
   import MarkdownEditor from "$lib/components/markdown/MarkdownEditor.svelte";
   import MarkdownRenderer from "$lib/components/markdown/MarkdownRenderer.svelte";
+
+  const SWAP = { duration: 120, easing: quartOut };
 
   interface TicketDescriptionProps {
     description: string;
@@ -57,20 +61,22 @@
   </div>
 
   {#if editing}
-    <MarkdownEditor bind:value={draft} minHeight="14rem" autofocus onsubmit={() => void save()} {attachmentContext} />
+    <div class="description-mode" in:fade={SWAP}>
+      <MarkdownEditor bind:value={draft} minHeight="14rem" autofocus onsubmit={() => void save()} {attachmentContext} />
 
-    <div class="description-actions">
-      <Button type="button" variant="secondary" onclick={cancelEdit} disabled={isSaving}>Cancel</Button>
-      <Button type="button" onclick={() => void save()} disabled={isSaving}>
-        {isSaving ? "Saving..." : "Save"}
-      </Button>
+      <div class="description-actions">
+        <Button type="button" variant="secondary" onclick={cancelEdit} disabled={isSaving}>Cancel</Button>
+        <Button type="button" onclick={() => void save()} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </div>
     </div>
   {:else if description.trim()}
-    <div class="description-view">
+    <div class="description-view" in:fade={SWAP}>
       <MarkdownRenderer source={description} />
     </div>
   {:else}
-    <button type="button" class="empty-description" onclick={startEditing}>Add description</button>
+    <button type="button" class="empty-description" onclick={startEditing} in:fade={SWAP}>+ Add description</button>
   {/if}
 </section>
 
@@ -102,7 +108,7 @@
   .description-edit {
     opacity: 0;
     pointer-events: none;
-    transition: opacity 120ms ease;
+    transition: opacity var(--motion-fast) var(--ease-out-quart);
   }
 
   .description-view {
@@ -119,6 +125,10 @@
     color: var(--colour-muted);
     text-align: left;
     cursor: pointer;
+    transition:
+      border-color var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
       border-color: var(--accent-tint-600);

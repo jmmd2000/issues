@@ -23,6 +23,7 @@
   import TicketLinks from "$lib/components/tickets/TicketLinks.svelte";
   import TicketAttachments from "$lib/components/tickets/TicketAttachments.svelte";
   import { pushToast } from "$lib/stores/toast.svelte";
+  import { formatAbsolute } from "$lib/time";
 
   let { data }: PageProps = $props();
   let ticket = $derived(data.ticket);
@@ -92,18 +93,8 @@
     }
   }
 
-  const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
   function formatDate(value: string | null) {
-    if (!value) return "Not set";
-
-    return dateFormatter.format(new Date(value));
+    return value ? formatAbsolute(value) : "Not set";
   }
 
   async function saveTitle(title: string) {
@@ -116,7 +107,10 @@
         json: { title },
       });
 
-      if (!res.ok) return false;
+      if (!res.ok) {
+        pushToast({ message: "Failed to save title.", kind: "error" });
+        return false;
+      }
 
       await invalidateAll();
       return true;
@@ -135,7 +129,10 @@
         json: { description },
       });
 
-      if (!res.ok) return false;
+      if (!res.ok) {
+        pushToast({ message: "Failed to save description.", kind: "error" });
+        return false;
+      }
 
       await invalidateAll();
       return true;
@@ -156,12 +153,14 @@
 
       if (!res.ok) {
         assigneeID = previousAssigneeID;
+        pushToast({ message: "Failed to update assignee.", kind: "error" });
         return;
       }
 
       await invalidateAll();
     } catch {
       assigneeID = previousAssigneeID;
+      pushToast({ message: "Failed to update assignee.", kind: "error" });
     } finally {
       savingAssignee = false;
     }
@@ -179,12 +178,14 @@
 
       if (!res.ok) {
         statusID = previousStatusID;
+        pushToast({ message: "Failed to update status.", kind: "error" });
         return;
       }
 
       await invalidateAll();
     } catch {
       statusID = previousStatusID;
+      pushToast({ message: "Failed to update status.", kind: "error" });
     } finally {
       savingStatus = false;
     }
@@ -202,12 +203,14 @@
 
       if (!res.ok) {
         priority = previousPriority;
+        pushToast({ message: "Failed to update priority.", kind: "error" });
         return;
       }
 
       await invalidateAll();
     } catch {
       priority = previousPriority;
+      pushToast({ message: "Failed to update priority.", kind: "error" });
     } finally {
       savingPriority = false;
     }
@@ -223,7 +226,10 @@
         json: { parentTicketID: nextParentTicketID },
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        pushToast({ message: "Failed to update parent ticket.", kind: "error" });
+        return;
+      }
       await invalidateAll();
     } finally {
       savingParent = false;
@@ -242,12 +248,14 @@
 
       if (!res.ok) {
         labelIDs = previousLabelIDs;
+        pushToast({ message: "Failed to update labels.", kind: "error" });
         return;
       }
 
       await invalidateAll();
     } catch {
       labelIDs = previousLabelIDs;
+      pushToast({ message: "Failed to update labels.", kind: "error" });
     } finally {
       savingLabels = false;
     }
@@ -263,11 +271,13 @@
       });
       if (!res.ok) {
         visibility = previous;
+        pushToast({ message: "Failed to update visibility.", kind: "error" });
         return;
       }
       await invalidateAll();
     } catch {
       visibility = previous;
+      pushToast({ message: "Failed to update visibility.", kind: "error" });
     } finally {
       savingVisibility = false;
     }
@@ -284,7 +294,7 @@
       <div class="ticket-topline">
         <a href={resolve("/projects/[key]", { key: project.key })}>{project.name}</a>
         <ChevronRight size={15} strokeWidth={3} color="var(--colour-muted)" />
-        <p>{project.key}-{ticket.number}</p>
+        <code class="ticket-key">{project.key}-{ticket.number}</code>
       </div>
 
       <div class="ticket-headline">
@@ -564,12 +574,14 @@
     border-radius: var(--border-radius-inner);
     text-align: left;
     cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
   }
 
   :global(.action-item:hover),
   :global(.action-item:focus-visible) {
     background: var(--colour-bg-hover);
-    outline: none;
   }
 
   :global(.action-item--danger) {
@@ -605,6 +617,7 @@
       text-decoration: none;
       color: var(--accent-base);
       font-weight: 600;
+      transition: color var(--motion-fast) var(--ease-out-quart);
     }
 
     & a:hover {
@@ -612,7 +625,7 @@
       text-decoration: underline;
     }
 
-    & p {
+    .ticket-key {
       font-family: var(--font-mono);
       font-weight: 600;
       color: var(--accent-base);
@@ -726,11 +739,11 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: background var(--motion-fast) var(--ease-out-quart);
 
     &:hover,
     &:focus-visible {
       background: var(--colour-bg-hover);
-      outline: none;
     }
   }
 
@@ -740,12 +753,14 @@
     color: var(--colour-muted);
     cursor: pointer;
     flex: 0 0 auto;
+    transition:
+      color var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart);
 
     &:hover:not(:disabled),
     &:focus-visible {
       color: var(--colour-text);
       background: var(--colour-bg-hover);
-      outline: none;
     }
 
     &.destructive:hover:not(:disabled),
@@ -773,13 +788,16 @@
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
+    transition:
+      color var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart);
 
     &:hover:not(:disabled),
     &:focus-visible {
       color: var(--accent-base);
       border-color: var(--accent-tint-600);
       background: var(--accent-tint-900);
-      outline: none;
     }
 
     &:disabled {

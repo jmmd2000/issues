@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { fly } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
 
   interface Props {
     open?: boolean;
@@ -39,7 +41,13 @@
   {@render trigger({ toggle, open })}
 
   {#if open}
-    <div class="popover-menu" role={menuRole} aria-label={menuLabel}>
+    <div
+      class="popover-menu"
+      role={menuRole}
+      aria-label={menuLabel}
+      in:fly={{ y: -4, duration: 160, easing: quartOut }}
+      out:fly={{ y: -4, duration: 100, easing: quartOut }}
+    >
       {@render menu()}
     </div>
   {/if}

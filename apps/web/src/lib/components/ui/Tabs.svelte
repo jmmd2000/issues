@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Snippet, Component } from "svelte";
+  import { fly } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
 
   type Tab = { id: string; label: string; icon?: Component<{ size?: number | string; class?: string }> };
 
@@ -35,7 +37,13 @@
   {#each tabs as tab (tab.id)}
     {#if active === tab.id}
       {@const panel = panels[tab.id] as Snippet | undefined}
-      <div role="tabpanel" id={`panel-${tab.id}`} aria-labelledby={`tab-${tab.id}`} class="panel">
+      <div
+        role="tabpanel"
+        id={`panel-${tab.id}`}
+        aria-labelledby={`tab-${tab.id}`}
+        class="panel"
+        in:fly={{ y: 3, duration: 120, easing: quartOut }}
+      >
         {#if panel}{@render panel()}{/if}
       </div>
     {/if}
@@ -69,8 +77,8 @@
     align-items: center;
     gap: 6px;
     transition:
-      color 0.12s,
-      border-color 0.12s;
+      color var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
       color: var(--colour-text);
