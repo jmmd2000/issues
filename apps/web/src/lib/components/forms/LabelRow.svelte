@@ -4,6 +4,8 @@
   import { Check, Trash2 } from "@lucide/svelte";
   import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
 
   let { label, projectKey, onDelete, onUpdate }: { label: Label; projectKey: string; onDelete: (labelID: string) => void; onUpdate: (label: Label) => void } = $props();
 
@@ -16,6 +18,7 @@
   let justSaved = $state(false);
   let submitting = $state(false);
   let deleting = $state(false);
+  let confirmOpen = $state(false);
   let savedTimer: ReturnType<typeof setTimeout> | null = null;
 
   onDestroy(() => {
@@ -61,12 +64,14 @@
     }
   }
 
-  async function handleDelete() {
+  function requestDelete() {
     if (submitting || deleting) return;
-
     networkError = null;
+    confirmOpen = true;
+  }
 
-    if (!window.confirm(`Delete label "${form.name}"?`)) return;
+  async function confirmDelete() {
+    if (submitting || deleting) return;
 
     deleting = true;
     try {
@@ -77,12 +82,14 @@
       if (!res.ok) {
         const data = (await res.json()) as { message?: string };
         networkError = data.message ?? "Failed to delete. Please try again.";
+        confirmOpen = false;
         return;
       }
 
       onDelete(label.id);
     } catch {
       networkError = "Failed to delete. Please try again.";
+      confirmOpen = false;
     } finally {
       deleting = false;
     }
@@ -121,7 +128,7 @@
         Saved
       </span>
     {/if}
-    <button type="button" class="delete-button" aria-label={`Delete label ${form.name}`} onclick={handleDelete} disabled={submitting || deleting}>
+    <button type="button" class="delete-button" aria-label={`Delete label ${form.name}`} onclick={requestDelete} disabled={submitting || deleting}>
       <Trash2 size="16" color="var(--colour-error)" />
     </button>
   </div>
@@ -134,6 +141,18 @@
     {/if}
   </div>
 </form>
+
+<Modal open={confirmOpen} title={`Delete "${lastSaved.name}"?`} onclose={() => (confirmOpen = false)} maxWidth="28rem">
+  <p class="confirm-body">
+    Remove the <strong>{lastSaved.name}</strong> label from this project. Tickets currently tagged with it will lose the tag.
+  </p>
+  {#snippet footer()}
+    <Button type="button" variant="secondary" onclick={() => (confirmOpen = false)} disabled={deleting}>Cancel</Button>
+    <Button type="button" variant="danger" onclick={() => void confirmDelete()} disabled={deleting}>
+      {deleting ? "Deleting..." : "Delete label"}
+    </Button>
+  {/snippet}
+</Modal>
 
 <style>
   .label-row {
@@ -178,7 +197,7 @@
     height: 2em;
     margin: 0;
     border-radius: var(--border-radius-inner);
-    transition: background-color 0.2s ease;
+    transition: background-color var(--motion-fast) var(--ease-out-quart);
     cursor: pointer;
 
     &:hover {
@@ -193,5 +212,12 @@
       cursor: not-allowed;
       opacity: 0.7;
     }
+  }
+
+  .confirm-body {
+    margin: 0;
+    color: var(--colour-text);
+    font-size: 0.9rem;
+    line-height: 1.5;
   }
 </style>

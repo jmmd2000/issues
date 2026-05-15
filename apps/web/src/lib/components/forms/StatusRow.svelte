@@ -5,6 +5,7 @@
   import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
   import Button from "$lib/components/ui/Button.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
 
   let {
     status,
@@ -85,11 +86,13 @@
       if (!res.ok) {
         const data = (await res.json()) as { message?: string };
         networkError = data.message ?? "Failed to delete.";
+        confirming = false;
         return;
       }
       onDelete(status.id);
     } catch {
       networkError = "Failed to delete. Please try again.";
+      confirming = false;
     } finally {
       deleting = false;
     }
@@ -127,30 +130,13 @@
     <button
       type="button"
       class="delete-button"
-      onclick={() => (confirming = !confirming)}
+      onclick={() => (confirming = true)}
       disabled={submitting || deleting || otherStatuses.length === 0}
       title={otherStatuses.length === 0 ? "Cannot delete the only status" : "Delete"}
     >
       <Trash2 size="14" color="var(--colour-error)" />
     </button>
   </div>
-
-  {#if confirming}
-    <div class="confirm">
-      <label class="form-label" for="reassign-{status.id}">Move existing tickets to:</label>
-      <select id="reassign-{status.id}" class="form-input" bind:value={reassignTo} disabled={deleting}>
-        {#each otherStatuses as opt (opt.id)}
-          <option value={opt.id}>{opt.name}</option>
-        {/each}
-      </select>
-      <div class="confirm-actions">
-        <Button type="button" variant="danger" size="sm" onclick={confirmDelete} disabled={deleting}>
-          {deleting ? "Deleting..." : "Confirm delete"}
-        </Button>
-        <Button type="button" variant="secondary" size="sm" onclick={() => (confirming = false)} disabled={deleting}>Cancel</Button>
-      </div>
-    </div>
-  {/if}
 
   {#if networkError}
     <span class="row-status" data-type="error">{networkError}</span>
@@ -159,6 +145,24 @@
     <span class="field-error">{fieldErrors.name}</span>
   {/if}
 </form>
+
+<Modal open={confirming} title={`Delete "${lastSaved.name}"?`} onclose={() => (confirming = false)} maxWidth="28rem">
+  <div class="confirm-body">
+    <p>Tickets currently in <strong>{lastSaved.name}</strong> need a new home. Pick where they should move.</p>
+    <label class="form-label" for="reassign-{status.id}">Move existing tickets to</label>
+    <select id="reassign-{status.id}" class="form-input" bind:value={reassignTo} disabled={deleting}>
+      {#each otherStatuses as opt (opt.id)}
+        <option value={opt.id}>{opt.name}</option>
+      {/each}
+    </select>
+  </div>
+  {#snippet footer()}
+    <Button type="button" variant="secondary" onclick={() => (confirming = false)} disabled={deleting}>Cancel</Button>
+    <Button type="button" variant="danger" onclick={() => void confirmDelete()} disabled={deleting}>
+      {deleting ? "Deleting..." : "Delete status"}
+    </Button>
+  {/snippet}
+</Modal>
 
 <style>
   .status-card {
@@ -221,6 +225,7 @@
     padding: 0.3em 0.45em;
     border-radius: var(--border-radius-inner);
     cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-out-quart);
 
     &:disabled {
       cursor: not-allowed;
@@ -231,18 +236,17 @@
     }
   }
 
-  .confirm {
+  .confirm-body {
     display: flex;
     flex-direction: column;
-    gap: 0.4em;
-    padding: 0.5em;
-    background: var(--colour-bg);
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-  }
+    gap: 0.75rem;
+    margin: 0;
+    color: var(--colour-text);
+    font-size: 0.9rem;
+    line-height: 1.5;
 
-  .confirm-actions {
-    display: flex;
-    gap: 0.4em;
+    p {
+      margin: 0;
+    }
   }
 </style>

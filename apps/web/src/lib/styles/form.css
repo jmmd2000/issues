@@ -28,7 +28,7 @@
   gap: 1.2em;
   padding: 1.5em;
   box-shadow: var(--box-shadow);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow var(--motion-slow) var(--ease-out-quart);
 }
 
 .form-header {
@@ -137,8 +137,8 @@
   flex-shrink: 0;
   overflow: hidden;
   transition:
-    transform 0.2s ease,
-    border-color 0.2s ease;
+    transform var(--motion-base) var(--ease-out-quart),
+    border-color var(--motion-base) var(--ease-out-quart);
 
   &:hover {
     border-color: var(--colour-muted);

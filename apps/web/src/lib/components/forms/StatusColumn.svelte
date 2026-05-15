@@ -158,8 +158,8 @@
     font-size: 0.8em;
     cursor: pointer;
     transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
+      color var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
       color: var(--accent-base);
