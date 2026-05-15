@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import { goto } from "$app/navigation";
   import { navigating, page } from "$app/state";
   import { Search, X } from "@lucide/svelte";
@@ -225,19 +227,19 @@
       </section>
 
       {#if !search.searched}
-        <section class="empty-state">
+        <section class="empty-state" in:fade={{ duration: 140, easing: quartOut }}>
           <Search size={22} strokeWidth={2.2} />
           <h2>No query or filters selected.</h2>
           <p>Search by ticket title, description, or structured filters.</p>
         </section>
       {:else if search.tickets.length === 0}
-        <section class="empty-state">
+        <section class="empty-state" in:fade={{ duration: 140, easing: quartOut }}>
           <Search size={22} strokeWidth={2.2} />
           <h2>No tickets matched.</h2>
           <p>Broaden the query or remove filters.</p>
         </section>
       {:else}
-        <ol class="results" class:loading={isLoading}>
+        <ol class="results" class:loading={isLoading} in:fade={{ duration: 140, easing: quartOut }}>
           {#each search.tickets as ticket (ticket.id)}
             <li>
               <SearchResultCard {ticket} />
@@ -263,7 +265,7 @@
     grid-template-columns: var(--left-col) minmax(0, 1fr);
     gap: 0;
     margin: -2rem -2rem 0;
-    transition: grid-template-columns 180ms ease;
+    transition: grid-template-columns var(--motion-base) var(--ease-out-expo);
   }
 
   .work {
@@ -325,7 +327,7 @@
     color: var(--colour-text-secondary);
     font-size: 0.75rem;
     font-weight: 600;
-    transition: opacity 0.15s;
+    transition: opacity var(--motion-fast) var(--ease-out-quart);
   }
 
   .result-count.loading,
@@ -373,8 +375,8 @@
       font-size: 0.8rem;
       font-weight: 600;
       box-shadow:
-        0 1px 2px rgba(30, 34, 41, 0.07),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        0 1px 2px rgb(from var(--colour-text) r g b / 0.07),
+        inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
       cursor: pointer;
     }
   }
@@ -407,14 +409,14 @@
     font-family: var(--font-mono);
     font-size: 0.7rem;
     font-weight: 600;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
   }
 
   .results {
     display: grid;
     gap: 0.75rem;
     list-style: none;
-    transition: opacity 0.15s;
+    transition: opacity var(--motion-fast) var(--ease-out-quart);
   }
 
   .empty-state {

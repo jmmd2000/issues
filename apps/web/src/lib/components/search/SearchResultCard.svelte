@@ -27,7 +27,7 @@
 
 <a class="result-card" {href} aria-label={`${key}: ${ticket.title}`}>
   <div class="result-topline">
-    <span class="ticket-key">{key}</span>
+    <code class="ticket-key">{key}</code>
     <StatusChip name={ticket.status.name} category={ticket.status.category} />
     <PriorityChip priority={ticket.priority} />
     <span class="visibility" title={visibilityLabel} aria-label={visibilityLabel}>
@@ -49,7 +49,7 @@
 
   <div class="result-footer">
     <div class="project">
-      <span class="project-key">{ticket.project.key}</span>
+      <code class="project-key">{ticket.project.key}</code>
       <span>{ticket.project.name}</span>
     </div>
 
@@ -85,9 +85,9 @@
     text-decoration: none;
     box-shadow: var(--box-shadow);
     transition:
-      border-color 0.15s,
-      background 0.15s,
-      transform 0.08s;
+      border-color var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart),
+      transform 60ms var(--ease-out-quart);
 
     &:hover {
       border-color: color-mix(in oklch, var(--accent-base) 35%, var(--colour-border) 65%);

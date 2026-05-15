@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import { PanelLeftClose, PanelLeftOpen, X } from "@lucide/svelte";
   import type { Priority, SearchFilterOptions, Status } from "@issues/api";
   import { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
@@ -66,7 +68,7 @@
   </header>
 
   {#if !collapsed}
-    <div class="pane-scroll">
+    <div class="pane-scroll" in:fade={{ duration: 180, easing: quartOut, delay: 80 }} out:fade={{ duration: 120, easing: quartOut }}>
       <div class="filter-summary">
         <span>{activeFilterCount > 0 ? `${activeFilterCount} active` : "No filters"}</span>
         {#if activeFilterCount > 0}
@@ -88,7 +90,7 @@
           {#each orderedProjects as project (project.id)}
             <li>
               <button type="button" class="option-button" class:selected={searchState.projectKey === project.key} onclick={() => onProjectChange(project.key)} aria-pressed={searchState.projectKey === project.key}>
-                <span class="project-key">{project.key}</span>
+                <code class="project-key">{project.key}</code>
                 <span>{project.name}</span>
               </button>
             </li>
@@ -200,6 +202,9 @@
       color: var(--colour-muted);
       cursor: pointer;
       border-radius: var(--border-radius-inner);
+      transition:
+        background var(--motion-fast) var(--ease-out-quart),
+        color var(--motion-fast) var(--ease-out-quart);
 
       &:hover {
         color: var(--colour-text);
@@ -243,6 +248,9 @@
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 600;
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
       background: var(--colour-bg-hover);
@@ -264,6 +272,9 @@
     cursor: pointer;
     text-align: left;
     font-size: 0.8rem;
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
 
     &:hover,
     &.selected {
