@@ -215,6 +215,9 @@
       cursor: pointer;
       border-radius: var(--border-radius-inner);
       flex-shrink: 0;
+      transition:
+        background var(--motion-fast) var(--ease-out-quart),
+        color var(--motion-fast) var(--ease-out-quart);
 
       &:hover {
         color: var(--colour-text);

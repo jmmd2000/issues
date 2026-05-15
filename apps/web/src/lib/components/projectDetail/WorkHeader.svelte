@@ -38,7 +38,7 @@
 
 <header class="pane-head">
   <div class="title">
-    <span class="project-key">{project.key}</span>
+    <code class="project-key">{project.key}</code>
     <h1>{project.name}</h1>
   </div>
   <div class="actions">
@@ -134,8 +134,8 @@
     border-radius: var(--border-radius-inner);
     overflow: hidden;
     box-shadow:
-      0 1px 2px rgba(30, 34, 41, 0.07),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      0 1px 2px rgb(from var(--colour-text) r g b / 0.07),
+      inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
     transition:
       background var(--motion-fast) var(--ease-out-quart),
       box-shadow var(--motion-fast) var(--ease-out-quart);
@@ -162,18 +162,18 @@
       }
 
       &.active {
-        color: white;
-        background: linear-gradient(180deg, #4a6ee8, var(--accent-base));
+        color: var(--colour-bg-lighter);
+        background: linear-gradient(180deg, var(--accent-tint-200), var(--accent-base));
         border: 1px solid var(--accent-shade-100);
         box-shadow:
-          rgba(30, 34, 41, 0.2) 0 1px 3px,
-          rgba(255, 255, 255, 0.14) 0 1px 0 inset;
+          rgb(from var(--colour-text) r g b / 0.2) 0 1px 3px,
+          rgb(from var(--colour-bg-lighter) r g b / 0.14) 0 1px 0 inset;
 
         &:active {
           transform: translateY(1px);
           box-shadow:
-            rgba(30, 34, 41, 0.25) 0 0 1px,
-            rgba(255, 255, 255, 0.08) 0 1px 0 inset;
+            rgb(from var(--colour-text) r g b / 0.25) 0 0 1px,
+            rgb(from var(--colour-bg-lighter) r g b / 0.08) 0 1px 0 inset;
         }
       }
     }

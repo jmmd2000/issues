@@ -187,6 +187,9 @@
       color: var(--colour-muted);
       cursor: pointer;
       border-radius: var(--border-radius-inner);
+      transition:
+        background var(--motion-fast) var(--ease-out-quart),
+        color var(--motion-fast) var(--ease-out-quart);
 
       &:hover {
         color: var(--colour-text);

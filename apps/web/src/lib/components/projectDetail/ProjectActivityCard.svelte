@@ -278,6 +278,9 @@
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
       background: var(--accent-tint-900);
