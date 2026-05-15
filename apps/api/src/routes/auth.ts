@@ -5,9 +5,20 @@ import { AuthService } from "../services/authService";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { validationHook } from "../lib/validation";
+import { requireAuth } from "../middleware/auth";
 
-const registerSchema = z.object({ name: z.string(), email: z.email(), password: z.string().min(8) });
+const passwordSchema = z.string().min(8);
+
+const registerSchema = z.object({ name: z.string(), email: z.email(), password: passwordSchema });
 const loginSchema = z.object({ email: z.email(), password: z.string() });
+const changePasswordSchema = z.object({ currentPassword: z.string(), newPassword: passwordSchema }).strict();
+
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "Lax",
+  path: "/",
+} as const;
 
 export const auth = new Hono()
   .post("/api/auth/register", zValidator("json", registerSchema, validationHook), async (c) => {
@@ -20,13 +31,7 @@ export const auth = new Hono()
     const { email, password } = c.req.valid("json");
     const { success, session } = await AuthService.loginUser(email, password);
 
-    setCookie(c, "session_id", session.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      path: "/",
-      expires: session.expiresAt,
-    });
+    setCookie(c, "session_id", session.id, { ...SESSION_COOKIE_OPTIONS, expires: session.expiresAt });
 
     return c.json({ success }, 200);
   })
@@ -46,4 +51,13 @@ export const auth = new Hono()
   .get("/api/auth/registration-status", async (c) => {
     const open = await AuthService.checkRegistrationStatus();
     return c.json({ open }, 200);
+  })
+  .post("/api/auth/change-password", requireAuth, zValidator("json", changePasswordSchema, validationHook), async (c) => {
+    const userID = c.get("userID");
+    const { currentPassword, newPassword } = c.req.valid("json");
+    const { session } = await AuthService.changePassword(userID, currentPassword, newPassword);
+
+    setCookie(c, "session_id", session.id, { ...SESSION_COOKIE_OPTIONS, expires: session.expiresAt });
+
+    return c.json({ success: true }, 200);
   });

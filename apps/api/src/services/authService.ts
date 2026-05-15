@@ -78,6 +78,35 @@ export class AuthService {
   }
 
   /**
+   * Verifies the current password, rotates the password hash, and replaces
+   * all existing sessions with a single fresh session so the caller stays
+   * signed in on the device that initiated the change.
+   * @param userID Authenticated user's ID
+   * @param currentPassword Existing password for verification
+   * @param newPassword Replacement password (already validated by Zod)
+   * @returns The newly issued session (id, expiresAt)
+   * @throws {HTTPException} 401 if the current password does not match
+   * @throws {HTTPException} 404 if the user no longer exists
+   */
+  static async changePassword(userID: string, currentPassword: string, newPassword: string) {
+    const [user] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userID)).limit(1);
+    if (!user) throw new HTTPException(404, { message: "User not found." });
+    if (!(await argon2.verify(user.passwordHash, currentPassword))) throw new HTTPException(401, { message: "Current password is incorrect." });
+
+    const newHash = await argon2.hash(newPassword);
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+
+    const session = await db.transaction(async (tx) => {
+      await tx.update(users).set({ passwordHash: newHash }).where(eq(users.id, userID));
+      await tx.delete(sessions).where(eq(sessions.userID, userID));
+      const [created] = await tx.insert(sessions).values({ userID, expiresAt }).returning({ id: sessions.id, expiresAt: sessions.expiresAt });
+      return created;
+    });
+
+    return { session };
+  }
+
+  /**
    * Checks the number of current users, compares to 0.
    * @returns Boolean whether registration is open or closed
    */
