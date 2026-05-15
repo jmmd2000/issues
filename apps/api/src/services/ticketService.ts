@@ -65,6 +65,10 @@ function titleSearchCondition(titleSearch?: string): SQL | undefined {
   return ilike(tickets.title, `%${titleSearch}%`);
 }
 
+function visibilityCondition(viewerCanSeePrivate: boolean): SQL | undefined {
+  return viewerCanSeePrivate ? undefined : eq(tickets.visibility, "public");
+}
+
 type CommonFilters = {
   statusID?: string[];
   priority?: Priority[];
@@ -302,7 +306,8 @@ export class TicketService {
       perPage?: number;
       sortBy?: TicketListSortColumn;
       sortDirection?: TicketListSortDirection;
-    }
+    },
+    viewerCanSeePrivate: boolean
   ) {
     const page = filters.page ?? 1;
     const perPage = filters.perPage ?? 25;
@@ -312,6 +317,7 @@ export class TicketService {
     const where = and(
       eq(tickets.projectID, projectID),
       isNull(tickets.deletedAt),
+      visibilityCondition(viewerCanSeePrivate),
       statusCondition(filters.statusID),
       titleSearchCondition(filters.titleSearch),
       priorityCondition(filters.priority),
@@ -351,11 +357,13 @@ export class TicketService {
     projectID: string,
     filters: CommonFilters & {
       includeClosed?: boolean;
-    }
+    },
+    viewerCanSeePrivate: boolean
   ) {
     const where = and(
       eq(tickets.projectID, projectID),
       isNull(tickets.deletedAt),
+      visibilityCondition(viewerCanSeePrivate),
       notInArray(statuses.category, ["backlog"]),
       statusCondition(filters.statusID),
       titleSearchCondition(filters.titleSearch),
@@ -435,10 +443,11 @@ export class TicketService {
    * @param projectID The ID of the project
    * @param filters Optional filters
    */
-  static async listBacklogForProject(projectID: string, filters: CommonFilters) {
+  static async listBacklogForProject(projectID: string, filters: CommonFilters, viewerCanSeePrivate: boolean) {
     const where = and(
       eq(tickets.projectID, projectID),
       isNull(tickets.deletedAt),
+      visibilityCondition(viewerCanSeePrivate),
       eq(statuses.category, "backlog"),
       titleSearchCondition(filters.titleSearch),
       priorityCondition(filters.priority),

@@ -315,7 +315,7 @@ export class McpService {
   static async getActivity(userID: string, projectKey: string, limit?: number): Promise<{ activity: CompactActivity[] }> {
     const project = await McpService.resolveProject(userID, projectKey);
     const cappedLimit = Math.min(limit ?? ACTIVITY_LIMIT_DEFAULT, ACTIVITY_LIMIT_MAX);
-    const rows = await ActivityService.listForProject(project.id, cappedLimit);
+    const rows = await ActivityService.listForProject(project.id, cappedLimit, true);
 
     return {
       activity: rows.map((row) => ({
@@ -414,7 +414,7 @@ export class McpService {
    */
   static async getStats(userID: string, projectKey: string): Promise<{ stats: CompactStats }> {
     const project = await McpService.resolveProject(userID, projectKey);
-    const stats = await ProjectService.getStats(project.id);
+    const stats = await ProjectService.getStats(project.id, true);
 
     const memberIDs = Object.keys(stats.byMember);
     const nameRows = memberIDs.length

@@ -53,7 +53,7 @@ export class ProjectService {
         key: projects.key,
         name: projects.name,
         description: projects.description,
-        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
+        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and ${tickets.visibility} = 'public')::int`,
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -71,6 +71,7 @@ export class ProjectService {
    */
   static async getAllProjectsWithCounts(userID: string) {
     const memberProjects = await accessibleProjectIDs(userID);
+    const memberClause = memberProjects.length ? sql`${projects.id} in (${sql.join(memberProjects.map((id) => sql`${id}`), sql`, `)})` : sql`false`;
     return await db
       .select({
         id: projects.id,
@@ -84,7 +85,7 @@ export class ProjectService {
         ownerID: projects.ownerID,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
-        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
+        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause}))::int`,
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -175,8 +176,9 @@ export class ProjectService {
    * @param projectID The resolved project ID
    * @returns Stats blob suitable for the project Overview / Members tabs
    */
-  static async getStats(projectID: string) {
-    const where = and(eq(tickets.projectID, projectID), isNull(tickets.deletedAt));
+  static async getStats(projectID: string, viewerCanSeePrivate: boolean) {
+    const visibilityClause = viewerCanSeePrivate ? undefined : eq(tickets.visibility, "public");
+    const where = and(eq(tickets.projectID, projectID), isNull(tickets.deletedAt), visibilityClause);
 
     const [[totals], assigneeRows, reporterRows] = await Promise.all([
       db

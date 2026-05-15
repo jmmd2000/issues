@@ -23,7 +23,7 @@ async function seedStatusID(slug = "backlog"): Promise<string> {
   return row.id;
 }
 
-async function createTicket(overrides: Partial<{ title: string; description: string; statusID: string; priority: string; labelIDs: string[] }> = {}) {
+async function createTicket(overrides: Partial<{ title: string; description: string; statusID: string; priority: string; labelIDs: string[]; visibility: "public" | "private" }> = {}) {
   const res = await app.request("/api/projects/TEST/tickets", {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -509,6 +509,17 @@ describe("GET /api/projects/:key/activity", () => {
     const res = await app.request("/api/projects/PRIV/activity", { method: "GET", headers: { Cookie: outsider } });
     expect(res.status).toBe(404);
   });
+
+  it("hides activity for private tickets from non-members", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/projects/TEST/activity");
+    const body = await res.json();
+    const titles = body.activity.map((row: { ticket: { title: string } }) => row.ticket.title);
+    expect(titles).toContain("Public ticket");
+    expect(titles).not.toContain("Private ticket");
+  });
 });
 
 describe("GET /api/feed", () => {
@@ -523,11 +534,11 @@ describe("GET /api/feed", () => {
     return row.id;
   }
 
-  async function createTicketIn(projectKey: string, title: string, projectStatusID: string) {
+  async function createTicketIn(projectKey: string, title: string, projectStatusID: string, visibility: "public" | "private" = "public") {
     const res = await app.request(`/api/projects/${projectKey}/tickets`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ title, statusID: projectStatusID }),
+      body: JSON.stringify({ title, statusID: projectStatusID, visibility }),
     });
     const body = await res.json();
     return body.ticket;
@@ -645,5 +656,37 @@ describe("GET /api/feed", () => {
     );
     expect(keysByTitle.get("From one")).toBe("ONE");
     expect(keysByTitle.get("From two")).toBe("TWO");
+  });
+
+  it("hides events on private tickets from anonymous viewers", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/feed");
+    const body = await res.json();
+    const titles = body.events.map((event: { ticket: { title: string } }) => event.ticket.title);
+    expect(titles).toContain("Public ticket");
+    expect(titles).not.toContain("Private ticket");
+  });
+
+  it("hides events on private tickets in non-member public projects from authed viewers", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+
+    const res = await app.request("/api/feed", { headers: { Cookie: outsider } });
+    const body = await res.json();
+    const titles = body.events.map((event: { ticket: { title: string } }) => event.ticket.title);
+    expect(titles).not.toContain("Private ticket");
+  });
+
+  it("shows events on private tickets in member projects", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    const body = await res.json();
+    const titles = body.events.map((event: { ticket: { title: string } }) => event.ticket.title);
+    expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
   });
 });

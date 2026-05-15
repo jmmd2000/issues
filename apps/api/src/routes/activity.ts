@@ -39,13 +39,13 @@ export const activity = new Hono()
       const project = c.get("project");
       const { limit } = c.req.valid("query");
 
-      const rows = await ActivityService.listForProject(project.id, limit);
+      const rows = await ActivityService.listForProject(project.id, limit, c.get("viewerCanSeePrivate"));
       return c.json({ activity: rows });
     }
   )
   .get("/api/feed", optionalAuth, zValidator("query", feedQuerySchema, validationHook), async (c) => {
     const { limit } = c.req.valid("query");
     const userID = c.get("userID");
-    const events = await ActivityService.listGlobal(limit, { publicOnly: !userID });
+    const events = await ActivityService.listGlobal(limit, { userID });
     return c.json({ events });
   });

@@ -91,6 +91,6 @@ export const projects = new Hono()
   })
   .get("/api/projects/:key/stats", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectRead, async (c) => {
     const { id } = c.get("project");
-    const stats = await ProjectService.getStats(id);
+    const stats = await ProjectService.getStats(id, c.get("viewerCanSeePrivate"));
     return c.json({ stats });
   });

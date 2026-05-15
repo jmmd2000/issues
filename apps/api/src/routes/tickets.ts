@@ -114,7 +114,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const result = await TicketService.listForProject(project.id, query);
+      const result = await TicketService.listForProject(project.id, query, c.get("viewerCanSeePrivate"));
       return c.json(result);
     }
   )
@@ -142,7 +142,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBoardForProject(project.id, query);
+      const tickets = await TicketService.listBoardForProject(project.id, query, c.get("viewerCanSeePrivate"));
       return c.json({ tickets });
     }
   )
@@ -156,7 +156,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBacklogForProject(project.id, query);
+      const tickets = await TicketService.listBacklogForProject(project.id, query, c.get("viewerCanSeePrivate"));
       return c.json({ tickets });
     }
   )

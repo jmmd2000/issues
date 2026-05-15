@@ -23,7 +23,7 @@ async function getStatusIDBySlug(slug: string): Promise<string> {
   return row.id;
 }
 
-async function createTicket(overrides: Partial<{ title: string; description: string; statusID: string; priority: string }> = {}) {
+async function createTicket(overrides: Partial<{ title: string; description: string; statusID: string; priority: string; visibility: "public" | "private" }> = {}) {
   const res = await app.request("/api/projects/TEST/tickets", {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -296,6 +296,38 @@ describe("GET /api/projects/:key/tickets", () => {
     const res = await app.request("/api/projects/PRIV/tickets", { headers: { Cookie: otherCookies } });
     expect(res.status).toBe(404);
   });
+
+  it("hides private tickets from anonymous callers in public projects", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/projects/TEST/tickets");
+    const body = await res.json();
+    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
+    expect(titles).toContain("Public ticket");
+    expect(titles).not.toContain("Private ticket");
+  });
+
+  it("hides private tickets from non-member authed callers", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: otherCookies } });
+    const body = await res.json();
+    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
+    expect(titles).not.toContain("Private ticket");
+  });
+
+  it("includes private tickets for members", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: cookies } });
+    const body = await res.json();
+    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
+    expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
+  });
 });
 
 describe("GET /api/projects/:key/tickets/board", () => {
@@ -351,6 +383,49 @@ describe("GET /api/projects/:key/tickets/board", () => {
     const body = await res.json();
     expect(body.tickets).toHaveLength(1);
     expect(body.tickets[0].title).toBe("Done high");
+  });
+
+  it("hides private board tickets from non-members", async () => {
+    const activeStatusID = await getStatusIDBySlug("in-progress");
+    await createTicket({ title: "Active public", statusID: activeStatusID });
+    await createTicket({ title: "Active private", statusID: activeStatusID, visibility: "private" });
+
+    const res = await app.request("/api/projects/TEST/tickets/board");
+    const body = await res.json();
+    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
+    expect(titles).toContain("Active public");
+    expect(titles).not.toContain("Active private");
+  });
+});
+
+describe("GET /api/projects/:key/tickets/backlog", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  it("hides private backlog tickets from non-members", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/projects/TEST/tickets/backlog");
+    const body = await res.json();
+    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
+    expect(titles).toContain("Public ticket");
+    expect(titles).not.toContain("Private ticket");
+  });
+
+  it("includes private backlog tickets for members", async () => {
+    await createTicket({ title: "Public ticket" });
+    await createTicket({ title: "Private ticket", visibility: "private" });
+
+    const res = await app.request("/api/projects/TEST/tickets/backlog", { headers: { Cookie: cookies } });
+    const body = await res.json();
+    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
+    expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
   });
 });
 
