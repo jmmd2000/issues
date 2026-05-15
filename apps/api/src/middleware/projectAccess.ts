@@ -1,8 +1,13 @@
 import { db } from "../db";
 import { eq } from "drizzle-orm";
-import { projects } from "../db/schema";
+import { projects, users } from "../db/schema";
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
+
+async function isServiceUser(userID: string): Promise<boolean> {
+  const [row] = await db.select({ isService: users.isService }).from(users).where(eq(users.id, userID)).limit(1);
+  return !!row?.isService;
+}
 
 type ProjectContext = {
   id: string;
@@ -36,7 +41,7 @@ export const requireProjectRead = createMiddleware<ReadEnv>(async (c, next) => {
   if (project.visibility !== "public") {
     if (!userID) throw notFound;
     const membership = project.members.find((m) => m.userID === userID);
-    if (!membership) throw notFound;
+    if (!membership && !(await isServiceUser(userID))) throw notFound;
   }
 
   c.set("project", project);
@@ -65,8 +70,9 @@ export const requireProjectAccess = (level: "member" | "owner") =>
     if (!project) throw notFound;
 
     const membership = project.members.find((m) => m.userID === userID);
-    if (!membership) throw notFound;
-    if (level === "owner" && membership.role !== "owner") {
+    if (!membership) {
+      if (level === "owner" || !(await isServiceUser(userID))) throw notFound;
+    } else if (level === "owner" && membership.role !== "owner") {
       throw new HTTPException(403, { message: "Only the project owner can perform this action." });
     }
 

@@ -726,14 +726,14 @@ export class McpService {
   }
 
   private static async resolveAssigneeName(name: string): Promise<string> {
-    const [row] = await db.select({ id: users.id }).from(users).where(ilike(users.name, name)).limit(1);
+    const [row] = await db.select({ id: users.id }).from(users).where(and(ilike(users.name, name), eq(users.isService, false))).limit(1);
     if (!row) throw new HTTPException(400, { message: `Unknown assignee: ${name}` });
     return row.id;
   }
 
   private static async resolveAssigneeNames(names: string[]): Promise<string[]> {
     const unique = Array.from(new Set(names));
-    const rows = await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.name, unique));
+    const rows = await db.select({ id: users.id, name: users.name }).from(users).where(and(inArray(users.name, unique), eq(users.isService, false)));
     if (rows.length !== unique.length) {
       const found = new Set(rows.map((row) => row.name));
       const missing = unique.filter((name) => !found.has(name));

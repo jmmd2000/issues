@@ -2,7 +2,7 @@ import { db } from "../db";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
-import { accessibleProjectIDs } from "./accessService";
+import { accessibleProjectIDs, canAccessProject } from "./accessService";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 
@@ -116,8 +116,8 @@ export class ProjectService {
     const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
     if (!project) throw notFound;
 
-    const isMember = userID && project.members.some((member) => member.userID === userID);
-    if (project.visibility === "private" && !isMember) throw notFound;
+    const hasAccess = userID ? await canAccessProject(userID, project.id) : false;
+    if (project.visibility === "private" && !hasAccess) throw notFound;
 
     if (!userID) {
       return {
