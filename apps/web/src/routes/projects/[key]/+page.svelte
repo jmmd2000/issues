@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import type { PageProps } from "./$types";
@@ -219,24 +221,28 @@
     />
 
     <div class="work-body">
-      {#if view === "kanban"}
-        <TicketKanban projectKey={project.key} statuses={kanbanVisibleStatuses} tickets={kanbanTickets} members={project.members} {canEdit} />
-      {:else}
-        <TicketList
-          projectKey={project.key}
-          statuses={project.statuses}
-          members={project.members}
-          tickets={listTickets}
-          visibleColumnIDs={visibleListColumnIDs}
-          sortColumn={sortBy}
-          sortDirection={sortDir}
-          page={listPage}
-          perPage={data.pagination.perPage}
-          total={data.listTotal}
-          onSortChange={handleSortChange}
-          onPageChange={handleListPageChange}
-        />
-      {/if}
+      {#key view}
+        <div class="view-frame" in:fade={{ duration: 180, easing: quartOut }} out:fade={{ duration: 100, easing: quartOut }}>
+          {#if view === "kanban"}
+            <TicketKanban projectKey={project.key} statuses={kanbanVisibleStatuses} tickets={kanbanTickets} members={project.members} {canEdit} />
+          {:else}
+            <TicketList
+              projectKey={project.key}
+              statuses={project.statuses}
+              members={project.members}
+              tickets={listTickets}
+              visibleColumnIDs={visibleListColumnIDs}
+              sortColumn={sortBy}
+              sortDirection={sortDir}
+              page={listPage}
+              perPage={data.pagination.perPage}
+              total={data.listTotal}
+              onSortChange={handleSortChange}
+              onPageChange={handleListPageChange}
+            />
+          {/if}
+        </div>
+      {/key}
     </div>
   </main>
 
@@ -262,7 +268,7 @@
     grid-template-columns: var(--left-col) minmax(0, 1fr) var(--right-col);
     gap: 0;
     margin: -2rem -2rem 0;
-    transition: grid-template-columns 180ms ease;
+    transition: grid-template-columns var(--motion-base) var(--ease-out-expo);
   }
 
   .work {
@@ -274,6 +280,11 @@
 
   .work-body {
     padding: 0.9em 1.3em 2em;
+    position: relative;
+  }
+
+  .view-frame {
+    will-change: opacity;
   }
 
   @media (max-width: 1100px) {

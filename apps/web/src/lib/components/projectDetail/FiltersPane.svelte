@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import type { Label, Priority, ProjectMember, Status } from "@issues/api";
   import { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
   import { PanelLeftClose, PanelLeftOpen } from "@lucide/svelte";
@@ -77,7 +79,7 @@
   </header>
 
   {#if !collapsed}
-    <div class="pane-scroll">
+    <div class="pane-scroll" in:fade={{ duration: 180, easing: quartOut, delay: 80 }} out:fade={{ duration: 120, easing: quartOut }}>
       <SearchInput value={searchInput} placeholder="Search titles" onInput={onSearchInput} />
 
       <div class="toggles">

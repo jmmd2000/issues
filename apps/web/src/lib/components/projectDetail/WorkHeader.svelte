@@ -137,8 +137,8 @@
       0 1px 2px rgba(30, 34, 41, 0.07),
       inset 0 1px 0 rgba(255, 255, 255, 0.9);
     transition:
-      background 0.12s,
-      box-shadow 0.12s;
+      background var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart);
 
     button {
       display: inline-flex;
@@ -152,9 +152,9 @@
       padding: 0.45em 0.75em;
       color: var(--colour-text-secondary);
       transition:
-        background 0.12s,
-        color 0.12s,
-        transform 0.06s;
+        background var(--motion-fast) var(--ease-out-quart),
+        color var(--motion-fast) var(--ease-out-quart),
+        transform 60ms var(--ease-out-quart);
 
       &:hover {
         color: var(--colour-text);

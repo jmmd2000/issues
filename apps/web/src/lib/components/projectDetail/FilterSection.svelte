@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { slide } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import SectionToggle from "./SectionToggle.svelte";
 
   interface FilterSectionProps {
@@ -16,7 +18,7 @@
 <section class="group">
   <SectionToggle {title} {open} {onToggle} {count} />
   {#if open}
-    <ul>
+    <ul transition:slide={{ duration: 200, easing: quartOut }}>
       {@render children()}
     </ul>
   {/if}

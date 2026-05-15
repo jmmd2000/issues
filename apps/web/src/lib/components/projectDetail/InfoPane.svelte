@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { fade, slide } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import { resolve } from "$app/paths";
   import type { ProjectActivity, ProjectDetail, ProjectStats } from "@issues/api";
   import { ExternalLink, PanelRightClose, PanelRightOpen, Settings } from "@lucide/svelte";
@@ -7,6 +9,8 @@
   import ProjectActivityCard from "$lib/components/projectDetail/ProjectActivityCard.svelte";
   import SectionToggle from "$lib/components/projectDetail/SectionToggle.svelte";
   import { formatAbsolute, timeAgo } from "$lib/time";
+
+  const SECTION_SLIDE = { duration: 200, easing: quartOut };
 
   interface InfoPaneProps {
     project: ProjectDetail;
@@ -49,11 +53,11 @@
   </header>
 
   {#if !collapsed}
-    <div class="pane-scroll">
+    <div class="pane-scroll" in:fade={{ duration: 180, easing: quartOut, delay: 80 }} out:fade={{ duration: 120, easing: quartOut }}>
       <section class="info-section">
         <SectionToggle title="Project info" open={open.projectInfo} onToggle={() => toggleSection("projectInfo")} />
         {#if open.projectInfo}
-          <div class="section-body">
+          <div class="section-body" transition:slide={SECTION_SLIDE}>
             {#if project.description}
               <p class="project-description">{project.description}</p>
             {/if}
@@ -123,7 +127,7 @@
       <section class="info-section">
         <SectionToggle title="Members" open={open.members} onToggle={() => toggleSection("members")} count={project.members.length} />
         {#if open.members}
-          <ul class="member-list">
+          <ul class="member-list" transition:slide={SECTION_SLIDE}>
             {#each project.members as member (member.userID)}
               {@const memberStats = stats.byMember?.[member.userID] ?? { assignedOpen: 0, assignedTotal: 0, reported: 0 }}
               <li>
@@ -148,15 +152,17 @@
       <section class="info-section">
         <SectionToggle title="Recent activity" open={open.recent} onToggle={() => toggleSection("recent")} />
         {#if open.recent}
-          {#if activity.length === 0}
-            <p class="muted-empty">No activity yet.</p>
-          {:else}
-            <ul class="activity-feed">
-              {#each activity as row (row.id)}
-                <ProjectActivityCard {row} projectKey={project.key} statuses={project.statuses} labels={project.labels} members={project.members} />
-              {/each}
-            </ul>
-          {/if}
+          <div class="section-body" transition:slide={SECTION_SLIDE}>
+            {#if activity.length === 0}
+              <p class="muted-empty">No activity yet.</p>
+            {:else}
+              <ul class="activity-feed">
+                {#each activity as row (row.id)}
+                  <ProjectActivityCard {row} projectKey={project.key} statuses={project.statuses} labels={project.labels} members={project.members} />
+                {/each}
+              </ul>
+            {/if}
+          </div>
         {/if}
       </section>
     </div>
