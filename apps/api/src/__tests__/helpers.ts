@@ -103,6 +103,17 @@ export async function resetDatabase() {
 }
 
 /**
+ * Test helper to create a service (bot) user directly via the DB.
+ * Service users have no usable login; they are reached only through API tokens.
+ * @returns the user record
+ */
+export async function createServiceUser(name = "Claude", email = `${name.toLowerCase()}-${Date.now()}@service.local`) {
+  const passwordHash = await argon2.hash(randomBytes(48).toString("hex"));
+  const [user] = await db.insert(users).values({ name, email, passwordHash, isService: true }).returning();
+  return { user };
+}
+
+/**
  * Test helper to create an API token directly in the DB, bypassing the route layer.
  * Mirrors TokenService.createToken so tests can seed valid, expired, or otherwise
  * edge-case tokens without going through HTTP.
