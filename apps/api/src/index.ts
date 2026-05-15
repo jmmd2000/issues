@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
 import { auth } from "./routes/auth";
+import { tokens } from "./routes/tokens";
 import { projects } from "./routes/projects";
 import { labels } from "./routes/labels";
 import { statuses } from "./routes/statuses";
@@ -30,6 +31,8 @@ export type {
   ProjectWithCount,
   PublicProject,
   CurrentUser,
+  ApiToken,
+  CreatedApiToken,
   Status,
   Label,
   Priority,
@@ -83,6 +86,7 @@ const routes = app
     return c.json({ status: "ok", timestamp: new Date().toISOString() });
   })
   .route("", auth)
+  .route("", tokens)
   .route("", projects)
   .route("", labels)
   .route("", statuses)

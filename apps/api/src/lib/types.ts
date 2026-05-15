@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { attachments, comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
+import { apiTokens, attachments, comments, labels, projectMembers, projects, statuses, ticketActivity, ticketCounters, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
 import { ACTIVITY_ACTIONS, LINK_TYPES, PRIORITIES, SEARCH_SORT_COLUMNS, SEARCH_SORT_DIRECTIONS, STATUS_CATEGORIES } from "./constants";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -27,6 +27,7 @@ export type ActivityRow = typeof ticketActivity.$inferSelect;
 export type CommentRow = typeof comments.$inferSelect;
 export type TicketLinkRow = typeof ticketLinks.$inferSelect;
 export type AttachmentRow = typeof attachments.$inferSelect;
+export type ApiTokenRow = typeof apiTokens.$inferSelect;
 
 export type Visibility = "public" | "private";
 
@@ -35,6 +36,8 @@ export type Project = Jsonified<ProjectRow>;
 export type ProjectWithCount = Project & { openCount: number };
 export type PublicProject = Pick<Project, "id" | "key" | "name" | "description"> & { openCount: number };
 export type CurrentUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
+export type ApiToken = Jsonified<Pick<ApiTokenRow, "id" | "name" | "lastUsedAt" | "expiresAt" | "createdAt">>;
+export type CreatedApiToken = { token: string; apiToken: ApiToken };
 export type Status = Jsonified<StatusRow>;
 export type Label = Jsonified<LabelRow>;
 export type Ticket = Jsonified<TicketRow>;
