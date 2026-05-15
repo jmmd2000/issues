@@ -8,6 +8,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
 import { auth } from "./routes/auth";
 import { tokens } from "./routes/tokens";
+import { mcp } from "./routes/mcp";
 import { projects } from "./routes/projects";
 import { labels } from "./routes/labels";
 import { statuses } from "./routes/statuses";
@@ -97,7 +98,8 @@ const routes = app
   .route("", attachments)
   .route("", search)
   .route("", users)
-  .route("", uploads);
+  .route("", uploads)
+  .route("", mcp);
 
 export type AppType = typeof routes;
 
