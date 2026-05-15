@@ -188,3 +188,5 @@ export type ActivityValue = {
   direction?: "outgoing" | "incoming"; // link_added/removed direction relative to the side this row lives on
   filename?: string; // attachment_added/removed
 };
+
+export type { CompactProject, CompactTicket, CompactTicketDetail, CompactComment, CompactActivity } from "@issues/shared";
