@@ -1,7 +1,8 @@
 import argon2 from "argon2";
+import { randomBytes } from "node:crypto";
 import { db } from "../db";
 import { sessions, users } from "../db/schema";
-import { count, eq, gt, and } from "drizzle-orm";
+import { asc, count, eq, gt, and } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7;
@@ -16,7 +17,7 @@ export class AuthService {
    * @throws {HTTPException} 403 if a user already exists
    */
   static async createUser(name: string, email: string, password: string) {
-    const existingUsers = await db.select({ count: count() }).from(users);
+    const existingUsers = await db.select({ count: count() }).from(users).where(eq(users.isService, false));
     if (existingUsers[0].count > 0) throw new HTTPException(403, { message: "Max number of users already exists." });
 
     const passwordHash = await argon2.hash(password);
@@ -111,7 +112,47 @@ export class AuthService {
    * @returns Boolean whether registration is open or closed
    */
   static async checkRegistrationStatus() {
-    const [{ count: userCount }] = await db.select({ count: count() }).from(users);
+    const [{ count: userCount }] = await db.select({ count: count() }).from(users).where(eq(users.isService, false));
     return userCount === 0;
   }
+
+  /**
+   * Returns true if the given user is a human (non-service) account.
+   * Service users cannot manage other service users.
+   * @param userID Authenticated user's ID
+   */
+  static async isHuman(userID: string): Promise<boolean> {
+    const [row] = await db.select({ isService: users.isService }).from(users).where(eq(users.id, userID)).limit(1);
+    return !!row && !row.isService;
+  }
+
+  /**
+   * Creates a service (bot) user. Service users have no login credentials and
+   * are reached only through API tokens. Sees every project regardless of
+   * project_members rows.
+   * @param name Display name shown on tickets/comments/activity
+   * @returns The created user minus sensitive fields
+   */
+  static async createServiceUser(name: string) {
+    const email = `${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now()}@service.local`;
+    const unguessable = randomBytes(48).toString("hex");
+    const passwordHash = await argon2.hash(unguessable);
+    const [user] = await db
+      .insert(users)
+      .values({ name, email, passwordHash, isService: true })
+      .returning({ id: users.id, name: users.name, email: users.email, avatarURL: users.avatarURL, isService: users.isService, createdAt: users.createdAt });
+    return user;
+  }
+
+  /**
+   * Lists every service user, oldest first.
+   */
+  static async listServiceUsers() {
+    return db
+      .select({ id: users.id, name: users.name, email: users.email, avatarURL: users.avatarURL, createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.isService, true))
+      .orderBy(asc(users.createdAt));
+  }
+
 }

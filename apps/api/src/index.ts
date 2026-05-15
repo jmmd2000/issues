@@ -20,6 +20,7 @@ import { attachments } from "./routes/attachments";
 import { uploads } from "./routes/uploads";
 import { search } from "./routes/search";
 import { users } from "./routes/users";
+import { serviceUsers } from "./routes/serviceUsers";
 export type {
   Jsonified,
   UserRow,
@@ -98,6 +99,7 @@ const routes = app
   .route("", attachments)
   .route("", search)
   .route("", users)
+  .route("", serviceUsers)
   .route("", uploads)
   .route("", mcp);
 
