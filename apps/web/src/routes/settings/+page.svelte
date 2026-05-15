@@ -3,11 +3,33 @@
   import { resolve } from "$app/paths";
   import { MoveLeft } from "@lucide/svelte";
   import type { PageProps } from "./$types";
+  import type { ApiToken } from "@issues/api";
+  import { client } from "$lib/api/client";
   import ApiTokensForm from "$lib/components/forms/ApiTokensForm.svelte";
   import AvatarForm from "$lib/components/forms/AvatarForm.svelte";
   import PasswordForm from "$lib/components/forms/PasswordForm.svelte";
+  import ServiceUsersForm from "$lib/components/forms/ServiceUsersForm.svelte";
 
   let { data }: PageProps = $props();
+
+  async function createOwnToken(name: string, expiresInDays: number) {
+    const res = await client.api.auth.tokens.$post({ json: { name, expiresInDays } });
+    if (!res.ok) {
+      const body = (await res.json()) as { message?: string; fieldErrors?: Record<string, string> };
+      return { ok: false as const, message: body.message, fieldErrors: body.fieldErrors };
+    }
+    const body = (await res.json()) as { token: string; apiToken: ApiToken };
+    return { ok: true as const, token: body.token, apiToken: body.apiToken };
+  }
+
+  async function revokeOwnToken(id: string) {
+    const res = await client.api.auth.tokens[":id"].$delete({ param: { id } });
+    if (!res.ok) {
+      const body = (await res.json()) as { message?: string };
+      return { ok: false as const, message: body.message };
+    }
+    return { ok: true as const };
+  }
 </script>
 
 <svelte:head>
@@ -35,13 +57,17 @@
 
   <section class="settings-card-container">
     <h2>API tokens</h2>
-    <p class="section-description">
-      Long-lived bearer tokens for programmatic access. Used by the
-      <a href="https://github.com/anthropics/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a>
-      MCP server and any other client that authenticates with <code>Authorization: Bearer</code>.
-    </p>
-    <ApiTokensForm tokens={data.apiTokens} />
+    <p class="section-description">Long-lived bearer tokens for programmatic access.</p>
+    <ApiTokensForm tokens={data.apiTokens} onCreate={createOwnToken} onRevoke={revokeOwnToken} />
   </section>
+
+  {#if data.canManageServiceUsers}
+    <section class="settings-card-container">
+      <h2>Service users</h2>
+      <p class="section-description">Bot accounts that show up as the reporter on tickets and comments. Each service user has its own tokens.</p>
+      <ServiceUsersForm serviceUsers={data.serviceUsers} />
+    </section>
+  {/if}
 </div>
 
 <style>

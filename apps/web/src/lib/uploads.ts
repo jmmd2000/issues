@@ -80,3 +80,48 @@ export async function deleteUserAvatar(): Promise<CurrentUser> {
   const { user }: { user: CurrentUser } = await res.json();
   return user;
 }
+
+/**
+ * Uploads an avatar image for a service user via multipart/form-data. Only
+ * callable by human users; the API gates this on the caller's session.
+ *
+ * Throws an Error whose `.message` is the server-supplied reason on non-2xx.
+ */
+export async function uploadServiceUserAvatar(serviceUserID: string, file: File): Promise<CurrentUser> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${PUBLIC_API_URL}/api/users/service/${serviceUserID}/avatar`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `Upload failed (${res.status}).`);
+  }
+
+  const { user }: { user: CurrentUser } = await res.json();
+  return user;
+}
+
+/**
+ * Clears the avatar of a service user.
+ *
+ * Throws an Error whose `.message` is the server-supplied reason on non-2xx.
+ */
+export async function deleteServiceUserAvatar(serviceUserID: string): Promise<CurrentUser> {
+  const res = await fetch(`${PUBLIC_API_URL}/api/users/service/${serviceUserID}/avatar`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `Remove failed (${res.status}).`);
+  }
+
+  const { user }: { user: CurrentUser } = await res.json();
+  return user;
+}

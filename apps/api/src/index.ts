@@ -35,6 +35,7 @@ export type {
   CurrentUser,
   ApiToken,
   CreatedApiToken,
+  ServiceUser,
   Status,
   Label,
   Priority,

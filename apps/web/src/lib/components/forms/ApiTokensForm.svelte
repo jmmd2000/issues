@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { client } from "$lib/api/client";
   import type { ApiToken } from "@issues/api";
   import { Copy, Plus, Trash2 } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -9,7 +8,22 @@
   const EXPIRY_OPTIONS = [7, 30, 90, 180, 365] as const;
   const DEFAULT_EXPIRY = 90;
 
-  let { tokens }: { tokens: ApiToken[] } = $props();
+  type CreateResult = { ok: true; token: string; apiToken: ApiToken } | { ok: false; message?: string; fieldErrors?: Record<string, string> };
+  type RevokeResult = { ok: true } | { ok: false; message?: string };
+
+  let {
+    tokens,
+    onCreate,
+    onRevoke,
+    placeholder = "Token name, e.g. Claude Code",
+    emptyText = "No tokens yet. Create one below to authenticate the MCP server.",
+  }: {
+    tokens: ApiToken[];
+    onCreate: (name: string, expiresInDays: number) => Promise<CreateResult>;
+    onRevoke: (id: string) => Promise<RevokeResult>;
+    placeholder?: string;
+    emptyText?: string;
+  } = $props();
 
   // svelte-ignore state_referenced_locally
   let tokenList = $state([...tokens]);
@@ -44,17 +58,15 @@
     fieldErrors = {};
     message = null;
     try {
-      const res = await client.api.auth.tokens.$post({ json: { name: form.name, expiresInDays: form.expiresInDays } });
-      if (!res.ok) {
-        const data = (await res.json()) as { message?: string; fieldErrors?: Record<string, string> };
-        message = { type: "error", text: data.message ?? "Failed to create token." };
-        fieldErrors = data.fieldErrors ?? {};
+      const result = await onCreate(form.name, form.expiresInDays);
+      if (!result.ok) {
+        message = { type: "error", text: result.message ?? "Failed to create token." };
+        fieldErrors = result.fieldErrors ?? {};
         return;
       }
-      const data = (await res.json()) as { token: string; apiToken: ApiToken };
-      tokenList = [data.apiToken, ...tokenList];
-      revealedToken = data.token;
-      revealedName = data.apiToken.name;
+      tokenList = [result.apiToken, ...tokenList];
+      revealedToken = result.token;
+      revealedName = result.apiToken.name;
       revealOpen = true;
       copied = false;
       form = { name: "", expiresInDays: DEFAULT_EXPIRY };
@@ -91,10 +103,9 @@
 
     revoking = true;
     try {
-      const res = await client.api.auth.tokens[":id"].$delete({ param: { id: confirmTarget.id } });
-      if (!res.ok) {
-        const data = (await res.json()) as { message?: string };
-        message = { type: "error", text: data.message ?? "Failed to revoke token." };
+      const result = await onRevoke(confirmTarget.id);
+      if (!result.ok) {
+        message = { type: "error", text: result.message ?? "Failed to revoke token." };
         confirmOpen = false;
         return;
       }
@@ -112,7 +123,7 @@
 
 <div class="settings-card">
   {#if tokenList.length === 0}
-    <p class="empty">No tokens yet. Create one below to authenticate the MCP server.</p>
+    <p class="empty">{emptyText}</p>
   {:else}
     <ul class="token-list">
       {#each tokenList as token (token.id)}
@@ -145,7 +156,7 @@
       handleCreate();
     }}
   >
-    <input type="text" id="token-name" class="form-input" bind:value={form.name} placeholder="Token name, e.g. Claude Code" required maxlength="80" disabled={submitting} />
+    <input type="text" id="token-name" class="form-input" bind:value={form.name} {placeholder} required maxlength="80" disabled={submitting} />
     <select id="token-expiry" class="form-input expiry-select" bind:value={form.expiresInDays} disabled={submitting}>
       {#each EXPIRY_OPTIONS as days (days)}
         <option value={days}>{days} days</option>

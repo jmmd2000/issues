@@ -38,6 +38,7 @@ export type PublicProject = Pick<Project, "id" | "key" | "name" | "description">
 export type CurrentUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type ApiToken = Jsonified<Pick<ApiTokenRow, "id" | "name" | "lastUsedAt" | "expiresAt" | "createdAt">>;
 export type CreatedApiToken = { token: string; apiToken: ApiToken };
+export type ServiceUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type Status = Jsonified<StatusRow>;
 export type Label = Jsonified<LabelRow>;
 export type Ticket = Jsonified<TicketRow>;

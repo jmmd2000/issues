@@ -9,6 +9,7 @@ import { validationHook } from "../lib/validation";
 import { requireAuth } from "../middleware/auth";
 import { AuthService } from "../services/authService";
 import { TokenService, TOKEN_EXPIRY_DEFAULT_DAYS, TOKEN_EXPIRY_MAX_DAYS, TOKEN_EXPIRY_MIN_DAYS } from "../services/tokenService";
+import { UserService } from "../services/userService";
 
 const createUserSchema = z.object({ name: z.string().trim().min(1).max(80) }).strict();
 
@@ -78,4 +79,25 @@ export const serviceUsers = new Hono()
       .returning({ id: apiTokens.id });
     if (deleted.length === 0) throw new HTTPException(404, { message: "Token not found." });
     return c.body(null, 204);
+  })
+  .post("/api/users/service/:id/avatar", requireAuth, zValidator("param", userIdParam, validationHook), async (c) => {
+    await requireHuman(c.get("userID"));
+    const { id } = c.req.valid("param");
+    await requireServiceUser(id);
+
+    const body = await c.req.parseBody({ all: false });
+    const file = body["file"];
+    if (!(file instanceof File)) throw new HTTPException(400, { message: "Multipart `file` field is required." });
+    if (!file.type.startsWith("image/")) throw new HTTPException(415, { message: "Avatar must be an image." });
+
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const user = await UserService.setAvatar(id, bytes);
+    return c.json({ user }, 200);
+  })
+  .delete("/api/users/service/:id/avatar", requireAuth, zValidator("param", userIdParam, validationHook), async (c) => {
+    await requireHuman(c.get("userID"));
+    const { id } = c.req.valid("param");
+    await requireServiceUser(id);
+    const user = await UserService.clearAvatar(id);
+    return c.json({ user }, 200);
   });

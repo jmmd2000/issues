@@ -26,4 +26,4 @@ export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
 export type LinkType = (typeof LINK_TYPES)[number];
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
-export * from "./mcp";
+export * from "./mcp.js";
