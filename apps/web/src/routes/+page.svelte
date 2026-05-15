@@ -63,10 +63,10 @@
             <li>
               <a class="project-card" href={projectHref(project.key)}>
                 <header class="project-head">
-                  <span class="project-key">{project.key}</span>
+                  <code class="project-key">{project.key}</code>
                   <span class="project-rule" aria-hidden="true"></span>
                   <span class="project-count">
-                    <span class="project-count-number">{project.openCount}</span>
+                    <span class="project-count-number" data-empty={project.openCount === 0}>{project.openCount}</span>
                     <span class="project-count-label">open</span>
                   </span>
                 </header>
@@ -76,8 +76,7 @@
                 {/if}
                 {#if "stack" in project && Array.isArray(project.stack) && project.stack.length > 0}
                   <ul class="project-stack" aria-label="Stack">
-                    {#each project.stack as tech, i (tech)}
-                      {#if i > 0}<li class="project-stack-sep" aria-hidden="true">·</li>{/if}
+                    {#each project.stack as tech (tech)}
                       <li class="project-stack-item">{tech}</li>
                     {/each}
                   </ul>
@@ -198,9 +197,9 @@
     color: inherit;
     text-decoration: none;
     transition:
-      border-color 0.12s ease,
-      box-shadow 0.12s ease,
-      transform 0.08s ease;
+      border-color var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart),
+      transform 60ms var(--ease-out-quart);
   }
 
   .project-card:hover {
@@ -210,6 +209,7 @@
 
   .project-card:hover .project-key {
     color: var(--accent-shade-100);
+    background: var(--accent-tint-800);
   }
 
   .project-card:active {
@@ -231,7 +231,12 @@
     letter-spacing: 0.08em;
     line-height: 1;
     flex-shrink: 0;
-    transition: color 0.12s ease;
+    padding: 0.2rem 0.45rem;
+    margin: -0.2rem -0.45rem;
+    border-radius: var(--border-radius-inner);
+    transition:
+      color var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart);
   }
 
   .project-rule {
@@ -252,9 +257,14 @@
   .project-count-number {
     font-family: var(--font-mono);
     font-weight: 600;
-    color: var(--colour-text);
+    color: var(--accent-base);
     font-variant-numeric: tabular-nums;
     font-size: 0.9rem;
+    transition: color var(--motion-fast) var(--ease-out-quart);
+  }
+
+  .project-count-number[data-empty="true"] {
+    color: var(--colour-muted);
   }
 
   .project-count-label {
@@ -288,21 +298,20 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--colour-muted);
-    letter-spacing: 0.02em;
+    gap: 0.35rem;
   }
 
   .project-stack-item {
-    line-height: 1;
-  }
-
-  .project-stack-sep {
-    color: var(--colour-border);
-    line-height: 1;
-    user-select: none;
+    padding: 0.15rem 0.55rem;
+    border: 1px solid var(--accent-tint-700);
+    border-radius: 999px;
+    background: var(--colour-bg);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    color: var(--colour-text-secondary);
   }
 
   .rail {

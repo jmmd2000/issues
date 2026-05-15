@@ -145,14 +145,6 @@
     color: rgb(from var(--colour-bg-lighter) r g b / 0.75);
   }
 
-  .brand-foot {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgb(from var(--colour-bg-lighter) r g b / 0.5);
-  }
-
   .form-panel {
     display: grid;
     place-items: center;
