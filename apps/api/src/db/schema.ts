@@ -321,3 +321,18 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
   comment: one(comments, { fields: [attachments.commentID], references: [comments.id] }),
   uploader: one(users, { fields: [attachments.uploaderID], references: [users.id] }),
 }));
+
+// prettier-ignore
+export const apiTokens = pgTable("api_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userID: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const apiTokensRelations = relations(apiTokens, ({ one }) => ({
+  user: one(users, { fields: [apiTokens.userID], references: [users.id] }),
+}));
