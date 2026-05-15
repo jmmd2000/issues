@@ -210,7 +210,7 @@ export class SearchService {
    * @param userID Optional current user ID, used to include member projects
    * @returns Paginated ticket results and `hasNextPage`
    */
-  static async search(params: SearchParams, userID?: string): Promise<{ tickets: SearchResult[]; page: number; perPage: number; hasNextPage: boolean }> {
+  static async search(params: SearchParams, userID?: string): Promise<{ tickets: SearchResult[]; total: number; page: number; perPage: number; hasNextPage: boolean }> {
     const query = params.q?.trim() || undefined;
     const page = params.page ?? 1;
     const perPage = params.perPage ?? 25;
@@ -234,30 +234,38 @@ export class SearchService {
     );
 
     const orderBy = buildSearchOrderBy(sortBy, sortDirection, rank, Boolean(query));
-    const rows = await db
-      .select({
-        id: tickets.id,
-        number: tickets.number,
-        title: tickets.title,
-        description: tickets.description,
-        priority: tickets.priority,
-        visibility: tickets.visibility,
-        createdAt: tickets.createdAt,
-        updatedAt: tickets.updatedAt,
-        project: { id: projects.id, key: projects.key, name: projects.name, visibility: projects.visibility },
-        status: { id: statuses.id, name: statuses.name, slug: statuses.slug, category: statuses.category },
-        assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
-        titleHeadline,
-        descriptionHeadline,
-      })
-      .from(tickets)
-      .innerJoin(projects, eq(tickets.projectID, projects.id))
-      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
-      .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(perPage + 1)
-      .offset((page - 1) * perPage);
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select({
+          id: tickets.id,
+          number: tickets.number,
+          title: tickets.title,
+          description: tickets.description,
+          priority: tickets.priority,
+          visibility: tickets.visibility,
+          createdAt: tickets.createdAt,
+          updatedAt: tickets.updatedAt,
+          project: { id: projects.id, key: projects.key, name: projects.name, visibility: projects.visibility },
+          status: { id: statuses.id, name: statuses.name, slug: statuses.slug, category: statuses.category },
+          assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
+          titleHeadline,
+          descriptionHeadline,
+        })
+        .from(tickets)
+        .innerJoin(projects, eq(tickets.projectID, projects.id))
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .leftJoin(users, eq(tickets.assigneeID, users.id))
+        .where(where)
+        .orderBy(...orderBy)
+        .limit(perPage + 1)
+        .offset((page - 1) * perPage),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(tickets)
+        .innerJoin(projects, eq(tickets.projectID, projects.id))
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .where(where),
+    ]);
 
     const pageRows = rows.slice(0, perPage);
     const ticketIDs = pageRows.map((row) => row.id);
@@ -275,6 +283,7 @@ export class SearchService {
     const labelsByTicketID = orderLabelsByName(labelRows);
     return {
       tickets: pageRows.map((row) => shapeResult(row, labelsByTicketID.get(row.id) ?? [], Boolean(query))),
+      total,
       page,
       perPage,
       hasNextPage: rows.length > perPage,

@@ -3,6 +3,7 @@
   import { resolve } from "$app/paths";
   import { MoveLeft } from "@lucide/svelte";
   import type { PageProps } from "./$types";
+  import ApiTokensForm from "$lib/components/forms/ApiTokensForm.svelte";
   import AvatarForm from "$lib/components/forms/AvatarForm.svelte";
   import PasswordForm from "$lib/components/forms/PasswordForm.svelte";
 
@@ -30,6 +31,16 @@
   <section class="settings-card-container">
     <h2>Password</h2>
     <PasswordForm />
+  </section>
+
+  <section class="settings-card-container">
+    <h2>API tokens</h2>
+    <p class="section-description">
+      Long-lived bearer tokens for programmatic access. Used by the
+      <a href="https://github.com/anthropics/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a>
+      MCP server and any other client that authenticates with <code>Authorization: Bearer</code>.
+    </p>
+    <ApiTokensForm tokens={data.apiTokens} />
   </section>
 </div>
 
@@ -93,6 +104,29 @@
       font-size: 1em;
       font-weight: 500;
       letter-spacing: -0.02em;
+    }
+  }
+
+  .section-description {
+    margin: 0;
+    color: var(--colour-text-secondary);
+    font-size: 0.9em;
+    line-height: 1.5;
+
+    & a {
+      color: var(--accent-base);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    & code {
+      background-color: var(--colour-bg);
+      padding: 0.1em 0.3em;
+      border-radius: var(--border-radius-inner);
+      font-size: 0.85em;
     }
   }
 </style>

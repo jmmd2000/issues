@@ -189,4 +189,19 @@ export type ActivityValue = {
   filename?: string; // attachment_added/removed
 };
 
-export type { CompactProject, CompactTicket, CompactTicketDetail, CompactComment, CompactActivity } from "@issues/shared";
+export type {
+  CompactProject,
+  CompactProjectDetail,
+  CompactTicket,
+  CompactTicketDetail,
+  CompactSearchPage,
+  CompactComment,
+  CompactActivity,
+  CompactLink,
+  CompactMember,
+  CompactStatus,
+  CompactLabel,
+  CompactStats,
+  CompactMemberStats,
+  CompactAttachment,
+} from "@issues/shared";

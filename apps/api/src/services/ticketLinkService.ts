@@ -1,11 +1,10 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { parseTicketRef } from "@issues/shared";
 import { db } from "../db";
 import { projects, statuses, ticketLinks, tickets, users } from "../db/schema";
 import type { LinkType, Priority, StatusCategory, TicketLink } from "../lib/types";
 import { ActivityService } from "./activityService";
-
-const TICKET_REF_RE = /^([A-Z]{2,6})-(\d+)$/;
 
 type LinkRow = {
   id: string;
@@ -55,25 +54,26 @@ export class TicketLinkService {
       assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
     } as const;
 
-    const outgoing = await db
-      .select(baseSelect)
-      .from(ticketLinks)
-      .innerJoin(tickets, eq(ticketLinks.targetTicketID, tickets.id))
-      .innerJoin(projects, eq(tickets.projectID, projects.id))
-      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
-      .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt)))
-      .orderBy(asc(ticketLinks.createdAt));
-
-    const incoming = await db
-      .select(baseSelect)
-      .from(ticketLinks)
-      .innerJoin(tickets, eq(ticketLinks.sourceTicketID, tickets.id))
-      .innerJoin(projects, eq(tickets.projectID, projects.id))
-      .innerJoin(statuses, eq(tickets.statusID, statuses.id))
-      .leftJoin(users, eq(tickets.assigneeID, users.id))
-      .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt)))
-      .orderBy(asc(ticketLinks.createdAt));
+    const [outgoing, incoming] = await Promise.all([
+      db
+        .select(baseSelect)
+        .from(ticketLinks)
+        .innerJoin(tickets, eq(ticketLinks.targetTicketID, tickets.id))
+        .innerJoin(projects, eq(tickets.projectID, projects.id))
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .leftJoin(users, eq(tickets.assigneeID, users.id))
+        .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt)))
+        .orderBy(asc(ticketLinks.createdAt)),
+      db
+        .select(baseSelect)
+        .from(ticketLinks)
+        .innerJoin(tickets, eq(ticketLinks.sourceTicketID, tickets.id))
+        .innerJoin(projects, eq(tickets.projectID, projects.id))
+        .innerJoin(statuses, eq(tickets.statusID, statuses.id))
+        .leftJoin(users, eq(tickets.assigneeID, users.id))
+        .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt)))
+        .orderBy(asc(ticketLinks.createdAt)),
+    ]);
 
     return [...outgoing.map((row) => shape(row, "outgoing")), ...incoming.map((row) => shape(row, "incoming"))];
   }
@@ -83,10 +83,9 @@ export class TicketLinkService {
    * invalid, 404 if the project or ticket cannot be found.
    */
   static async resolveTargetRef(targetRef: string) {
-    const match = targetRef.toUpperCase().trim().match(TICKET_REF_RE);
-    if (!match) throw new HTTPException(400, { message: `Invalid ticket reference: ${targetRef}. Expected format: KEY-NUMBER.` });
-    const [, projectKey, numberStr] = match;
-    const number = Number(numberStr);
+    const parsed = parseTicketRef(targetRef.toUpperCase().trim());
+    if (!parsed) throw new HTTPException(400, { message: `Invalid ticket reference: ${targetRef}. Expected format: KEY-NUMBER.` });
+    const { projectKey, number } = parsed;
 
     const row = await db
       .select({
