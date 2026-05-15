@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
 import { labels as labelsTable, projectMembers, projects, statuses, ticketLabels, tickets, users } from "../db/schema";
+import { accessibleProjectIDs } from "./accessService";
 import { STATUS_CATEGORIES } from "../lib/constants";
 import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult, SearchSortColumn, SearchSortDirection } from "../lib/types";
 
@@ -43,18 +44,14 @@ type LabelRow = {
   label: { id: string; name: string; colour: string };
 };
 
-function memberProjectIDs(userID: string) {
-  return db.select({ id: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
-}
-
-function projectVisibilityCondition(userID?: string): SQL {
+async function projectVisibilityCondition(userID?: string): Promise<SQL> {
   if (!userID) return eq(projects.visibility, "public");
-  return or(eq(projects.visibility, "public"), inArray(projects.id, memberProjectIDs(userID)))!;
+  return or(eq(projects.visibility, "public"), inArray(projects.id, await accessibleProjectIDs(userID)))!;
 }
 
-function ticketVisibilityCondition(userID?: string): SQL {
+async function ticketVisibilityCondition(userID?: string): Promise<SQL> {
   if (!userID) return and(eq(projects.visibility, "public"), eq(tickets.visibility, "public"))!;
-  return or(inArray(tickets.projectID, memberProjectIDs(userID)), and(eq(projects.visibility, "public"), eq(tickets.visibility, "public")))!;
+  return or(inArray(tickets.projectID, await accessibleProjectIDs(userID)), and(eq(projects.visibility, "public"), eq(tickets.visibility, "public")))!;
 }
 
 function projectKeyCondition(projectKey?: string): SQL | undefined {
@@ -224,7 +221,7 @@ export class SearchService {
 
     const where = and(
       isNull(tickets.deletedAt),
-      ticketVisibilityCondition(userID),
+      await ticketVisibilityCondition(userID),
       projectKeyCondition(params.projectKey),
       textSearchCondition(query),
       statusCondition(params.statusSlugs),
@@ -298,7 +295,7 @@ export class SearchService {
    * @returns Projects, status slugs, label names, and assignees
    */
   static async listFilterOptions(userID?: string, projectKey?: string): Promise<SearchFilterOptions> {
-    const where = and(projectVisibilityCondition(userID), projectKeyCondition(projectKey));
+    const where = and(await projectVisibilityCondition(userID), projectKeyCondition(projectKey));
 
     const [projectRows, statusRows, labelRows, memberRows] = await Promise.all([
       db

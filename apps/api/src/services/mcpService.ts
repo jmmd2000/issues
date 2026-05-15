@@ -4,6 +4,7 @@ import { formatTicketRef, parseTicketRef, STATUS_CATEGORIES } from "@issues/shar
 import type { LinkType } from "@issues/shared";
 import { db } from "../db";
 import { attachments, comments, labels, projectMembers, projects, statuses, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
+import { accessibleProjectIDs, canAccessProject } from "./accessService";
 import type {
   ActivityValue,
   CompactActivity,
@@ -121,10 +122,11 @@ export class McpService {
    * @returns Compact project list
    */
   static async listProjects(userID: string): Promise<{ projects: CompactProject[] }> {
+    const memberProjects = await accessibleProjectIDs(userID);
     const rows = await db
       .select({ key: projects.key, name: projects.name })
       .from(projects)
-      .innerJoin(projectMembers, and(eq(projectMembers.projectID, projects.id), eq(projectMembers.userID, userID)))
+      .where(inArray(projects.id, memberProjects))
       .orderBy(asc(projects.key));
     return { projects: rows };
   }
@@ -644,11 +646,11 @@ export class McpService {
   }
 
   private static async resolveProject(userID: string, key: string): Promise<ProjectContext> {
+    const memberProjects = await accessibleProjectIDs(userID);
     const [row] = await db
       .select({ id: projects.id, key: projects.key })
       .from(projects)
-      .innerJoin(projectMembers, and(eq(projectMembers.projectID, projects.id), eq(projectMembers.userID, userID)))
-      .where(eq(projects.key, key.toUpperCase()))
+      .where(and(eq(projects.key, key.toUpperCase()), inArray(projects.id, memberProjects)))
       .limit(1);
 
     if (!row) throw new HTTPException(404, { message: `Project ${key} not found.` });
@@ -679,12 +681,7 @@ export class McpService {
       .limit(1);
     if (!row) throw new HTTPException(404, { message: `Comment ${commentID} not found.` });
 
-    const [membership] = await db
-      .select({ projectID: projectMembers.projectID })
-      .from(projectMembers)
-      .where(and(eq(projectMembers.userID, userID), eq(projectMembers.projectID, row.projectID)))
-      .limit(1);
-    if (!membership) throw new HTTPException(404, { message: `Comment ${commentID} not found.` });
+    if (!(await canAccessProject(userID, row.projectID))) throw new HTTPException(404, { message: `Comment ${commentID} not found.` });
 
     return row.ticketID;
   }

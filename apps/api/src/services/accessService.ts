@@ -8,15 +8,17 @@ async function isServiceUser(userID: string): Promise<boolean> {
 }
 
 /**
- * Subquery of project IDs the given user can access.
+ * Returns the IDs of every project the given user can access.
  * Service users see every project; humans see only projects they are members of.
- * Use as `inArray(projects.id, await accessibleProjectIDs(userID))`.
+ * Use with `inArray(projects.id, await accessibleProjectIDs(userID))`.
  */
-export async function accessibleProjectIDs(userID: string) {
+export async function accessibleProjectIDs(userID: string): Promise<string[]> {
   if (await isServiceUser(userID)) {
-    return db.select({ projectID: projects.id }).from(projects);
+    const rows = await db.select({ id: projects.id }).from(projects);
+    return rows.map((row) => row.id);
   }
-  return db.select({ projectID: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
+  const rows = await db.select({ id: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
+  return rows.map((row) => row.id);
 }
 
 /**

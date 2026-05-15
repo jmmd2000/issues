@@ -1,11 +1,9 @@
 import { Readable } from "node:stream";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { eq } from "drizzle-orm";
-import { db } from "../db";
-import { projectMembers } from "../db/schema";
 import { optionalAuth } from "../middleware/auth";
 import { AttachmentService } from "../services/attachmentService";
+import { canAccessProject } from "../services/accessService";
 import { UserService } from "../services/userService";
 import { STORAGE_KEY_RE, attachmentSize, readAttachmentStream } from "../lib/storage";
 
@@ -24,10 +22,14 @@ export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, asyn
   const userID = c.get("userID");
   if (!access.isPublic) {
     if (!userID) throw new HTTPException(404, { message: "Attachment not found." });
-    const memberRows = await db.select({ projectID: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
-    const memberSet = new Set(memberRows.map((row) => row.projectID));
-    const isMember = access.projectIDs.some((id) => memberSet.has(id));
-    if (!isMember) throw new HTTPException(404, { message: "Attachment not found." });
+    let isAccessible = false;
+    for (const projectID of access.projectIDs) {
+      if (await canAccessProject(userID, projectID)) {
+        isAccessible = true;
+        break;
+      }
+    }
+    if (!isAccessible) throw new HTTPException(404, { message: "Attachment not found." });
   }
 
   const size = attachmentSize(storageKey);

@@ -2,6 +2,7 @@ import { db } from "../db";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
+import { accessibleProjectIDs } from "./accessService";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 
@@ -28,7 +29,7 @@ export class ProjectService {
    */
   static async getAllProjects(userID: string | undefined) {
     if (userID) {
-      const userProjects = db.select({ id: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
+      const userProjects = await accessibleProjectIDs(userID);
       return await db
         .select()
         .from(projects)
@@ -69,7 +70,7 @@ export class ProjectService {
    * @returns Project rows newest-first with an `openCount` column
    */
   static async getAllProjectsWithCounts(userID: string) {
-    const memberProjects = db.select({ id: projectMembers.projectID }).from(projectMembers).where(eq(projectMembers.userID, userID));
+    const memberProjects = await accessibleProjectIDs(userID);
     return await db
       .select({
         id: projects.id,
