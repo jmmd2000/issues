@@ -44,9 +44,9 @@
     text-decoration: none;
     font-family: inherit;
     transition:
-      background 0.12s,
-      box-shadow 0.12s,
-      transform 0.06s;
+      background var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart),
+      transform 60ms var(--ease-out-quart);
 
     &:disabled {
       cursor: not-allowed;
@@ -74,12 +74,12 @@
   }
 
   .button[data-variant="primary"] {
-    background: linear-gradient(180deg, #4a6ee8, var(--accent-base));
-    color: white;
+    background: linear-gradient(180deg, var(--accent-tint-200), var(--accent-base));
+    color: var(--colour-bg-lighter);
     border: 1px solid var(--accent-shade-100);
     box-shadow:
-      rgba(30, 34, 41, 0.2) 0px 1px 3px,
-      rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+      rgb(from var(--colour-text) r g b / 0.2) 0px 1px 3px,
+      rgb(from var(--colour-bg-lighter) r g b / 0.14) 0px 1px 0px inset;
 
     &:hover:not(:disabled) {
       background: linear-gradient(180deg, var(--accent-base), var(--accent-shade-200));
@@ -88,8 +88,8 @@
     &:active:not(:disabled) {
       transform: translateY(1px);
       box-shadow:
-        rgba(30, 34, 41, 0.25) 0px 0px 1px,
-        rgba(255, 255, 255, 0.08) 0px 1px 0px inset;
+        rgb(from var(--colour-text) r g b / 0.25) 0px 0px 1px,
+        rgb(from var(--colour-bg-lighter) r g b / 0.08) 0px 1px 0px inset;
     }
   }
 
@@ -98,8 +98,8 @@
     color: var(--colour-text);
     border: 1px solid var(--colour-border);
     box-shadow:
-      0 1px 2px rgba(30, 34, 41, 0.07),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      0 1px 2px rgb(from var(--colour-text) r g b / 0.07),
+      inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
 
     &:hover:not(:disabled) {
       background: var(--colour-bg-hover);
@@ -114,11 +114,11 @@
 
   .button[data-variant="danger"] {
     background: var(--colour-error);
-    color: white;
+    color: var(--colour-bg-lighter);
     border: 1px solid color-mix(in oklch, var(--colour-error) 82%, black 18%);
     box-shadow:
-      rgba(30, 34, 41, 0.2) 0px 1px 3px,
-      rgba(255, 255, 255, 0.14) 0px 1px 0px inset;
+      rgb(from var(--colour-text) r g b / 0.2) 0px 1px 3px,
+      rgb(from var(--colour-bg-lighter) r g b / 0.14) 0px 1px 0px inset;
 
     &:hover:not(:disabled) {
       background: color-mix(in oklch, var(--colour-error) 84%, black 16%);
@@ -128,7 +128,7 @@
   .button[data-variant="danger"]:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow:
-      rgba(30, 34, 41, 0.25) 0px 0px 1px,
-      rgba(255, 255, 255, 0.08) 0px 1px 0px inset;
+      rgb(from var(--colour-text) r g b / 0.25) 0px 0px 1px,
+      rgb(from var(--colour-bg-lighter) r g b / 0.08) 0px 1px 0px inset;
   }
 </style>

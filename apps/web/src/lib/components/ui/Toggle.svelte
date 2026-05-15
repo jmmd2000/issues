@@ -123,11 +123,11 @@
     top: 50%;
     left: 0;
     border-radius: 50%;
-    background: white;
+    background: var(--colour-bg-lighter);
     box-shadow:
       0 1px 3px rgb(from var(--colour-text) r g b / 0.2),
       0 0 0 0.5px rgb(from var(--colour-text) r g b / 0.1);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform var(--motion-base) var(--ease-out-quart);
     pointer-events: none;
   }
 

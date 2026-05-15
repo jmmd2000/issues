@@ -57,9 +57,9 @@
     border-radius: 999px;
     cursor: pointer;
     transition:
-      color 120ms ease,
-      background 120ms ease,
-      box-shadow 120ms ease;
+      color var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart);
   }
 
   .option:hover:not(.active):not(:disabled) {
@@ -67,11 +67,11 @@
   }
 
   .option.active {
-    background: linear-gradient(180deg, #4a6ee8 0%, var(--accent-base) 100%);
-    color: white;
+    background: linear-gradient(180deg, var(--accent-tint-200) 0%, var(--accent-base) 100%);
+    color: var(--colour-bg-lighter);
     box-shadow:
-      0 1px 3px rgba(53, 93, 212, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      0 1px 3px rgb(from var(--accent-base) r g b / 0.3),
+      inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.14);
   }
 
   .option:disabled {

@@ -8,7 +8,9 @@
   import SearchInput from "$lib/components/ui/SearchInput.svelte";
   import Toggle from "$lib/components/ui/Toggle.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import LabelChip from "$lib/components/tickets/LabelChip.svelte";
   import PriorityChip from "$lib/components/tickets/PriorityChip.svelte";
+  import StatusChip from "$lib/components/tickets/StatusChip.svelte";
   import FilterSection from "./FilterSection.svelte";
 
   interface FiltersPaneProps {
@@ -55,12 +57,6 @@
     onToggleCollapsed,
   }: FiltersPaneProps = $props();
 
-  const statusColour: Record<Status["category"], string> = {
-    backlog: "var(--colour-status-backlog)",
-    active: "var(--colour-status-active)",
-    done: "var(--colour-status-done)",
-    cancelled: "var(--colour-status-cancelled)",
-  };
   const orderedStatuses = $derived([...statuses].sort((a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.position - b.position));
 
   let open = $state({ status: true, priority: true, assignee: true, label: true });
@@ -91,10 +87,7 @@
         {#each orderedStatuses as status (status.id)}
           <li>
             <Checkbox checked={selectedStatusIDs.includes(status.id)} onchange={() => onToggleStatus(status.id)}>
-              <span class="row">
-                <span class="dot" style:--dot={statusColour[status.category]}></span>
-                <span class="row-label">{status.name}</span>
-              </span>
+              <StatusChip name={status.name} category={status.category} />
             </Checkbox>
           </li>
         {/each}
@@ -130,10 +123,7 @@
           {#each labels as label (label.id)}
             <li>
               <Checkbox checked={selectedLabelIDs.includes(label.id)} onchange={() => onToggleLabel(label.id)}>
-                <span class="row">
-                  <span class="dot" style:--dot={label.colour}></span>
-                  <span class="row-label">{label.name}</span>
-                </span>
+                <LabelChip name={label.name} colour={label.colour} />
               </Checkbox>
             </li>
           {/each}
@@ -225,15 +215,6 @@
 
   .row-label {
     overflow-wrap: anywhere;
-  }
-
-  .dot {
-    display: inline-block;
-    width: 0.6em;
-    height: 0.6em;
-    border-radius: 999px;
-    background: var(--dot, var(--colour-muted));
-    flex-shrink: 0;
   }
 
   @media (max-width: 720px) {

@@ -2,12 +2,14 @@
   import { fade } from "svelte/transition";
   import { quartOut } from "svelte/easing";
   import { PanelLeftClose, PanelLeftOpen, X } from "@lucide/svelte";
-  import type { Priority, SearchFilterOptions, Status } from "@issues/api";
+  import type { Priority, SearchFilterOptions } from "@issues/api";
   import { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
   import type { SearchPageState } from "$lib/api/search";
   import FilterSection from "$lib/components/projectDetail/FilterSection.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import LabelChip from "$lib/components/tickets/LabelChip.svelte";
   import PriorityChip from "$lib/components/tickets/PriorityChip.svelte";
+  import StatusChip from "$lib/components/tickets/StatusChip.svelte";
   import Checkbox from "$lib/components/ui/Checkbox.svelte";
 
   interface SearchFiltersPaneProps {
@@ -39,13 +41,6 @@
     onResetFilters,
     onToggleCollapsed,
   }: SearchFiltersPaneProps = $props();
-
-  const statusColour: Record<Status["category"], string> = {
-    backlog: "var(--colour-status-backlog)",
-    active: "var(--colour-status-active)",
-    done: "var(--colour-status-done)",
-    cancelled: "var(--colour-status-cancelled)",
-  };
 
   let open = $state({ project: true, status: true, priority: true, assignee: true, label: true });
 
@@ -103,10 +98,7 @@
           {#each orderedStatuses as status (`${status.slug}:${status.category}`)}
             <li>
               <Checkbox checked={searchState.statusSlugs.includes(status.slug)} onchange={() => onToggleStatus(status.slug)}>
-                <span class="row">
-                  <span class="dot" style:--dot={statusColour[status.category]}></span>
-                  <span class="row-label">{status.name}</span>
-                </span>
+                <StatusChip name={status.name} category={status.category} />
               </Checkbox>
             </li>
           {/each}
@@ -145,10 +137,7 @@
           {#each orderedLabels as label (`${label.name}:${label.colour}`)}
             <li>
               <Checkbox checked={searchState.labelNames.includes(label.name)} onchange={() => onToggleLabel(label.name)}>
-                <span class="row">
-                  <span class="dot" style:--dot={label.colour}></span>
-                  <span class="row-label">{label.name}</span>
-                </span>
+                <LabelChip name={label.name} colour={label.colour} />
               </Checkbox>
             </li>
           {/each}
@@ -310,15 +299,6 @@
 
   .row-label {
     overflow-wrap: anywhere;
-  }
-
-  .dot {
-    display: inline-block;
-    width: 0.6em;
-    height: 0.6em;
-    border-radius: 999px;
-    background: var(--dot, var(--colour-muted));
-    flex-shrink: 0;
   }
 
   @media (max-width: 720px) {

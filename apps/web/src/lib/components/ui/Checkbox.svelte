@@ -18,9 +18,9 @@
     <input type="checkbox" class="native" bind:checked {disabled} {...rest} />
     <span class="box" class:checked class:indeterminate aria-hidden="true">
       {#if indeterminate}
-        <Minus size={11} strokeWidth={3} color="white" />
+        <Minus size={11} strokeWidth={3} color="var(--colour-bg-lighter)" />
       {:else if checked}
-        <Check size={11} strokeWidth={3} color="white" />
+        <Check size={11} strokeWidth={3} color="var(--colour-bg-lighter)" />
       {/if}
     </span>
   </span>
@@ -66,21 +66,24 @@
     border-radius: 3px;
     border: 1.5px solid var(--colour-border);
     background: var(--colour-bg-lighter);
-    box-shadow: 0 1px 2px rgba(30, 34, 41, 0.06);
+    box-shadow: 0 1px 2px rgb(from var(--colour-text) r g b / 0.06);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     pointer-events: none;
-    transition: all 120ms;
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart);
   }
 
   .box.checked,
   .box.indeterminate {
     border-color: var(--accent-base);
-    background: linear-gradient(180deg, #4a6ee8 0%, var(--accent-base) 100%);
+    background: linear-gradient(180deg, var(--accent-tint-200) 0%, var(--accent-base) 100%);
     box-shadow:
-      0 1px 3px rgba(53, 93, 212, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      0 1px 3px rgb(from var(--accent-base) r g b / 0.3),
+      inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.14);
   }
 
   .native:focus-visible + .box {

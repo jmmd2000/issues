@@ -62,9 +62,9 @@
     background: var(--colour-bg-lighter);
     border: var(--border);
     box-shadow:
-      0 8px 24px rgba(30, 34, 41, 0.15),
-      0 2px 8px rgba(30, 34, 41, 0.08);
-    animation: slide-in-right 200ms ease;
+      0 8px 24px rgb(from var(--colour-text) r g b / 0.15),
+      0 2px 8px rgb(from var(--colour-text) r g b / 0.08);
+    animation: slide-in-right var(--motion-base) var(--ease-out-quart);
     min-width: 16rem;
     max-width: 21rem;
   }
@@ -121,9 +121,12 @@
     flex-shrink: 0;
   }
 
+  .dismiss {
+    transition: color var(--motion-fast) var(--ease-out-quart);
+  }
+
   .dismiss:hover,
   .dismiss:focus-visible {
     color: var(--colour-text);
-    outline: none;
   }
 </style>
