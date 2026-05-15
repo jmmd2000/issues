@@ -78,6 +78,7 @@ async function postAttachment(ticketNumber: number, file: File, authCookies = co
 }
 
 beforeAll(() => {
+  process.env.UPLOADS_DIR = TEST_UPLOADS_DIR;
   fs.mkdirSync(TEST_UPLOADS_DIR, { recursive: true });
   resetUploadsDir();
 });
