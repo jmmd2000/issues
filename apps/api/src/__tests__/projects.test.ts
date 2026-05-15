@@ -273,7 +273,7 @@ describe("GET /api/projects/with-counts", () => {
     const project = await createProject(cookies, { key: "MIX" });
     const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, project.id));
     const backlog = projectStatuses.find((status) => status.slug === "backlog")!.id;
-    const inProgress = projectStatuses.find((status) => status.slug === "in_progress")!.id;
+    const inProgress = projectStatuses.find((status) => status.slug === "in-progress")!.id;
     const done = projectStatuses.find((status) => status.slug === "done")!.id;
     const cancelled = projectStatuses.find((status) => status.slug === "cancelled")!.id;
 
