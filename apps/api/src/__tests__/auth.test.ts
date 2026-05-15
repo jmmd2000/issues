@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { sessions } from "../db/schema";
+import { sessions, users } from "../db/schema";
+import { eq } from "drizzle-orm";
+import argon2 from "argon2";
 import { createAuthenticatedUser, resetDatabase } from "./helpers";
 
 describe("POST /api/auth/register", () => {
@@ -167,6 +169,72 @@ describe("GET /api/auth/me", () => {
   it("returns 401 with no session cookie", async () => {
     const res = await app.request("/api/auth/me", { method: "GET" });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/auth/change-password", () => {
+  let sessionCookie: string;
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies: sessionCookie } = await createAuthenticatedUser());
+  });
+
+  it("changes the password when the current one is correct", async () => {
+    const res = await app.request("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify({ currentPassword: "password123", newPassword: "newpassword456" }),
+    });
+
+    expect(res.status).toBe(200);
+
+    const [stored] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.email, "test@test.com")).limit(1);
+    expect(await argon2.verify(stored.passwordHash, "newpassword456")).toBe(true);
+  });
+
+  it("rotates the session and issues a fresh cookie", async () => {
+    const before = await db.select({ id: sessions.id }).from(sessions);
+
+    const res = await app.request("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify({ currentPassword: "password123", newPassword: "newpassword456" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toContain("session_id=");
+
+    const after = await db.select({ id: sessions.id }).from(sessions);
+    expect(after).toHaveLength(1);
+    expect(after[0].id).not.toBe(before[0].id);
+  });
+
+  it("returns 401 when the current password is wrong", async () => {
+    const res = await app.request("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify({ currentPassword: "wrongpassword", newPassword: "newpassword456" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 with no session cookie", async () => {
+    const res = await app.request("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: "password123", newPassword: "newpassword456" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 for too short new password", async () => {
+    const res = await app.request("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify({ currentPassword: "password123", newPassword: "short" }),
+    });
+    expect(res.status).toBe(400);
   });
 });
 
