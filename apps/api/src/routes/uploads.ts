@@ -6,7 +6,10 @@ import { db } from "../db";
 import { projectMembers } from "../db/schema";
 import { optionalAuth } from "../middleware/auth";
 import { AttachmentService } from "../services/attachmentService";
+import { UserService } from "../services/userService";
 import { STORAGE_KEY_RE, attachmentSize, readAttachmentStream } from "../lib/storage";
+
+const AVATAR_ACCESS = { isPublic: true, projectIDs: [] as string[], mimeType: "image/webp", filename: "avatar.webp", isImage: true } as const;
 
 export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, async (c) => {
   const storageKey = c.req.param("storageKey");
@@ -14,7 +17,8 @@ export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, asyn
     throw new HTTPException(400, { message: "Invalid attachment key." });
   }
 
-  const access = await AttachmentService.resolveAccess(storageKey);
+  const attachmentAccess = await AttachmentService.resolveAccess(storageKey);
+  const access = attachmentAccess ?? ((await UserService.isAvatarStorageKey(storageKey)) ? AVATAR_ACCESS : null);
   if (!access) throw new HTTPException(404, { message: "Attachment not found." });
 
   const userID = c.get("userID");

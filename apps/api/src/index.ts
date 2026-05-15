@@ -17,6 +17,7 @@ import { ticketLinks } from "./routes/ticketLinks";
 import { attachments } from "./routes/attachments";
 import { uploads } from "./routes/uploads";
 import { search } from "./routes/search";
+import { users } from "./routes/users";
 export type {
   Jsonified,
   UserRow,
@@ -91,6 +92,7 @@ const routes = app
   .route("", ticketLinks)
   .route("", attachments)
   .route("", search)
+  .route("", users)
   .route("", uploads);
 
 export type AppType = typeof routes;

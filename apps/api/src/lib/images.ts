@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { HTTPException } from "hono/http-exception";
 
 const MAX_IMAGE_DIMENSION = { width: 1920, height: 1080 } as const;
+const AVATAR_DIMENSION = 512;
 const WEBP_QUALITY = 80;
 // Upper bound on decoded pixels to defuse decompression bombs. 32 MP covers
 // any legitimate phone/camera image; sharp's default of ~268 MP is too lax.
@@ -60,6 +61,29 @@ export async function processImage(input: Buffer): Promise<ProcessedImage> {
   const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate()
     .resize({ ...MAX_IMAGE_DIMENSION, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: WEBP_QUALITY })
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    bytes: data,
+    contentHash: sha256(data),
+    width: info.width,
+    height: info.height,
+    sizeBytes: data.length,
+    mimeType: "image/webp",
+    extension: ".webp",
+  };
+}
+
+/**
+ * Resizes an image to a square 512x512 avatar via centre-cropped cover, strips
+ * metadata, encodes as WebP. Square fit:cover means the caller can hand in any
+ * aspect ratio and still get a clean avatar.
+ */
+export async function processAvatar(input: Buffer): Promise<ProcessedImage> {
+  const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
+    .rotate()
+    .resize({ width: AVATAR_DIMENSION, height: AVATAR_DIMENSION, fit: "cover", position: "centre" })
     .webp({ quality: WEBP_QUALITY })
     .toBuffer({ resolveWithObject: true });
 
