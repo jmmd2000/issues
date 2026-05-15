@@ -1,14 +1,75 @@
+# Production compose: deployed to the VPS by Jenkins
+name: ${APP_NAME}
+
 services:
   db:
     image: postgres:16
-    ports:
-      - "5436:5432"
+    restart: always
     environment:
-      POSTGRES_DB: issues
-      POSTGRES_USER: issues
-      POSTGRES_PASSWORD: issues
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/${GITHUB_USER}/issues-api:${IMAGE_TAG}
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      WEB_ORIGIN: https://${DOMAIN}
+      UPLOADS_DIR: /app/data/uploads
+      NODE_ENV: production
+      PORT: 4000
+    volumes:
+      - ./data/uploads:/app/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app_network
+      - web_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_proxy"
+      - "traefik.http.routers.${APP_NAME}-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/uploads`))"
+      - "traefik.http.routers.${APP_NAME}-api.entrypoints=websecure"
+      - "traefik.http.routers.${APP_NAME}-api.tls.certresolver=myresolver"
+
+  web:
+    image: ghcr.io/${GITHUB_USER}/issues-web:${IMAGE_TAG}
+    restart: always
+    environment:
+      ORIGIN: https://${DOMAIN}
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+    depends_on:
+      - api
+    networks:
+      - app_network
+      - web_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_proxy"
+      - "traefik.http.routers.${APP_NAME}-web.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${APP_NAME}-web.entrypoints=websecure"
+      - "traefik.http.routers.${APP_NAME}-web.tls.certresolver=myresolver"
+
+networks:
+  app_network:
+  web_proxy:
+    external: true
 
 volumes:
   pgdata:
+    driver: local

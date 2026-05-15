@@ -1,0 +1,11 @@
+# Local dev override
+services:
+  db:
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: issues
+      POSTGRES_USER: issues
+      POSTGRES_PASSWORD: issues
+    healthcheck:
+      disable: true
