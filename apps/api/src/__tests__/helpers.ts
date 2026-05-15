@@ -1,12 +1,13 @@
+import { createHash, randomBytes } from "node:crypto";
 import { db } from "../db";
 import app from "../index";
 import argon2 from "argon2";
-import { sql } from "drizzle-orm";
-import { sessions, users } from "../db/schema";
+import { eq, sql } from "drizzle-orm";
+import { apiTokens, sessions, users } from "../db/schema";
 
 /**
  * Test helper to create and login with a dummy user
- * @returns the cookies for use with auth-protected endpoints
+ * @returns the cookies for use with auth-protected endpoints and the user record
  */
 export async function createAuthenticatedUser(name = "Test User", email = "test@test.com", password = "password123") {
   await app.request("/api/auth/register", {
@@ -22,7 +23,8 @@ export async function createAuthenticatedUser(name = "Test User", email = "test@
   });
 
   const cookies = res.headers.get("set-cookie") ?? "";
-  return { cookies };
+  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return { cookies, user };
 }
 
 /**
@@ -98,4 +100,18 @@ export async function createExtraUser(name: string, email: string, password = "p
  */
 export async function resetDatabase() {
   await db.execute(sql`TRUNCATE TABLE labels, statuses, project_members, projects, sessions, users CASCADE`);
+}
+
+/**
+ * Test helper to create an API token directly in the DB, bypassing the route layer.
+ * Mirrors TokenService.createToken so tests can seed valid, expired, or otherwise
+ * edge-case tokens without going through HTTP.
+ * @returns The raw bearer token and the persisted record
+ */
+export async function createTokenForUser(userID: string, opts: { name?: string; expiresAt?: Date } = {}) {
+  const { name = "Test Token", expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90) } = opts;
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const [record] = await db.insert(apiTokens).values({ userID, name, tokenHash, expiresAt }).returning();
+  return { token, record };
 }
