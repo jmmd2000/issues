@@ -242,7 +242,7 @@
     min-height: var(--editor-min-height);
     padding: 0.8em 0.95em;
     border: 0;
-    resize: vertical;
+    field-sizing: content;
     background: var(--colour-bg-lighter);
     color: var(--colour-text);
     font-family: inherit;

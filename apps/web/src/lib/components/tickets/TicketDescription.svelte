@@ -111,10 +111,6 @@
     transition: opacity var(--motion-fast) var(--ease-out-quart);
   }
 
-  .description-view {
-    min-height: 8rem;
-  }
-
   .empty-description {
     width: 100%;
     min-height: 8rem;

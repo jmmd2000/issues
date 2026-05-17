@@ -77,16 +77,7 @@
   {/if}
 {:else}
   <div class="search-wrap">
-    <input
-      id={inputID}
-      class="search-input"
-      type="text"
-      bind:value={query}
-      {placeholder}
-      autocomplete="off"
-      aria-label={placeholder}
-      {disabled}
-    />
+    <input id={inputID} class="search-input" type="text" bind:value={query} {placeholder} autocomplete="off" aria-label={placeholder} {disabled} />
 
     {#if query.trim().length >= 2}
       {#if search.loading}
@@ -143,8 +134,7 @@
     border-radius: var(--border-radius-inner);
     background: var(--colour-bg);
     font-size: 0.85em;
-    width: fit-content;
-    max-width: 100%;
+    width: 100%;
   }
 
   .selected-key {
@@ -154,6 +144,8 @@
   }
 
   .selected-title {
+    flex: 1;
+    min-width: 0;
     color: var(--colour-text);
     overflow: hidden;
     text-overflow: ellipsis;

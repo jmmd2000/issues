@@ -538,7 +538,7 @@
 <style>
   .ticket-page {
     padding-top: 0.5em;
-    max-width: 1200px;
+    max-width: clamp(1200px, 92vw, 1800px);
     margin: auto;
   }
 
@@ -552,6 +552,7 @@
   .ticket-info {
     display: flex;
     flex-direction: column;
+    flex: 1;
     min-width: 0;
   }
 

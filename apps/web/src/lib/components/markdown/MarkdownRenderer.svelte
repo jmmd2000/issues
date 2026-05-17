@@ -87,6 +87,7 @@
     color: var(--colour-text);
     line-height: 1.6;
     font-size: 0.9em;
+    overflow-wrap: anywhere;
   }
 
   .markdown-body :global(p) {
