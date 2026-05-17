@@ -74,6 +74,7 @@ export type McpCreateInput = {
   priority?: Priority;
   labels?: string[];
   assignee?: string | null;
+  parentTicketRef?: string | null;
 };
 
 export type McpPatchInput = {
@@ -85,6 +86,7 @@ export type McpPatchInput = {
   addLabels?: string[];
   removeLabels?: string[];
   assignee?: string | null;
+  parentTicketRef?: string | null;
 };
 
 type ProjectContext = { id: string; key: string };
@@ -221,6 +223,7 @@ export class McpService {
     const statusID = input.statusSlug ? await McpService.resolveStatusSlug(project.id, input.statusSlug) : await McpService.defaultStatusID(project.id);
     const labelIDs = input.labels ? await McpService.resolveLabelNames(project.id, input.labels) : undefined;
     const assigneeID = input.assignee === undefined ? undefined : input.assignee === null ? undefined : await McpService.resolveAssigneeName(input.assignee);
+    const parentTicketID = await McpService.resolveParentTicketRef(project.id, input.parentTicketRef);
 
     const row = await TicketService.createTicket({
       projectID: project.id,
@@ -231,6 +234,7 @@ export class McpService {
       priority: input.priority,
       assigneeID,
       labelIDs,
+      ...(parentTicketID && { parentTicketID }),
     });
 
     return await McpService.compactSummaryFor(project, row.number);
@@ -254,6 +258,7 @@ export class McpService {
     const statusID = patch.statusSlug ? await McpService.resolveStatusSlug(context.project.id, patch.statusSlug) : undefined;
     const labelIDs = await McpService.computeLabelDelta(context.ticketID, context.project.id, patch);
     const assigneeID = patch.assignee === undefined ? undefined : patch.assignee === null ? null : await McpService.resolveAssigneeName(patch.assignee);
+    const parentTicketID = await McpService.resolveParentTicketRef(context.project.id, patch.parentTicketRef);
 
     await TicketService.patchTicket(context.ticketID, context.project.id, userID, {
       ...(patch.title !== undefined && { title: patch.title }),
@@ -262,6 +267,7 @@ export class McpService {
       ...(patch.priority !== undefined && { priority: patch.priority }),
       ...(labelIDs !== undefined && { labelIDs }),
       ...(assigneeID !== undefined && { assigneeID }),
+      ...(parentTicketID !== undefined && { parentTicketID }),
     });
 
     return await McpService.compactSummaryFor(context.project, context.number);
@@ -723,6 +729,36 @@ export class McpService {
       throw new HTTPException(400, { message: `Unknown label name(s): ${missing.join(", ")}` });
     }
     return rows.map((row) => row.id);
+  }
+
+  /**
+   * Resolves a parent ticket ref to its UUID, scoped to a project. Cross-project
+   * parents are rejected so MCP-driven epic/subticket hierarchies stay inside
+   * one project — cross-project relationships go through `relates_to` links
+   * instead.
+   * @param projectID The project the parent must live in
+   * @param ref `undefined` means not provided, `null` means explicit clear,
+   *   a string ref is resolved against `projectID`.
+   * @returns `undefined` to leave the field untouched, `null` to clear it, or
+   *   the parent ticket's UUID.
+   */
+  private static async resolveParentTicketRef(projectID: string, ref: string | null | undefined): Promise<string | null | undefined> {
+    if (ref === undefined) return undefined;
+    if (ref === null) return null;
+    const parsed = parseTicketRef(ref);
+    if (!parsed) throw new HTTPException(400, { message: `Invalid parent ticket ref: ${ref}` });
+
+    const [row] = await db
+      .select({ id: tickets.id, projectID: tickets.projectID })
+      .from(tickets)
+      .innerJoin(projects, eq(tickets.projectID, projects.id))
+      .where(and(eq(projects.key, parsed.projectKey), eq(tickets.number, parsed.number), isNull(tickets.deletedAt)))
+      .limit(1);
+    if (!row) throw new HTTPException(404, { message: `Parent ticket ${ref} not found.` });
+    if (row.projectID !== projectID) {
+      throw new HTTPException(400, { message: `Parent ticket ${ref} is in a different project.` });
+    }
+    return row.id;
   }
 
   private static async resolveAssigneeName(name: string): Promise<string> {

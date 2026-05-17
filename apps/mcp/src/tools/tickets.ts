@@ -38,6 +38,7 @@ const createSchema = z.object({
   priority: priorityEnum.optional().describe("Priority. Defaults to 'medium'."),
   labels: z.array(labelName).optional().describe("Label names to attach."),
   assignee: assigneeName.nullable().optional().describe("Assignee name. Pass null to leave unassigned."),
+  parentTicketRef: ticketRefSchema.nullable().optional().describe("Parent ticket ref in the same project (e.g. 'DASH-12'). Creates the new ticket as a subticket of the parent. Cross-project parents are rejected."),
 });
 
 const updateSchema = z.object({
@@ -50,6 +51,7 @@ const updateSchema = z.object({
   addLabels: z.array(labelName).optional().describe("Adds these labels without touching existing ones."),
   removeLabels: z.array(labelName).optional().describe("Removes these labels if present."),
   assignee: assigneeName.nullable().optional().describe("Assignee name, or null to clear."),
+  parentTicketRef: ticketRefSchema.nullable().optional().describe("Parent ticket ref in the same project, or null to clear the parent. Cycles (setting a descendant as a parent) are rejected with 400."),
 });
 
 const deleteSchema = z.object({
@@ -147,7 +149,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
   server.registerTool(
     "create_ticket",
     {
-      description: "Create a new ticket. Provide project key + title; description, priority, labels, and assignee are optional.",
+      description: "Create a new ticket. Provide project key + title; description, priority, labels, assignee, and parentTicketRef are optional. Pass parentTicketRef to create the ticket as a subticket of an existing ticket in the same project.",
       inputSchema: createSchema.shape,
     },
     (args) => handleCreateTicket(client, args)
@@ -156,7 +158,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
   server.registerTool(
     "update_ticket",
     {
-      description: "Patch any subset of editable fields on an existing ticket. Pass assignee: null to clear the assignee.",
+      description: "Patch any subset of editable fields on an existing ticket. Pass assignee: null to clear the assignee, parentTicketRef: null to clear the parent.",
       inputSchema: updateSchema.shape,
     },
     (args) => handleUpdateTicket(client, args)

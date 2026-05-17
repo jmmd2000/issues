@@ -40,6 +40,7 @@ export type CreateTicketArgs = {
   priority?: Priority;
   labels?: string[];
   assignee?: string | null;
+  parentTicketRef?: string | null;
 };
 
 export type PatchTicketArgs = {
@@ -51,6 +52,7 @@ export type PatchTicketArgs = {
   addLabels?: string[];
   removeLabels?: string[];
   assignee?: string | null;
+  parentTicketRef?: string | null;
 };
 
 export type CloneTicketArgs = {

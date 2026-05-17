@@ -109,6 +109,15 @@ describe("create_ticket handler", () => {
 
     expect(createTicket).toHaveBeenCalledWith({ project: "DASH", title: "x", labels: ["Bug"] });
   });
+
+  it("forwards parentTicketRef when provided", async () => {
+    const createTicket = vi.fn().mockResolvedValue({ ticket: { ref: "DASH-2", title: "Child", status: "Backlog", priority: "medium", labels: [], updated: "2026-05-15" } });
+    const client = makeClient({ createTicket });
+
+    await handleCreateTicket(client, { project: "DASH", title: "Child", parentTicketRef: "DASH-1" });
+
+    expect(createTicket).toHaveBeenCalledWith({ project: "DASH", title: "Child", parentTicketRef: "DASH-1" });
+  });
 });
 
 describe("update_ticket handler", () => {
@@ -119,6 +128,24 @@ describe("update_ticket handler", () => {
     await handleUpdateTicket(client, { ref: "DASH-1", priority: "high", assignee: null });
 
     expect(patchTicket).toHaveBeenCalledWith("DASH-1", { priority: "high", assignee: null });
+  });
+
+  it("forwards parentTicketRef in the patch body", async () => {
+    const patchTicket = vi.fn().mockResolvedValue({ ticket: { ref: "DASH-2", title: "x", status: "Backlog", priority: "medium", labels: [], updated: "2026-05-15" } });
+    const client = makeClient({ patchTicket });
+
+    await handleUpdateTicket(client, { ref: "DASH-2", parentTicketRef: "DASH-1" });
+
+    expect(patchTicket).toHaveBeenCalledWith("DASH-2", { parentTicketRef: "DASH-1" });
+  });
+
+  it("forwards parentTicketRef: null to clear the parent", async () => {
+    const patchTicket = vi.fn().mockResolvedValue({ ticket: { ref: "DASH-2", title: "x", status: "Backlog", priority: "medium", labels: [], updated: "2026-05-15" } });
+    const client = makeClient({ patchTicket });
+
+    await handleUpdateTicket(client, { ref: "DASH-2", parentTicketRef: null });
+
+    expect(patchTicket).toHaveBeenCalledWith("DASH-2", { parentTicketRef: null });
   });
 });
 

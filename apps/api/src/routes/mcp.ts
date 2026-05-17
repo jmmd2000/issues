@@ -51,6 +51,7 @@ const createBodySchema = z
     priority: z.enum(PRIORITIES).optional(),
     labels: z.array(z.string().trim().min(1).max(80)).optional(),
     assignee: z.string().trim().min(1).max(100).nullable().optional(),
+    parentTicketRef: refSchema.nullable().optional(),
   })
   .strict();
 
@@ -64,6 +65,7 @@ const patchBodySchema = z
     addLabels: z.array(z.string().trim().min(1).max(80)).optional(),
     removeLabels: z.array(z.string().trim().min(1).max(80)).optional(),
     assignee: z.string().trim().min(1).max(100).nullable().optional(),
+    parentTicketRef: refSchema.nullable().optional(),
   })
   .strict();
 
@@ -175,6 +177,7 @@ export const mcp = new Hono()
       priority: body.priority,
       labels: body.labels,
       assignee: body.assignee,
+      parentTicketRef: body.parentTicketRef,
     });
     return c.json(result, 201);
   })
