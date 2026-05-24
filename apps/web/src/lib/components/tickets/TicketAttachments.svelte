@@ -3,6 +3,7 @@
   import type { Attachment } from "@issues/api";
   import { client } from "$lib/api/client";
   import { attachmentURL, uploadTicketAttachment } from "$lib/uploads";
+  import ImageModal from "./ImageModal.svelte";
 
   interface TicketAttachmentsProps {
     attachments: Attachment[];
@@ -22,6 +23,8 @@
   let confirmDeleteID = $state<string | null>(null);
   let deletingID = $state<string | null>(null);
   let fileInput: HTMLInputElement | null = $state(null);
+  let previewID = $state<string | null>(null);
+  const preview = $derived(previewID ? (attachments.find((row) => row.id === previewID) ?? null) : null);
 
   const isEmpty = $derived(attachments.length === 0 && pending.length === 0);
 
@@ -152,16 +155,18 @@
     <div class="grid">
       {#each attachments as attachment (attachment.id)}
         <div class="tile" class:image-tile={attachment.isImage}>
-          <a class="thumb" href={attachmentURL(attachment)} target="_blank" rel="noreferrer noopener" title={attachment.filename}>
-            {#if attachment.isImage}
+          {#if attachment.isImage}
+            <button type="button" class="thumb thumb-button" onclick={() => (previewID = attachment.id)} title={attachment.filename} aria-label={`Preview ${attachment.filename}`}>
               <img src={attachmentURL(attachment)} alt={attachment.filename} loading="lazy" />
-            {:else}
-              {@const Icon = iconFor(attachment.filename)}
+            </button>
+          {:else}
+            {@const Icon = iconFor(attachment.filename)}
+            <a class="thumb" href={attachmentURL(attachment)} target="_blank" rel="noreferrer noopener" title={attachment.filename}>
               <span class="file-icon">
                 <Icon size={28} strokeWidth={1.5} />
               </span>
-            {/if}
-          </a>
+            </a>
+          {/if}
 
           <div class="tile-meta">
             <span class="tile-name" title={attachment.filename}>{attachment.filename}</span>
@@ -213,6 +218,8 @@
     </div>
   {/if}
 </section>
+
+<ImageModal open={preview !== null} attachment={preview} onclose={() => (previewID = null)} />
 
 <style>
   .attachments-card {
@@ -339,6 +346,14 @@
     text-decoration: none;
     color: var(--colour-text);
     overflow: hidden;
+  }
+
+  .thumb-button {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    cursor: zoom-in;
   }
 
   .image-tile .thumb img {
