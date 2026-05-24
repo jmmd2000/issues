@@ -1,8 +1,9 @@
+import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "../db";
-import { labels, projectMembers, statuses, tickets, users } from "../db/schema";
+import { apiTokens, labels, projectMembers, statuses, tickets, users } from "../db/schema";
 import { LINK_TYPES } from "../lib/constants";
 import type { LinkType, Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
@@ -12,6 +13,11 @@ import { TicketLinkService } from "../services/ticketLinkService";
 import { TicketService } from "../services/ticketService";
 
 const DEV_USER = { name: "James", email: "james@test.com", password: "password123" };
+
+const DEV_SERVICE_USER = { name: "Dev Bot", email: "dev-bot@service.local" };
+// Fixed dev-only token so MCP can be tested without going through the UI
+const DEV_SERVICE_TOKEN = "d".repeat(64);
+const DEV_SERVICE_TOKEN_NAME = "dev seed token";
 
 const EXTRA_USERS = [
   { name: "John Smith", email: "john@test.com" },
@@ -331,7 +337,9 @@ async function seedLinksForProject(projectKey: string, ownerID: string, projectT
 
 async function seed() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await db.execute(sql`TRUNCATE TABLE ticket_links, comments, ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`);
+  await db.execute(
+    sql`TRUNCATE TABLE api_tokens, ticket_links, comments, ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`
+  );
 
   await AuthService.createUser(DEV_USER.name, DEV_USER.email, DEV_USER.password);
   const [{ id: ownerID }] = await db.select({ id: users.id }).from(users).limit(1);
@@ -339,6 +347,19 @@ async function seed() {
   const passwordHash = await argon2.hash(SHARED_PASSWORD);
   const extraInsertRows = EXTRA_USERS.map((user) => ({ name: user.name, email: user.email, passwordHash }));
   const extraUserIDs = (await db.insert(users).values(extraInsertRows).returning({ id: users.id })).map((row) => row.id);
+
+  const servicePasswordHash = await argon2.hash(randomBytes(48).toString("hex"));
+  const [{ id: serviceUserID }] = await db
+    .insert(users)
+    .values({ name: DEV_SERVICE_USER.name, email: DEV_SERVICE_USER.email, passwordHash: servicePasswordHash, isService: true })
+    .returning({ id: users.id });
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365);
+  await db.insert(apiTokens).values({
+    userID: serviceUserID,
+    name: DEV_SERVICE_TOKEN_NAME,
+    tokenHash: createHash("sha256").update(DEV_SERVICE_TOKEN).digest("hex"),
+    expiresAt,
+  });
 
   let ticketCount = 0;
   let linkCount = 0;
@@ -357,9 +378,10 @@ async function seed() {
     linkCount += await seedLinksForProject(project.key, ownerID, projectTickets);
   }
 
-  const totalUsers = 1 + EXTRA_USERS.length;
+  const totalUsers = 1 + EXTRA_USERS.length + 1;
   console.log(`Seeded ${totalUsers} users, ${DEV_PROJECTS.length} projects, ${ticketCount} tickets, ${linkCount} links.`);
   console.log(`Login: ${DEV_USER.email} / ${DEV_USER.password} (all extra users share the same password)`);
+  console.log(`MCP token (${DEV_SERVICE_USER.name}): ${DEV_SERVICE_TOKEN}`);
 }
 
 seed()
