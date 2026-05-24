@@ -12,7 +12,7 @@
     members: ProjectMember[];
     projectKey: string;
     ticketNumber: number;
-    currentUserID: string;
+    currentUserID?: string;
     onmutated: () => void | Promise<void>;
   }
 

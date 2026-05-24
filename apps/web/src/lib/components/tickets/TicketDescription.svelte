@@ -10,11 +10,12 @@
   interface TicketDescriptionProps {
     description: string;
     saving?: boolean;
-    onsave: (description: string) => boolean | Promise<boolean>;
+    onsave?: (description: string) => boolean | Promise<boolean>;
     attachmentContext?: { projectKey: string; ticketNumber: number };
+    readonly?: boolean;
   }
 
-  let { description, saving = false, onsave, attachmentContext }: TicketDescriptionProps = $props();
+  let { description, saving = false, onsave, attachmentContext, readonly = false }: TicketDescriptionProps = $props();
 
   let editing = $state(false);
   let draft = $state("");
@@ -36,7 +37,7 @@
   }
 
   async function save() {
-    if (isSaving) return;
+    if (isSaving || !onsave) return;
 
     localSaving = true;
     try {
@@ -53,14 +54,14 @@
   <div class="section-header">
     <h2>Description</h2>
 
-    {#if !editing}
+    {#if !editing && !readonly}
       <div class="description-edit">
         <Button type="button" variant="secondary" size="sm" onclick={startEditing}>Edit</Button>
       </div>
     {/if}
   </div>
 
-  {#if editing}
+  {#if editing && !readonly}
     <div class="description-mode" in:fade={SWAP}>
       <MarkdownEditor bind:value={draft} minHeight="14rem" autofocus onsubmit={() => void save()} {attachmentContext} />
 
@@ -75,6 +76,8 @@
     <div class="description-view" in:fade={SWAP}>
       <MarkdownRenderer source={description} />
     </div>
+  {:else if readonly}
+    <p class="empty-description-readonly">No description.</p>
   {:else}
     <button type="button" class="empty-description" onclick={startEditing} in:fade={SWAP}>+ Add description</button>
   {/if}
@@ -138,5 +141,12 @@
     justify-content: flex-end;
     gap: 0.5rem;
     margin-top: 0.75rem;
+  }
+
+  .empty-description-readonly {
+    margin: 0;
+    color: var(--colour-muted);
+    font-size: 0.85rem;
+    font-style: italic;
   }
 </style>

@@ -1,13 +1,11 @@
 // Load function for ticket detail page
 import { error } from "@sveltejs/kit";
 import type { Attachment, Comment, ProjectDetail, TicketActivity, TicketDetail, TicketLink } from "@issues/api";
-import { requireAuth } from "$lib/auth";
 import { createClient } from "$lib/api/client";
 import type { PageLoad } from "./$types";
 
-export const load: PageLoad = async ({ fetch, params, parent, url }) => {
+export const load: PageLoad = async ({ fetch, params, parent }) => {
   const { user } = await parent();
-  requireAuth(user, url);
 
   const api = createClient(fetch).api.projects[":key"];
 

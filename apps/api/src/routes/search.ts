@@ -44,13 +44,11 @@ const filterOptionsQuerySchema = z.object({
 
 export const search = new Hono()
   .get("/api/search/filters", optionalAuth, zValidator("query", filterOptionsQuerySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const query = c.req.valid("query");
-    const filters = await SearchService.listFilterOptions(userID, query.project);
+    const filters = await SearchService.listFilterOptions(c.get("role"), query.project);
     return c.json({ filters });
   })
   .get("/api/search", optionalAuth, zValidator("query", searchQuerySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const query = c.req.valid("query");
     const result = await SearchService.search(
       {
@@ -65,7 +63,7 @@ export const search = new Hono()
         sortBy: query.sortBy,
         sortDirection: query.sortDirection,
       },
-      userID
+      c.get("role")
     );
 
     return c.json(result);

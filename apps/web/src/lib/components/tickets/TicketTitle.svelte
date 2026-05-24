@@ -4,10 +4,11 @@
   interface TicketTitleProps {
     title: string;
     saving?: boolean;
-    onsave: (title: string) => boolean | Promise<boolean>;
+    onsave?: (title: string) => boolean | Promise<boolean>;
+    readonly?: boolean;
   }
 
-  let { title, saving = false, onsave }: TicketTitleProps = $props();
+  let { title, saving = false, onsave, readonly = false }: TicketTitleProps = $props();
 
   let editing = $state(false);
   let draft = $state("");
@@ -36,7 +37,7 @@
   }
 
   async function save() {
-    if (isSaving) return;
+    if (isSaving || !onsave) return;
     const next = draft.trim();
     if (!next || next.length > 200) return;
     if (next === title) {
@@ -67,7 +68,9 @@
 </script>
 
 <div class="ticket-title">
-  {#if editing}
+  {#if readonly}
+    <h1 class="title-static">{title}</h1>
+  {:else if editing}
     <textarea bind:this={input} bind:value={draft} class="title-input" class:invalid={!isValid} rows="1" maxlength="200" disabled={isSaving} onkeydown={handleKeydown} onblur={() => void save()}
     ></textarea>
   {:else}
@@ -139,5 +142,13 @@
 
   .title-input.invalid {
     border-color: var(--colour-error);
+  }
+
+  .title-static {
+    color: var(--colour-text);
+    font-size: clamp(1.8rem, 1.6vw + 1.3rem, 3rem);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+    margin: 0;
   }
 </style>

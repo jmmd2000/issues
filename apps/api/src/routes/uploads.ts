@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { optionalAuth } from "../middleware/auth";
 import { AttachmentService } from "../services/attachmentService";
-import { canAccessProject } from "../services/accessService";
 import { UserService } from "../services/userService";
 import { STORAGE_KEY_RE, attachmentSize, readAttachmentStream } from "../lib/storage";
 
@@ -19,16 +18,10 @@ export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, asyn
   const access = attachmentAccess ?? ((await UserService.isAvatarStorageKey(storageKey)) ? AVATAR_ACCESS : null);
   if (!access) throw new HTTPException(404, { message: "Attachment not found." });
 
-  const userID = c.get("userID");
+  const role = c.get("role");
   if (!access.isPublic) {
-    if (!userID) throw new HTTPException(404, { message: "Attachment not found." });
-    let isAccessible = false;
-    for (const projectID of access.projectIDs) {
-      if (await canAccessProject(userID, projectID)) {
-        isAccessible = true;
-        break;
-      }
-    }
+    if (!role) throw new HTTPException(404, { message: "Attachment not found." });
+    const isAccessible = role.isService || access.projectIDs.some((projectID) => role.memberships.has(projectID));
     if (!isAccessible) throw new HTTPException(404, { message: "Attachment not found." });
   }
 

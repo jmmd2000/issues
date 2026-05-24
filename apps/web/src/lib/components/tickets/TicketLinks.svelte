@@ -12,9 +12,10 @@
     projectKey: string;
     ticketNumber: number;
     onmutated: () => void | Promise<void>;
+    readonly?: boolean;
   }
 
-  let { links, projectKey, ticketNumber, onmutated }: TicketLinksProps = $props();
+  let { links, projectKey, ticketNumber, onmutated, readonly = false }: TicketLinksProps = $props();
 
   let adding = $state(false);
   let optionKey = $state<string>(LINK_OPTIONS[0].key);
@@ -97,12 +98,14 @@
 <section class="links-card card" aria-label="Links">
   <header class="header">
     <h2>Links</h2>
-    <button type="button" class="add-trigger" onclick={startAdding} aria-label="Add link" disabled={adding}>
-      <Plus size={14} strokeWidth={3} />
-    </button>
+    {#if !readonly}
+      <button type="button" class="add-trigger" onclick={startAdding} aria-label="Add link" disabled={adding}>
+        <Plus size={14} strokeWidth={3} />
+      </button>
+    {/if}
   </header>
 
-  {#if adding}
+  {#if adding && !readonly}
     <form
       class="add-form"
       onsubmit={(event) => {
@@ -154,7 +157,7 @@
                   assignee={link.ticket.assignee}
                 >
                   {#snippet trailing()}
-                    {#if link.linkType !== "clones"}
+                    {#if link.linkType !== "clones" && !readonly}
                       <button
                         type="button"
                         class="remove"

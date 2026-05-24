@@ -3,8 +3,9 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { validationHook } from "../lib/validation";
-import { requireAuth } from "../middleware/auth";
-import { requireProjectAccess } from "../middleware/projectAccess";
+import { canView } from "../lib/access";
+import { optionalAuth, requireAuth } from "../middleware/auth";
+import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 import { AttachmentService } from "../services/attachmentService";
 import { TicketService } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
@@ -18,10 +19,13 @@ const attachmentParamSchema = projectKeyParamSchema.extend({
 });
 
 export const attachments = new Hono()
-  .get("/api/projects/:key/tickets/:num/attachments", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/tickets/:num/attachments", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async (c) => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
     const ticket = await TicketService.getTicketByNumber(project.id, num);
+    if (!canView(c.get("role"), project, ticket)) {
+      throw new HTTPException(404, { message: `Ticket #${num} not found` });
+    }
     const list = await AttachmentService.listForTicket(ticket.id);
     return c.json({ attachments: list });
   })

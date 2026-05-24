@@ -16,8 +16,11 @@
   import TicketTitle from "$lib/components/tickets/TicketTitle.svelte";
   import AssigneePicker from "$lib/components/tickets/AssigneePicker.svelte";
   import LabelsPicker from "$lib/components/tickets/LabelsPicker.svelte";
+  import LabelChip from "$lib/components/tickets/LabelChip.svelte";
   import PriorityPicker from "$lib/components/tickets/PriorityPicker.svelte";
+  import PriorityChip from "$lib/components/tickets/PriorityChip.svelte";
   import StatusPicker from "$lib/components/tickets/StatusPicker.svelte";
+  import StatusChip from "$lib/components/tickets/StatusChip.svelte";
   import TicketSearchModal from "$lib/components/tickets/TicketSearchModal.svelte";
   import TicketHistory from "$lib/components/tickets/TicketHistory.svelte";
   import TicketLinks from "$lib/components/tickets/TicketLinks.svelte";
@@ -32,6 +35,8 @@
   let activity = $derived(data.activity);
   let links = $derived(data.links);
   let attachments = $derived(data.attachments);
+  const user = $derived(data.user);
+  const canEdit = $derived(!!user);
   const attachmentContext = $derived({ projectKey: project.key, ticketNumber: ticket.number });
 
   let savingTitle = $state(false);
@@ -298,49 +303,51 @@
       </div>
 
       <div class="ticket-headline">
-        <TicketTitle title={ticket.title} saving={savingTitle} onsave={saveTitle} />
+        <TicketTitle title={ticket.title} saving={savingTitle} onsave={saveTitle} readonly={!canEdit} />
       </div>
     </div>
 
-    <div class="ticket-actions">
-      <Popover bind:open={actionsOpen} menuRole="menu" menuLabel="Ticket actions">
-        {#snippet trigger({ toggle, open: isOpen })}
-          <Button size="sm" onclick={toggle} aria-haspopup="menu" aria-expanded={isOpen} aria-label="Ticket actions">
-            <MoreHorizontal size={16} strokeWidth={2.5} />
-          </Button>
-        {/snippet}
-        {#snippet menu()}
-          <button
-            type="button"
-            class="action-item"
-            role="menuitem"
-            onclick={() => {
-              actionsOpen = false;
-              cloneOpen = true;
-            }}
-          >
-            <Copy size={14} strokeWidth={2} /> Clone ticket
-          </button>
-          <div class="action-separator" role="separator"></div>
-          <button
-            type="button"
-            class="action-item action-item--danger"
-            role="menuitem"
-            onclick={() => {
-              actionsOpen = false;
-              deleteConfirmOpen = true;
-            }}
-          >
-            <Trash2 size={14} strokeWidth={2} /> Delete ticket
-          </button>
-        {/snippet}
-      </Popover>
-    </div>
+    {#if canEdit}
+      <div class="ticket-actions">
+        <Popover bind:open={actionsOpen} menuRole="menu" menuLabel="Ticket actions">
+          {#snippet trigger({ toggle, open: isOpen })}
+            <Button size="sm" onclick={toggle} aria-haspopup="menu" aria-expanded={isOpen} aria-label="Ticket actions">
+              <MoreHorizontal size={16} strokeWidth={2.5} />
+            </Button>
+          {/snippet}
+          {#snippet menu()}
+            <button
+              type="button"
+              class="action-item"
+              role="menuitem"
+              onclick={() => {
+                actionsOpen = false;
+                cloneOpen = true;
+              }}
+            >
+              <Copy size={14} strokeWidth={2} /> Clone ticket
+            </button>
+            <div class="action-separator" role="separator"></div>
+            <button
+              type="button"
+              class="action-item action-item--danger"
+              role="menuitem"
+              onclick={() => {
+                actionsOpen = false;
+                deleteConfirmOpen = true;
+              }}
+            >
+              <Trash2 size={14} strokeWidth={2} /> Delete ticket
+            </button>
+          {/snippet}
+        </Popover>
+      </div>
+    {/if}
   </div>
 
   <div class="ticket-content">
     <main class="ticket-main">
-      <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} {attachmentContext} />
+      <TicketDescription description={ticket.description} saving={savingDescription} onsave={saveDescription} {attachmentContext} readonly={!canEdit} />
       <TicketChildren
         children={ticket.children}
         projectKey={project.key}
@@ -350,11 +357,11 @@
         statuses={project.statuses}
         labels={project.labels}
         members={project.members}
-        currentUserID={data.user.id}
+        currentUserID={user?.id}
         onmutated={() => invalidateAll()}
       />
-      <TicketAttachments {attachments} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
-      <TicketLinks {links} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} />
+      <TicketAttachments {attachments} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} readonly={!canEdit} />
+      <TicketLinks {links} projectKey={project.key} ticketNumber={ticket.number} onmutated={() => invalidateAll()} readonly={!canEdit} />
       <TicketHistory
         {comments}
         {activity}
@@ -363,7 +370,7 @@
         members={project.members}
         projectKey={project.key}
         ticketNumber={ticket.number}
-        currentUserID={data.user.id}
+        currentUserID={user?.id}
         onmutated={() => invalidateAll()}
       />
     </main>
@@ -376,15 +383,24 @@
           <div class="property-row">
             <dt>Assignee</dt>
             <dd>
-              <AssigneePicker
-                members={data.project.members}
-                currentUserID={data.user.id}
-                bind:value={assigneeID}
-                disabled={savingAssignee}
-                loading={savingAssignee}
-                size="sm"
-                onselect={(nextAssigneeID, previousAssigneeID) => void saveAssignee(nextAssigneeID, previousAssigneeID)}
-              />
+              {#if canEdit && user}
+                <AssigneePicker
+                  members={data.project.members}
+                  currentUserID={user.id}
+                  bind:value={assigneeID}
+                  disabled={savingAssignee}
+                  loading={savingAssignee}
+                  size="sm"
+                  onselect={(nextAssigneeID, previousAssigneeID) => void saveAssignee(nextAssigneeID, previousAssigneeID)}
+                />
+              {:else if ticket.assignee}
+                <span class="person-value">
+                  <UserAvatar name={ticket.assignee.name} avatarURL={ticket.assignee.avatarURL} size="sm" />
+                  <span>{ticket.assignee.name}</span>
+                </span>
+              {:else}
+                <span class="muted-value">Unassigned</span>
+              {/if}
             </dd>
           </div>
 
@@ -407,27 +423,35 @@
           <div class="property-row">
             <dt>Status</dt>
             <dd>
-              <StatusPicker
-                statuses={project.statuses}
-                bind:value={statusID}
-                disabled={savingStatus}
-                loading={savingStatus}
-                size="sm"
-                onselect={(nextStatusID, previousStatusID) => void saveStatus(nextStatusID, previousStatusID)}
-              />
+              {#if canEdit}
+                <StatusPicker
+                  statuses={project.statuses}
+                  bind:value={statusID}
+                  disabled={savingStatus}
+                  loading={savingStatus}
+                  size="sm"
+                  onselect={(nextStatusID, previousStatusID) => void saveStatus(nextStatusID, previousStatusID)}
+                />
+              {:else}
+                <StatusChip name={ticket.status.name} category={ticket.status.category} />
+              {/if}
             </dd>
           </div>
 
           <div class="property-row">
             <dt>Priority</dt>
             <dd>
-              <PriorityPicker
-                bind:value={priority}
-                disabled={savingPriority}
-                loading={savingPriority}
-                size="sm"
-                onselect={(nextPriority, previousPriority) => void savePriority(nextPriority, previousPriority)}
-              />
+              {#if canEdit}
+                <PriorityPicker
+                  bind:value={priority}
+                  disabled={savingPriority}
+                  loading={savingPriority}
+                  size="sm"
+                  onselect={(nextPriority, previousPriority) => void savePriority(nextPriority, previousPriority)}
+                />
+              {:else}
+                <PriorityChip priority={ticket.priority} variant="chip" />
+              {/if}
             </dd>
           </div>
 
@@ -435,17 +459,23 @@
             <dt>Parent</dt>
             <dd>
               {#if ticket.parent}
-                <span class="parent-cluster">
+                {#if canEdit}
+                  <span class="parent-cluster">
+                    <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}>{project.key}-{ticket.parent.number}</a>
+                    <button type="button" class="parent-icon-btn" onclick={() => (parentSearchOpen = true)} disabled={savingParent} aria-label="Change parent" title="Change parent">
+                      <Pencil size={12} strokeWidth={2.5} />
+                    </button>
+                    <button type="button" class="parent-icon-btn destructive" onclick={() => void saveParent(null)} disabled={savingParent} aria-label="Remove parent" title="Remove parent">
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
+                  </span>
+                {:else}
                   <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}>{project.key}-{ticket.parent.number}</a>
-                  <button type="button" class="parent-icon-btn" onclick={() => (parentSearchOpen = true)} disabled={savingParent} aria-label="Change parent" title="Change parent">
-                    <Pencil size={12} strokeWidth={2.5} />
-                  </button>
-                  <button type="button" class="parent-icon-btn destructive" onclick={() => void saveParent(null)} disabled={savingParent} aria-label="Remove parent" title="Remove parent">
-                    <X size={12} strokeWidth={2.5} />
-                  </button>
-                </span>
-              {:else}
+                {/if}
+              {:else if canEdit}
                 <button type="button" class="set-parent" onclick={() => (parentSearchOpen = true)} disabled={savingParent}>+ Set parent</button>
+              {:else}
+                <span class="muted-value">None</span>
               {/if}
             </dd>
           </div>
@@ -453,23 +483,35 @@
           <div class="property-row">
             <dt>Labels</dt>
             <dd>
-              <LabelsPicker
-                labels={project.labels}
-                bind:value={labelIDs}
-                disabled={savingLabels}
-                loading={savingLabels}
-                size="sm"
-                oncommit={(nextLabelIDs, previousLabelIDs) => void saveLabels(nextLabelIDs, previousLabelIDs)}
-              />
+              {#if canEdit}
+                <LabelsPicker
+                  labels={project.labels}
+                  bind:value={labelIDs}
+                  disabled={savingLabels}
+                  loading={savingLabels}
+                  size="sm"
+                  oncommit={(nextLabelIDs, previousLabelIDs) => void saveLabels(nextLabelIDs, previousLabelIDs)}
+                />
+              {:else if ticket.labels.length}
+                <span class="label-list">
+                  {#each ticket.labels as label (label.id)}
+                    <LabelChip name={label.name} colour={label.colour} />
+                  {/each}
+                </span>
+              {:else}
+                <span class="muted-value">None</span>
+              {/if}
             </dd>
           </div>
 
-          <div class="property-row">
-            <dt>Visibility</dt>
-            <dd>
-              <VisibilityToggle bind:value={visibility} size="sm" disabled={savingVisibility} onchange={(next, previous) => void saveVisibility(next, previous)} />
-            </dd>
-          </div>
+          {#if canEdit}
+            <div class="property-row">
+              <dt>Visibility</dt>
+              <dd>
+                <VisibilityToggle bind:value={visibility} size="sm" disabled={savingVisibility} onchange={(next, previous) => void saveVisibility(next, previous)} />
+              </dd>
+            </div>
+          {/if}
         </dl>
       </section>
 
@@ -497,43 +539,45 @@
   </div>
 </section>
 
-<TicketSearchModal
-  open={parentSearchOpen}
-  title="Set parent ticket"
-  projectKey={project.key}
-  statuses={project.statuses}
-  members={project.members}
-  excludeTicketNumbers={[ticket.number]}
-  onpicked={(picked) => {
-    parentSearchOpen = false;
-    void saveParent(picked.id);
-  }}
-  onclose={() => (parentSearchOpen = false)}
-/>
+{#if canEdit && user}
+  <TicketSearchModal
+    open={parentSearchOpen}
+    title="Set parent ticket"
+    projectKey={project.key}
+    statuses={project.statuses}
+    members={project.members}
+    excludeTicketNumbers={[ticket.number]}
+    onpicked={(picked) => {
+      parentSearchOpen = false;
+      void saveParent(picked.id);
+    }}
+    onclose={() => (parentSearchOpen = false)}
+  />
 
-<Modal open={deleteConfirmOpen} title="Delete {project.key}-{ticket.number}?" onclose={() => (deleteConfirmOpen = false)} maxWidth="28rem">
-  <p class="confirm-body">
-    Soft delete <strong>{project.key}-{ticket.number}</strong>. The ticket can be restored from project settings -> Trash.
-  </p>
-  {#snippet footer()}
-    <Button type="button" variant="secondary" onclick={() => (deleteConfirmOpen = false)} disabled={deleting}>Cancel</Button>
-    <Button type="button" variant="danger" onclick={() => void deleteTicket()} disabled={deleting}>
-      {deleting ? "Deleting..." : "Delete ticket"}
-    </Button>
-  {/snippet}
-</Modal>
+  <Modal open={deleteConfirmOpen} title="Delete {project.key}-{ticket.number}?" onclose={() => (deleteConfirmOpen = false)} maxWidth="28rem">
+    <p class="confirm-body">
+      Soft delete <strong>{project.key}-{ticket.number}</strong>. The ticket can be restored from project settings -> Trash.
+    </p>
+    {#snippet footer()}
+      <Button type="button" variant="secondary" onclick={() => (deleteConfirmOpen = false)} disabled={deleting}>Cancel</Button>
+      <Button type="button" variant="danger" onclick={() => void deleteTicket()} disabled={deleting}>
+        {deleting ? "Deleting..." : "Delete ticket"}
+      </Button>
+    {/snippet}
+  </Modal>
 
-<TicketModal
-  open={cloneOpen}
-  mode="clone"
-  source={ticket}
-  projectKey={project.key}
-  statuses={project.statuses}
-  labels={project.labels}
-  members={project.members}
-  currentUserID={data.user.id}
-  onclose={() => (cloneOpen = false)}
-/>
+  <TicketModal
+    open={cloneOpen}
+    mode="clone"
+    source={ticket}
+    projectKey={project.key}
+    statuses={project.statuses}
+    labels={project.labels}
+    members={project.members}
+    currentUserID={user.id}
+    onclose={() => (cloneOpen = false)}
+  />
+{/if}
 
 <style>
   .ticket-page {
@@ -701,6 +745,19 @@
     gap: 0.45rem;
     min-width: 0;
     white-space: nowrap;
+  }
+
+  .muted-value {
+    color: var(--colour-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .label-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    min-width: 0;
   }
 
   /* Sized to match the picker triggers' size="sm" rule (StatusPicker,

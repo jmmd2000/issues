@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
 import { labels as labelsTable, projectMembers, projects, statuses, ticketLabels, tickets, users } from "../db/schema";
-import { accessibleProjectIDs } from "./accessService";
+import { visibilityWhere, type Role } from "../lib/access";
 import { STATUS_CATEGORIES } from "../lib/constants";
 import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult, SearchSortColumn, SearchSortDirection } from "../lib/types";
 
@@ -44,14 +44,11 @@ type LabelRow = {
   label: { id: string; name: string; colour: string };
 };
 
-async function projectVisibilityCondition(userID?: string): Promise<SQL> {
-  if (!userID) return eq(projects.visibility, "public");
-  return or(eq(projects.visibility, "public"), inArray(projects.id, await accessibleProjectIDs(userID)))!;
-}
-
-async function ticketVisibilityCondition(userID?: string): Promise<SQL> {
-  if (!userID) return and(eq(projects.visibility, "public"), eq(tickets.visibility, "public"))!;
-  return or(inArray(tickets.projectID, await accessibleProjectIDs(userID)), and(eq(projects.visibility, "public"), eq(tickets.visibility, "public")))!;
+function projectVisibilityCondition(role: Role | undefined): SQL | undefined {
+  if (role?.isService) return undefined;
+  const memberIDs = role ? Array.from(role.memberships.keys()) : [];
+  if (memberIDs.length === 0) return eq(projects.visibility, "public");
+  return or(eq(projects.visibility, "public"), inArray(projects.id, memberIDs))!;
 }
 
 function projectKeyCondition(projectKey?: string): SQL | undefined {
@@ -207,7 +204,7 @@ export class SearchService {
    * @param userID Optional current user ID, used to include member projects
    * @returns Paginated ticket results and `hasNextPage`
    */
-  static async search(params: SearchParams, userID?: string): Promise<{ tickets: SearchResult[]; total: number; page: number; perPage: number; hasNextPage: boolean }> {
+  static async search(params: SearchParams, role: Role | undefined): Promise<{ tickets: SearchResult[]; total: number; page: number; perPage: number; hasNextPage: boolean }> {
     const query = params.q?.trim() || undefined;
     const page = params.page ?? 1;
     const perPage = params.perPage ?? 25;
@@ -221,7 +218,7 @@ export class SearchService {
 
     const where = and(
       isNull(tickets.deletedAt),
-      await ticketVisibilityCondition(userID),
+      visibilityWhere(role),
       projectKeyCondition(params.projectKey),
       textSearchCondition(query),
       statusCondition(params.statusSlugs),
@@ -294,8 +291,8 @@ export class SearchService {
    * @param projectKey Optional project key lock
    * @returns Projects, status slugs, label names, and assignees
    */
-  static async listFilterOptions(userID?: string, projectKey?: string): Promise<SearchFilterOptions> {
-    const where = and(await projectVisibilityCondition(userID), projectKeyCondition(projectKey));
+  static async listFilterOptions(role: Role | undefined, projectKey?: string): Promise<SearchFilterOptions> {
+    const where = and(projectVisibilityCondition(role), projectKeyCondition(projectKey));
 
     const [projectRows, statusRows, labelRows, memberRows] = await Promise.all([
       db

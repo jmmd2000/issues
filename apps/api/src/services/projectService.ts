@@ -2,7 +2,7 @@ import { db } from "../db";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
-import { accessibleProjectIDs, canAccessProject } from "./accessService";
+import { canView, type Role } from "../lib/access";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 
@@ -23,20 +23,21 @@ export class ProjectService {
   }
 
   /**
-   * Gets all public projects for an un-authed user, additionally gets all member projects for an authed user
-   * @param userID The ID of the current user, if there is one
+   * Gets all public projects for an un-authed user, additionally gets all
+   * member projects for an authed user. Service users see every project.
+   * @param role The caller's resolved role, if any
    * @returns An array of projects
    */
-  static async getAllProjects(userID: string | undefined) {
-    if (userID) {
-      const userProjects = await accessibleProjectIDs(userID);
-      return await db
-        .select()
-        .from(projects)
-        .where(or(eq(projects.visibility, "public"), inArray(projects.id, userProjects)));
-    } else {
-      return await db.select().from(projects).where(eq(projects.visibility, "public"));
-    }
+  static async getAllProjects(role: Role | undefined) {
+    if (role?.isService) return await db.select().from(projects);
+    if (!role) return await db.select().from(projects).where(eq(projects.visibility, "public"));
+
+    const memberIDs = Array.from(role.memberships.keys());
+    if (memberIDs.length === 0) return await db.select().from(projects).where(eq(projects.visibility, "public"));
+    return await db
+      .select()
+      .from(projects)
+      .where(or(eq(projects.visibility, "public"), inArray(projects.id, memberIDs)));
   }
 
   /**
@@ -69,8 +70,30 @@ export class ProjectService {
    * @param userID The current user's ID
    * @returns Project rows newest-first with an `openCount` column
    */
-  static async getAllProjectsWithCounts(userID: string) {
-    const memberProjects = await accessibleProjectIDs(userID);
+  static async getAllProjectsWithCounts(role: Role) {
+    if (role.isService) {
+      return await db
+        .select({
+          id: projects.id,
+          key: projects.key,
+          name: projects.name,
+          description: projects.description,
+          repo: projects.repo,
+          stack: projects.stack,
+          metadata: projects.metadata,
+          visibility: projects.visibility,
+          ownerID: projects.ownerID,
+          createdAt: projects.createdAt,
+          updatedAt: projects.updatedAt,
+          openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
+        })
+        .from(projects)
+        .leftJoin(tickets, eq(tickets.projectID, projects.id))
+        .leftJoin(statuses, eq(statuses.id, tickets.statusID))
+        .groupBy(projects.id);
+    }
+
+    const memberProjects = Array.from(role.memberships.keys());
     const memberClause = memberProjects.length ? sql`${projects.id} in (${sql.join(memberProjects.map((id) => sql`${id}`), sql`, `)})` : sql`false`;
     return await db
       .select({
@@ -90,18 +113,18 @@ export class ProjectService {
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
       .leftJoin(statuses, eq(statuses.id, tickets.statusID))
-      .where(or(eq(projects.visibility, "public"), inArray(projects.id, memberProjects)))
+      .where(memberProjects.length ? or(eq(projects.visibility, "public"), inArray(projects.id, memberProjects)) : eq(projects.visibility, "public"))
       .groupBy(projects.id);
   }
 
   /**
    * Gets a specific project by its key, enforcing visibility rules for the caller.
    * Strips member emails for anonymous viewers.
-   * @param userID The ID of the current user, if there is one
+   * @param role The caller's resolved role, if any
    * @param key The key of the project to get
    * @returns A project, including its statuses, labels and members
    */
-  static async getProjectByKey(userID: string | undefined, key: string) {
+  static async getProjectByKey(role: Role | undefined, key: string) {
     const project = await db.query.projects.findFirst({
       where: eq(projects.key, key),
       with: {
@@ -116,11 +139,9 @@ export class ProjectService {
 
     const notFound = new HTTPException(404, { message: `Project with key ${key} not found.` });
     if (!project) throw notFound;
+    if (!canView(role, project)) throw notFound;
 
-    const hasAccess = userID ? await canAccessProject(userID, project.id) : false;
-    if (project.visibility === "private" && !hasAccess) throw notFound;
-
-    if (!userID) {
+    if (!role) {
       return {
         ...project,
         members: project.members.map((member) => ({
@@ -176,8 +197,9 @@ export class ProjectService {
    * @param projectID The resolved project ID
    * @returns Stats blob suitable for the project Overview / Members tabs
    */
-  static async getStats(projectID: string, viewerCanSeePrivate: boolean) {
-    const visibilityClause = viewerCanSeePrivate ? undefined : eq(tickets.visibility, "public");
+  static async getStats(projectID: string, role: Role | undefined) {
+    const memberOrService = role?.isService || !!role?.memberships.has(projectID);
+    const visibilityClause = memberOrService ? undefined : eq(tickets.visibility, "public");
     const where = and(eq(tickets.projectID, projectID), isNull(tickets.deletedAt), visibilityClause);
 
     const [[totals], assigneeRows, reporterRows] = await Promise.all([

@@ -9,9 +9,10 @@
     projectKey: string;
     ticketNumber: number;
     onmutated: () => void | Promise<void>;
+    readonly?: boolean;
   }
 
-  let { attachments, projectKey, ticketNumber, onmutated }: TicketAttachmentsProps = $props();
+  let { attachments, projectKey, ticketNumber, onmutated, readonly = false }: TicketAttachmentsProps = $props();
 
   type Pending = { id: string; filename: string; sizeBytes: number };
 
@@ -110,27 +111,43 @@
   }
 </script>
 
-<section class="attachments-card card" class:drag-over={dragOver} class:empty={isEmpty} aria-label="Attachments" ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop}>
+<section
+  class="attachments-card card"
+  class:drag-over={dragOver}
+  class:empty={isEmpty}
+  aria-label="Attachments"
+  ondragover={readonly ? undefined : onDragOver}
+  ondragleave={readonly ? undefined : onDragLeave}
+  ondrop={readonly ? undefined : onDrop}
+>
   <header class="header">
     <h2>Attachments</h2>
     <span class="count">{attachments.length}</span>
-    <button type="button" class="header-add" onclick={pickFiles} aria-label="Add attachment">
-      <Plus size={14} strokeWidth={2.5} /> Add
-    </button>
+    {#if !readonly}
+      <button type="button" class="header-add" onclick={pickFiles} aria-label="Add attachment">
+        <Plus size={14} strokeWidth={2.5} /> Add
+      </button>
+    {/if}
   </header>
 
-  <input type="file" multiple bind:this={fileInput} onchange={onFileChange} hidden />
+  {#if !readonly}
+    <input type="file" multiple bind:this={fileInput} onchange={onFileChange} hidden />
+  {/if}
 
   {#if errorMessage}
     <p class="error" role="alert">{errorMessage}</p>
   {/if}
 
   {#if isEmpty}
-    <button type="button" class="empty-state" onclick={pickFiles}>
-      <Upload size={20} strokeWidth={1.8} />
-      <span class="empty-title">Drag files here or click to upload</span>
-      <span class="empty-hint">Images, PDFs, archives, text up to ~10MB each</span>
-    </button>
+    {#if readonly}
+      <p class="empty">No attachments.</p>
+    {:else}
+      <button type="button" class="empty-state" onclick={pickFiles}>
+        <Upload size={20} strokeWidth={1.8} />
+        <span class="empty-title">Drag files here or click to upload</span>
+        <span class="empty-hint">Images, PDFs, archives, text up to ~10MB each</span>
+      </button>
+    {/if}
   {:else}
     <div class="grid">
       {#each attachments as attachment (attachment.id)}
@@ -151,17 +168,19 @@
             <span class="tile-size">{formatSize(attachment.sizeBytes)}</span>
           </div>
 
-          {#if confirmDeleteID === attachment.id}
-            <div class="tile-confirm">
-              <button type="button" class="confirm-btn destructive" onclick={() => void deleteAttachment(attachment)} disabled={deletingID === attachment.id}>
-                {deletingID === attachment.id ? "..." : "Confirm"}
+          {#if !readonly}
+            {#if confirmDeleteID === attachment.id}
+              <div class="tile-confirm">
+                <button type="button" class="confirm-btn destructive" onclick={() => void deleteAttachment(attachment)} disabled={deletingID === attachment.id}>
+                  {deletingID === attachment.id ? "..." : "Confirm"}
+                </button>
+                <button type="button" class="confirm-btn" onclick={() => (confirmDeleteID = null)}>Cancel</button>
+              </div>
+            {:else}
+              <button type="button" class="tile-remove" onclick={() => (confirmDeleteID = attachment.id)} aria-label={`Remove ${attachment.filename}`}>
+                <X size={12} strokeWidth={2} />
               </button>
-              <button type="button" class="confirm-btn" onclick={() => (confirmDeleteID = null)}>Cancel</button>
-            </div>
-          {:else}
-            <button type="button" class="tile-remove" onclick={() => (confirmDeleteID = attachment.id)} aria-label={`Remove ${attachment.filename}`}>
-              <X size={12} strokeWidth={2} />
-            </button>
+            {/if}
           {/if}
         </div>
       {/each}
@@ -178,14 +197,16 @@
         </div>
       {/each}
 
-      <button type="button" class="tile add-tile" onclick={pickFiles} aria-label="Add attachment">
-        <Plus size={22} strokeWidth={2} />
-        <span>Add file</span>
-      </button>
+      {#if !readonly}
+        <button type="button" class="tile add-tile" onclick={pickFiles} aria-label="Add attachment">
+          <Plus size={22} strokeWidth={2} />
+          <span>Add file</span>
+        </button>
+      {/if}
     </div>
   {/if}
 
-  {#if dragOver}
+  {#if dragOver && !readonly}
     <div class="drop-overlay" aria-hidden="true">
       <Upload size={28} strokeWidth={1.8} />
       <span>Drop to upload</span>
@@ -479,5 +500,12 @@
     margin: 0;
     color: var(--colour-error);
     font-size: 0.8rem;
+  }
+
+  .empty {
+    margin: 0;
+    color: var(--colour-muted);
+    font-size: 0.8rem;
+    font-style: italic;
   }
 </style>

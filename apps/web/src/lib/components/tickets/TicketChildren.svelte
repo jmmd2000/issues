@@ -15,11 +15,12 @@
     statuses: Status[];
     labels: Label[];
     members: ProjectMember[];
-    currentUserID: string;
+    currentUserID?: string;
     onmutated: () => void | Promise<void>;
   }
 
   let { children, projectKey, parentTicketID, parentTicketNumber, parentTicketTitle, statuses, labels, members, currentUserID, onmutated }: TicketChildrenProps = $props();
+  const canWrite = $derived(!!currentUserID);
 
   const total = $derived(children.length);
   const done = $derived(children.filter((child) => child.status.category === "done" || child.status.category === "cancelled").length);
@@ -85,39 +86,43 @@
     <p class="empty">No sub-tickets yet.</p>
   {/if}
 
-  <button type="button" class="add-trigger" onclick={() => (searchOpen = true)} disabled={attaching}>
-    <Plus size={14} strokeWidth={2.5} />
-    <span>Add sub-ticket</span>
-  </button>
+  {#if canWrite}
+    <button type="button" class="add-trigger" onclick={() => (searchOpen = true)} disabled={attaching}>
+      <Plus size={14} strokeWidth={2.5} />
+      <span>Add sub-ticket</span>
+    </button>
+  {/if}
 </section>
 
-<TicketSearchModal
-  open={searchOpen}
-  title="Add sub-ticket"
-  {projectKey}
-  {statuses}
-  {members}
-  excludeTicketNumbers={excludeNumbers}
-  onpicked={(ticket) => void attachExisting(ticket)}
-  onclose={() => (searchOpen = false)}
-  primaryAction={{ label: "+ Create new", run: openCreate }}
-/>
+{#if canWrite && currentUserID}
+  <TicketSearchModal
+    open={searchOpen}
+    title="Add sub-ticket"
+    {projectKey}
+    {statuses}
+    {members}
+    excludeTicketNumbers={excludeNumbers}
+    onpicked={(ticket) => void attachExisting(ticket)}
+    onclose={() => (searchOpen = false)}
+    primaryAction={{ label: "+ Create new", run: openCreate }}
+  />
 
-<TicketModal
-  open={createOpen}
-  mode="create"
-  {projectKey}
-  {statuses}
-  {labels}
-  {members}
-  {currentUserID}
-  title="New sub-ticket"
-  initialValues={{ parentTicket: { id: parentTicketID, number: parentTicketNumber, title: parentTicketTitle } }}
-  excludeParentNumber={parentTicketNumber}
-  onSuccess="stay"
-  oncreated={() => void onmutated()}
-  onclose={() => (createOpen = false)}
-/>
+  <TicketModal
+    open={createOpen}
+    mode="create"
+    {projectKey}
+    {statuses}
+    {labels}
+    {members}
+    {currentUserID}
+    title="New sub-ticket"
+    initialValues={{ parentTicket: { id: parentTicketID, number: parentTicketNumber, title: parentTicketTitle } }}
+    excludeParentNumber={parentTicketNumber}
+    onSuccess="stay"
+    oncreated={() => void onmutated()}
+    onclose={() => (createOpen = false)}
+  />
+{/if}
 
 <style>
   .children-card {

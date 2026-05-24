@@ -115,44 +115,37 @@ const linkQuerySchema = z.object({
 
 export const mcp = new Hono()
   .get("/api/mcp/projects", requireAuth, async (c) => {
-    const userID = c.get("userID");
-    const result = await McpService.listProjects(userID);
+    const result = await McpService.listProjects(c.get("role"));
     return c.json(result);
   })
   .get("/api/mcp/projects/:key", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { key } = c.req.valid("param");
-    const result = await McpService.getProject(userID, key);
+    const result = await McpService.getProject(c.get("role"), key);
     return c.json(result);
   })
   .get("/api/mcp/projects/:key/members", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { key } = c.req.valid("param");
-    const result = await McpService.listMembers(userID, key);
+    const result = await McpService.listMembers(c.get("role"), key);
     return c.json(result);
   })
   .get("/api/mcp/projects/:key/statuses", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { key } = c.req.valid("param");
-    const result = await McpService.listStatuses(userID, key);
+    const result = await McpService.listStatuses(c.get("role"), key);
     return c.json(result);
   })
   .get("/api/mcp/projects/:key/labels", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { key } = c.req.valid("param");
-    const result = await McpService.listLabels(userID, key);
+    const result = await McpService.listLabels(c.get("role"), key);
     return c.json(result);
   })
   .get("/api/mcp/projects/:key/stats", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { key } = c.req.valid("param");
-    const result = await McpService.getStats(userID, key);
+    const result = await McpService.getStats(c.get("role"), key);
     return c.json(result);
   })
   .get("/api/mcp/tickets", requireAuth, zValidator("query", searchQuerySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const query = c.req.valid("query");
-    const result = await McpService.searchTickets(userID, {
+    const result = await McpService.searchTickets(c.get("role"), {
       q: query.q,
       projectKey: query.project,
       statusSlugs: query.status,
@@ -167,9 +160,8 @@ export const mcp = new Hono()
     return c.json(result);
   })
   .post("/api/mcp/tickets", requireAuth, zValidator("json", createBodySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const body = c.req.valid("json");
-    const result = await McpService.createTicket(userID, {
+    const result = await McpService.createTicket(c.get("role"), c.get("userID"), {
       projectKey: body.project,
       title: body.title,
       description: body.description,
@@ -182,99 +174,84 @@ export const mcp = new Hono()
     return c.json(result, 201);
   })
   .get("/api/mcp/tickets/:ref", requireAuth, zValidator("param", refParamSchema, validationHook), zValidator("query", getTicketQuerySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
     const { full } = c.req.valid("query");
-    const result = await McpService.getTicket(userID, ref, { full });
+    const result = await McpService.getTicket(c.get("role"), ref, { full });
     return c.json(result);
   })
   .patch("/api/mcp/tickets/:ref", requireAuth, zValidator("param", refParamSchema, validationHook), zValidator("json", patchBodySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
     const body = c.req.valid("json");
-    const result = await McpService.patchTicket(userID, ref, body);
+    const result = await McpService.patchTicket(c.get("role"), c.get("userID"), ref, body);
     return c.json(result);
   })
   .delete("/api/mcp/tickets/:ref", requireAuth, zValidator("param", refParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
-    const result = await McpService.softDeleteTicket(userID, ref);
+    const result = await McpService.softDeleteTicket(c.get("role"), c.get("userID"), ref);
     return c.json(result);
   })
   .post("/api/mcp/tickets/:ref/restore", requireAuth, zValidator("param", refParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
-    const result = await McpService.restoreTicket(userID, ref);
+    const result = await McpService.restoreTicket(c.get("role"), c.get("userID"), ref);
     return c.json(result);
   })
   .post("/api/mcp/tickets/:ref/clone", requireAuth, zValidator("param", refParamSchema, validationHook), zValidator("json", cloneBodySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
     const body = c.req.valid("json");
-    const result = await McpService.cloneTicket(userID, ref, body);
+    const result = await McpService.cloneTicket(c.get("role"), c.get("userID"), ref, body);
     return c.json(result, 201);
   })
   .get("/api/mcp/tickets/:ref/comments", requireAuth, zValidator("param", refParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
-    const result = await McpService.listComments(userID, ref);
+    const result = await McpService.listComments(c.get("role"), ref);
     return c.json(result);
   })
   .post("/api/mcp/tickets/:ref/comments", requireAuth, zValidator("param", refParamSchema, validationHook), zValidator("json", commentBodySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
     const { body } = c.req.valid("json");
-    const result = await McpService.addComment(userID, ref, body);
+    const result = await McpService.addComment(c.get("role"), c.get("userID"), ref, body);
     return c.json(result, 201);
   })
   .patch("/api/mcp/comments/:id", requireAuth, zValidator("param", commentIDParamSchema, validationHook), zValidator("json", commentBodySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { id } = c.req.valid("param");
     const { body } = c.req.valid("json");
-    const result = await McpService.updateComment(userID, id, body);
+    const result = await McpService.updateComment(c.get("role"), c.get("userID"), id, body);
     return c.json(result);
   })
   .delete("/api/mcp/comments/:id", requireAuth, zValidator("param", commentIDParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { id } = c.req.valid("param");
-    await McpService.deleteComment(userID, id);
+    await McpService.deleteComment(c.get("role"), c.get("userID"), id);
     return c.body(null, 204);
   })
   .get("/api/mcp/tickets/:ref/attachments", requireAuth, zValidator("param", refParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
-    const result = await McpService.listAttachments(userID, ref);
+    const result = await McpService.listAttachments(c.get("role"), ref);
     return c.json(result);
   })
   .get("/api/mcp/tickets/:ref/activity", requireAuth, zValidator("param", refParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
-    const result = await McpService.getTicketActivity(userID, ref);
+    const result = await McpService.getTicketActivity(c.get("role"), ref);
     return c.json(result);
   })
   .get("/api/mcp/tickets/:ref/links", requireAuth, zValidator("param", refParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
-    const result = await McpService.listLinks(userID, ref);
+    const result = await McpService.listLinks(c.get("role"), ref);
     return c.json(result);
   })
   .post("/api/mcp/tickets/:ref/links", requireAuth, zValidator("param", refParamSchema, validationHook), zValidator("json", linkBodySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
     const body = c.req.valid("json");
-    const result = await McpService.addLink(userID, ref, body);
+    const result = await McpService.addLink(c.get("role"), c.get("userID"), ref, body);
     return c.json(result, 201);
   })
   .delete("/api/mcp/tickets/:ref/links", requireAuth, zValidator("param", refParamSchema, validationHook), zValidator("query", linkQuerySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { ref } = c.req.valid("param");
     const query = c.req.valid("query");
-    await McpService.removeLink(userID, ref, query);
+    await McpService.removeLink(c.get("role"), c.get("userID"), ref, query);
     return c.body(null, 204);
   })
   .get("/api/mcp/activity", requireAuth, zValidator("query", activityQuerySchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { project, limit } = c.req.valid("query");
-    const result = await McpService.getActivity(userID, project, limit);
+    const result = await McpService.getActivity(c.get("role"), project, limit);
     return c.json(result);
   });

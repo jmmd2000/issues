@@ -11,11 +11,12 @@
     comments: Comment[];
     projectKey: string;
     ticketNumber: number;
-    currentUserID: string;
+    currentUserID?: string;
     onmutated: () => void | Promise<void>;
   }
 
   let { comments, projectKey, ticketNumber, currentUserID, onmutated }: CommentThreadProps = $props();
+  const canWrite = $derived(!!currentUserID);
 
   let draft = $state("");
   let posting = $state(false);
@@ -191,26 +192,28 @@
     </ol>
   {/if}
 
-  {#if composing}
-    <form
-      class="comment-composer"
-      onsubmit={(event) => {
-        event.preventDefault();
-        void postComment();
-      }}
-    >
-      <h3 class="composer-title">Add a comment</h3>
-      <MarkdownEditor bind:value={draft} placeholder="Leave a comment..." minHeight="8rem" autofocus onsubmit={() => void postComment()} attachmentContext={{ projectKey, ticketNumber }} />
-      {#if postError}
-        <p class="comment-error" role="alert">{postError}</p>
-      {/if}
-      <div class="composer-actions">
-        <Button type="button" variant="secondary" onclick={cancelComposing} disabled={posting}>Cancel</Button>
-        <Button type="submit" disabled={posting || !draft.trim()}>{posting ? "Posting..." : "Comment"}</Button>
-      </div>
-    </form>
-  {:else}
-    <button type="button" class="composer-trigger" onclick={startComposing}>Add a comment</button>
+  {#if canWrite}
+    {#if composing}
+      <form
+        class="comment-composer"
+        onsubmit={(event) => {
+          event.preventDefault();
+          void postComment();
+        }}
+      >
+        <h3 class="composer-title">Add a comment</h3>
+        <MarkdownEditor bind:value={draft} placeholder="Leave a comment..." minHeight="8rem" autofocus onsubmit={() => void postComment()} attachmentContext={{ projectKey, ticketNumber }} />
+        {#if postError}
+          <p class="comment-error" role="alert">{postError}</p>
+        {/if}
+        <div class="composer-actions">
+          <Button type="button" variant="secondary" onclick={cancelComposing} disabled={posting}>Cancel</Button>
+          <Button type="submit" disabled={posting || !draft.trim()}>{posting ? "Posting..." : "Comment"}</Button>
+        </div>
+      </form>
+    {:else}
+      <button type="button" class="composer-trigger" onclick={startComposing}>Add a comment</button>
+    {/if}
   {/if}
 </section>
 

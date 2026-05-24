@@ -5,9 +5,10 @@ import { db } from "../db";
 import { sessions } from "../db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { TokenService } from "../services/tokenService";
+import { loadRole, type Role } from "../lib/access";
 
-type Env = { Variables: { userID: string } };
-type OptionalEnv = { Variables: { userID?: string } };
+type Env = { Variables: { userID: string; role: Role } };
+type OptionalEnv = { Variables: { userID?: string; role?: Role } };
 
 const BEARER_PREFIX = "Bearer ";
 
@@ -34,7 +35,7 @@ function extractBearer(authHeader: string | undefined) {
  * token. Cookie wins if both are present so cookie-authenticated routes are
  * unaffected by stray bearer headers from non-browser clients.
  *
- * Sets `userID` on the context for downstream handlers.
+ * Sets `userID` and `role` on the context for downstream handlers.
  */
 export const requireAuth = createMiddleware<Env>(async (c, next) => {
   const sessionID = getCookie(c, "session_id");
@@ -42,6 +43,7 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
     const session = await findValidSession(sessionID);
     if (!session) throw new HTTPException(401, { message: "Session expired." });
     c.set("userID", session.userID);
+    c.set("role", await loadRole(session.userID));
     await next();
     return;
   }
@@ -51,6 +53,7 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
     const token = await TokenService.findByRawToken(raw);
     if (!token) throw new HTTPException(401, { message: "Invalid or expired token." });
     c.set("userID", token.userID);
+    c.set("role", await loadRole(token.userID));
     await next();
     return;
   }
@@ -61,12 +64,12 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
 /**
  * Resolves identity when present but allows anonymous access.
  *
- * No credentials: continues as anonymous (no `userID` set).
+ * No credentials: continues as anonymous (no `userID` or `role` set).
  *
  * Invalid cookie or invalid/expired bearer: rejects with 401.
  *
- * Valid credentials: sets `userID` on the context. Cookie wins if both are
- * present.
+ * Valid credentials: sets `userID` and `role` on the context. Cookie wins if
+ * both are present.
  */
 export const optionalAuth = createMiddleware<OptionalEnv>(async (c, next) => {
   const sessionID = getCookie(c, "session_id");
@@ -74,6 +77,7 @@ export const optionalAuth = createMiddleware<OptionalEnv>(async (c, next) => {
     const session = await findValidSession(sessionID);
     if (!session) throw new HTTPException(401, { message: "Session expired." });
     c.set("userID", session.userID);
+    c.set("role", await loadRole(session.userID));
     await next();
     return;
   }
@@ -83,6 +87,7 @@ export const optionalAuth = createMiddleware<OptionalEnv>(async (c, next) => {
     const token = await TokenService.findByRawToken(raw);
     if (!token) throw new HTTPException(401, { message: "Invalid or expired token." });
     c.set("userID", token.userID);
+    c.set("role", await loadRole(token.userID));
     await next();
     return;
   }

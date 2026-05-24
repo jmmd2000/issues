@@ -3,8 +3,10 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { PRIORITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
+import { HTTPException } from "hono/http-exception";
 import { optionalAuth, requireAuth } from "../middleware/auth";
 import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
+import { canView } from "../lib/access";
 import { TicketService, TICKET_LIST_SORT_COLUMNS } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
 
@@ -114,7 +116,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const result = await TicketService.listForProject(project.id, query, c.get("viewerCanSeePrivate"));
+      const result = await TicketService.listForProject(project.id, query, c.get("role"));
       return c.json(result);
     }
   )
@@ -142,7 +144,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBoardForProject(project.id, query, c.get("viewerCanSeePrivate"));
+      const tickets = await TicketService.listBoardForProject(project.id, query, c.get("role"));
       return c.json({ tickets });
     }
   )
@@ -156,15 +158,18 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBacklogForProject(project.id, query, c.get("viewerCanSeePrivate"));
+      const tickets = await TicketService.listBacklogForProject(project.id, query, c.get("role"));
       return c.json({ tickets });
     }
   )
-  .get("/api/projects/:key/tickets/:num", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/tickets/:num", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async (c) => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
     const ticket = await TicketService.getTicketByNumber(project.id, num);
+    if (!canView(c.get("role"), project, ticket)) {
+      throw new HTTPException(404, { message: `Ticket #${num} not found` });
+    }
     return c.json({ ticket });
   })
   .patch(

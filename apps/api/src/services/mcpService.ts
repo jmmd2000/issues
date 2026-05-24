@@ -4,7 +4,7 @@ import { formatTicketRef, parseTicketRef, STATUS_CATEGORIES } from "@issues/shar
 import type { LinkType } from "@issues/shared";
 import { db } from "../db";
 import { attachments, comments, labels, projectMembers, projects, statuses, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
-import { accessibleProjectIDs, canAccessProject } from "./accessService";
+import type { Role } from "../lib/access";
 import type {
   ActivityValue,
   CompactActivity,
@@ -119,17 +119,16 @@ function stringifyActivityValue(value: ActivityValue | null): string | null {
 
 export class McpService {
   /**
-   * Lists every project the user is a member of, in compact form.
-   * @param userID Authenticated user
+   * Lists every project the caller can act on, in compact form. Service users
+   * see every project; human members see only their own.
+   * @param role Authenticated caller's role
    * @returns Compact project list
    */
-  static async listProjects(userID: string): Promise<{ projects: CompactProject[] }> {
-    const memberProjects = await accessibleProjectIDs(userID);
-    const rows = await db
-      .select({ key: projects.key, name: projects.name })
-      .from(projects)
-      .where(inArray(projects.id, memberProjects))
-      .orderBy(asc(projects.key));
+  static async listProjects(role: Role): Promise<{ projects: CompactProject[] }> {
+    const baseQuery = db.select({ key: projects.key, name: projects.name }).from(projects);
+    const rows = role.isService
+      ? await baseQuery.orderBy(asc(projects.key))
+      : await baseQuery.where(inArray(projects.id, Array.from(role.memberships.keys()))).orderBy(asc(projects.key));
     return { projects: rows };
   }
 
@@ -141,7 +140,7 @@ export class McpService {
    * @param params Query, project key, and filters
    * @returns Compact ticket list
    */
-  static async searchTickets(userID: string, params: McpSearchParams): Promise<CompactSearchPage> {
+  static async searchTickets(role: Role, params: McpSearchParams): Promise<CompactSearchPage> {
     const perPage = Math.min(params.perPage ?? SEARCH_PER_PAGE_DEFAULT, SEARCH_PER_PAGE_MAX);
     const page = params.page ?? 1;
     const assigneeIDs = params.assigneeNames?.length ? await McpService.resolveAssigneeNames(params.assigneeNames) : undefined;
@@ -159,7 +158,7 @@ export class McpService {
         sortBy: params.sortBy,
         sortDirection: params.sortDirection,
       },
-      userID
+      role
     );
 
     return {
@@ -186,8 +185,8 @@ export class McpService {
    * @param ref Ticket ref string, e.g. "DASH-12"
    * @returns Compact ticket detail
    */
-  static async getTicket(userID: string, ref: string, options: { full?: boolean } = {}): Promise<{ ticket: CompactTicketDetail }> {
-    const { project, number } = await McpService.resolveTicketRef(userID, ref);
+  static async getTicket(role: Role, ref: string, options: { full?: boolean } = {}): Promise<{ ticket: CompactTicketDetail }> {
+    const { project, number } = await McpService.resolveTicketRef(role, ref);
     const ticket = await TicketService.getTicketByNumber(project.id, number);
 
     const truncated = !options.full && ticket.description.length > DESCRIPTION_EXCERPT_LENGTH;
@@ -217,8 +216,8 @@ export class McpService {
    * @param input Compact create payload
    * @returns Compact ticket summary
    */
-  static async createTicket(userID: string, input: McpCreateInput): Promise<{ ticket: CompactTicket }> {
-    const project = await McpService.resolveProject(userID, input.projectKey);
+  static async createTicket(role: Role, userID: string, input: McpCreateInput): Promise<{ ticket: CompactTicket }> {
+    const project = await McpService.resolveProject(role, input.projectKey);
 
     const statusID = input.statusSlug ? await McpService.resolveStatusSlug(project.id, input.statusSlug) : await McpService.defaultStatusID(project.id);
     const labelIDs = input.labels ? await McpService.resolveLabelNames(project.id, input.labels) : undefined;
@@ -248,12 +247,12 @@ export class McpService {
    * @param patch Compact patch payload
    * @returns Compact ticket summary
    */
-  static async patchTicket(userID: string, ref: string, patch: McpPatchInput): Promise<{ ticket: CompactTicket }> {
+  static async patchTicket(role: Role, userID: string, ref: string, patch: McpPatchInput): Promise<{ ticket: CompactTicket }> {
     if (patch.labels !== undefined && (patch.addLabels?.length || patch.removeLabels?.length)) {
       throw new HTTPException(400, { message: "Cannot combine `labels` with `addLabels` or `removeLabels`." });
     }
 
-    const context = await McpService.resolveTicketRef(userID, ref);
+    const context = await McpService.resolveTicketRef(role, ref);
 
     const statusID = patch.statusSlug ? await McpService.resolveStatusSlug(context.project.id, patch.statusSlug) : undefined;
     const labelIDs = await McpService.computeLabelDelta(context.ticketID, context.project.id, patch);
@@ -280,8 +279,8 @@ export class McpService {
    * @param body Markdown body
    * @returns The new comment id
    */
-  static async addComment(userID: string, ref: string, body: string): Promise<{ commentID: string }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async addComment(role: Role, userID: string, ref: string, body: string): Promise<{ commentID: string }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const comment = await CommentService.createComment(context.ticketID, userID, body);
     return { commentID: comment.id };
   }
@@ -294,8 +293,8 @@ export class McpService {
    * @param ref Ticket ref
    * @returns Compact comment list
    */
-  static async listComments(userID: string, ref: string): Promise<{ comments: CompactComment[] }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async listComments(role: Role, ref: string): Promise<{ comments: CompactComment[] }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const rows = await CommentService.listForTicket(context.ticketID);
     const live = rows.filter((row) => !row.isDeleted);
 
@@ -318,10 +317,10 @@ export class McpService {
    * @param limit Maximum rows (default 30, max 100)
    * @returns Compact activity feed
    */
-  static async getActivity(userID: string, projectKey: string, limit?: number): Promise<{ activity: CompactActivity[] }> {
-    const project = await McpService.resolveProject(userID, projectKey);
+  static async getActivity(role: Role, projectKey: string, limit?: number): Promise<{ activity: CompactActivity[] }> {
+    const project = await McpService.resolveProject(role, projectKey);
     const cappedLimit = Math.min(limit ?? ACTIVITY_LIMIT_DEFAULT, ACTIVITY_LIMIT_MAX);
-    const rows = await ActivityService.listForProject(project.id, cappedLimit, true);
+    const rows = await ActivityService.listForProject(project.id, cappedLimit, role);
 
     return {
       activity: rows.map((row) => ({
@@ -343,10 +342,10 @@ export class McpService {
    * @param userID Authenticated user
    * @param projectKey Project key
    */
-  static async getProject(userID: string, projectKey: string): Promise<{ project: CompactProjectDetail }> {
+  static async getProject(role: Role, projectKey: string): Promise<{ project: CompactProjectDetail }> {
     const project = await db.query.projects.findFirst({
       where: eq(projects.key, projectKey.toUpperCase()),
-      columns: { id: true, key: true, name: true, description: true },
+      columns: { id: true, key: true, name: true, description: true, visibility: true },
       with: {
         statuses: { columns: { name: true, slug: true, category: true, position: true } },
         labels: { columns: { name: true, colour: true } },
@@ -356,9 +355,9 @@ export class McpService {
         },
       },
     });
-    if (!project) throw new HTTPException(404, { message: `Project ${projectKey} not found.` });
-    const isMember = project.members.some((member) => member.user.id === userID);
-    if (!isMember) throw new HTTPException(404, { message: `Project ${projectKey} not found.` });
+    const notFound = new HTTPException(404, { message: `Project ${projectKey} not found.` });
+    if (!project) throw notFound;
+    if (!role.isService && !role.memberships.has(project.id)) throw notFound;
 
     return {
       project: {
@@ -376,8 +375,8 @@ export class McpService {
    * Lists project members by name + email + role. Subset of `getProject`
    * for callers that only need to know who can be assigned.
    */
-  static async listMembers(userID: string, projectKey: string): Promise<{ members: CompactMember[] }> {
-    const project = await McpService.resolveProject(userID, projectKey);
+  static async listMembers(role: Role, projectKey: string): Promise<{ members: CompactMember[] }> {
+    const project = await McpService.resolveProject(role, projectKey);
     const rows = await db
       .select({ name: users.name, email: users.email, role: projectMembers.role })
       .from(projectMembers)
@@ -391,8 +390,8 @@ export class McpService {
    * Lists status definitions in display order (category, then name).
    * Subset of `getProject` for callers that only need to know valid slugs.
    */
-  static async listStatuses(userID: string, projectKey: string): Promise<{ statuses: CompactStatus[] }> {
-    const project = await McpService.resolveProject(userID, projectKey);
+  static async listStatuses(role: Role, projectKey: string): Promise<{ statuses: CompactStatus[] }> {
+    const project = await McpService.resolveProject(role, projectKey);
     const rows = await db
       .select({ name: statuses.name, slug: statuses.slug, category: statuses.category })
       .from(statuses)
@@ -404,8 +403,8 @@ export class McpService {
    * Lists label definitions alphabetically. Subset of `getProject` for
    * callers that only need to know valid label names.
    */
-  static async listLabels(userID: string, projectKey: string): Promise<{ labels: CompactLabel[] }> {
-    const project = await McpService.resolveProject(userID, projectKey);
+  static async listLabels(role: Role, projectKey: string): Promise<{ labels: CompactLabel[] }> {
+    const project = await McpService.resolveProject(role, projectKey);
     const rows = await db
       .select({ name: labels.name, colour: labels.colour })
       .from(labels)
@@ -418,9 +417,9 @@ export class McpService {
    * Returns ticket counts for a project, including a per-member breakdown
    * keyed by user name (not ID) for Claude readability.
    */
-  static async getStats(userID: string, projectKey: string): Promise<{ stats: CompactStats }> {
-    const project = await McpService.resolveProject(userID, projectKey);
-    const stats = await ProjectService.getStats(project.id, true);
+  static async getStats(role: Role, projectKey: string): Promise<{ stats: CompactStats }> {
+    const project = await McpService.resolveProject(role, projectKey);
+    const stats = await ProjectService.getStats(project.id, role);
 
     const memberIDs = Object.keys(stats.byMember);
     const nameRows = memberIDs.length
@@ -449,8 +448,8 @@ export class McpService {
    * Per-ticket activity feed. Mirrors {@link McpService.getActivity} but
    * scoped to one ticket.
    */
-  static async getTicketActivity(userID: string, ref: string): Promise<{ activity: CompactActivity[] }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async getTicketActivity(role: Role, ref: string): Promise<{ activity: CompactActivity[] }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const rows = await ActivityService.listForTicket(context.ticketID);
 
     return {
@@ -470,8 +469,8 @@ export class McpService {
    * Soft-deletes a ticket. The row stays in the database with `deletedAt`
    * set, so `restoreTicket` can bring it back.
    */
-  static async softDeleteTicket(userID: string, ref: string): Promise<{ ref: string }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async softDeleteTicket(role: Role, userID: string, ref: string): Promise<{ ref: string }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     await TicketService.softDeleteTicket(context.ticketID, context.project.id, userID);
     return { ref: formatTicketRef(context.project.key, context.number) };
   }
@@ -480,8 +479,8 @@ export class McpService {
    * Restores a soft-deleted ticket. Fails 404 if the ref does not exist or
    * is not in the trash.
    */
-  static async restoreTicket(userID: string, ref: string): Promise<{ ticket: CompactTicket }> {
-    const context = await McpService.resolveDeletedTicketRef(userID, ref);
+  static async restoreTicket(role: Role, userID: string, ref: string): Promise<{ ticket: CompactTicket }> {
+    const context = await McpService.resolveDeletedTicketRef(role, ref);
     await TicketService.restoreTicket(context.ticketID, context.project.id, userID);
     return await McpService.compactSummaryFor(context.project, context.number);
   }
@@ -491,8 +490,8 @@ export class McpService {
    * to the source's values unless overridden. `copyAttachments` controls
    * whether attachment rows are duplicated (storage bytes are reused).
    */
-  static async cloneTicket(userID: string, ref: string, input: McpCloneInput): Promise<{ ticket: CompactTicket }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async cloneTicket(role: Role, userID: string, ref: string, input: McpCloneInput): Promise<{ ticket: CompactTicket }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const source = await TicketService.getTicketByNumber(context.project.id, context.number);
 
     const statusID = input.statusSlug ? await McpService.resolveStatusSlug(context.project.id, input.statusSlug) : source.statusID;
@@ -522,8 +521,8 @@ export class McpService {
   /**
    * Lists every link involving a ticket, in both directions.
    */
-  static async listLinks(userID: string, ref: string): Promise<{ links: CompactLink[] }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async listLinks(role: Role, ref: string): Promise<{ links: CompactLink[] }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const rows = await TicketLinkService.listForTicket(context.ticketID);
 
     return {
@@ -541,8 +540,8 @@ export class McpService {
    * Adds a link from `ref` to `input.target` of type `input.linkType`. The
    * viewing ticket is always stored as the source (outgoing direction).
    */
-  static async addLink(userID: string, ref: string, input: McpLinkInput): Promise<{ link: CompactLink }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async addLink(role: Role, userID: string, ref: string, input: McpLinkInput): Promise<{ link: CompactLink }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const source = await TicketService.getTicketByNumber(context.project.id, context.number);
 
     const link = await TicketLinkService.createLink({
@@ -570,8 +569,8 @@ export class McpService {
    * Tries the canonical (outgoing) direction first; on miss, tries the inverse
    * so callers don't need to know which side stores the row.
    */
-  static async removeLink(userID: string, ref: string, input: McpLinkInput): Promise<void> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async removeLink(role: Role, userID: string, ref: string, input: McpLinkInput): Promise<void> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const partner = await TicketLinkService.resolveTargetRef(input.target);
 
     const [row] = await db
@@ -597,8 +596,8 @@ export class McpService {
    * the comment's parent ticket; `CommentService.updateComment` then enforces
    * that only the author can rewrite their own comment.
    */
-  static async updateComment(userID: string, commentID: string, body: string): Promise<{ commentID: string }> {
-    const ticketID = await McpService.resolveCommentTicket(userID, commentID);
+  static async updateComment(role: Role, userID: string, commentID: string, body: string): Promise<{ commentID: string }> {
+    const ticketID = await McpService.resolveCommentTicket(role, commentID);
     const comment = await CommentService.updateComment(commentID, ticketID, userID, body);
     return { commentID: comment.id };
   }
@@ -607,8 +606,8 @@ export class McpService {
    * Soft-deletes a comment by id. Membership + authorship checks mirror
    * {@link McpService.updateComment}.
    */
-  static async deleteComment(userID: string, commentID: string): Promise<void> {
-    const ticketID = await McpService.resolveCommentTicket(userID, commentID);
+  static async deleteComment(role: Role, userID: string, commentID: string): Promise<void> {
+    const ticketID = await McpService.resolveCommentTicket(role, commentID);
     await CommentService.softDeleteComment(commentID, ticketID, userID);
   }
 
@@ -617,8 +616,8 @@ export class McpService {
    * (internal) and the FK ids; surfaces a public-style URL so Claude can hand
    * the link to the user without round-tripping.
    */
-  static async listAttachments(userID: string, ref: string): Promise<{ attachments: CompactAttachment[] }> {
-    const context = await McpService.resolveTicketRef(userID, ref);
+  static async listAttachments(role: Role, ref: string): Promise<{ attachments: CompactAttachment[] }> {
+    const context = await McpService.resolveTicketRef(role, ref);
     const rows = await AttachmentService.listForTicket(context.ticketID);
 
     return {
@@ -651,23 +650,25 @@ export class McpService {
     return a.name.localeCompare(b.name);
   }
 
-  private static async resolveProject(userID: string, key: string): Promise<ProjectContext> {
-    const memberProjects = await accessibleProjectIDs(userID);
+  private static async resolveProject(role: Role, key: string): Promise<ProjectContext> {
     const [row] = await db
-      .select({ id: projects.id, key: projects.key })
+      .select({ id: projects.id, key: projects.key, visibility: projects.visibility })
       .from(projects)
-      .where(and(eq(projects.key, key.toUpperCase()), inArray(projects.id, memberProjects)))
+      .where(eq(projects.key, key.toUpperCase()))
       .limit(1);
 
-    if (!row) throw new HTTPException(404, { message: `Project ${key} not found.` });
-    return row;
+    const notFound = new HTTPException(404, { message: `Project ${key} not found.` });
+    if (!row) throw notFound;
+    if (!role.isService && !role.memberships.has(row.id)) throw notFound;
+
+    return { id: row.id, key: row.key };
   }
 
-  private static async resolveTicketRef(userID: string, ref: string): Promise<TicketContext> {
+  private static async resolveTicketRef(role: Role, ref: string): Promise<TicketContext> {
     const parsed = parseTicketRef(ref);
     if (!parsed) throw new HTTPException(400, { message: `Invalid ticket ref: ${ref}` });
 
-    const project = await McpService.resolveProject(userID, parsed.projectKey);
+    const project = await McpService.resolveProject(role, parsed.projectKey);
     const [ticket] = await db
       .select({ id: tickets.id })
       .from(tickets)
@@ -678,7 +679,7 @@ export class McpService {
     return { ticketID: ticket.id, project, number: parsed.number };
   }
 
-  private static async resolveCommentTicket(userID: string, commentID: string): Promise<string> {
+  private static async resolveCommentTicket(role: Role, commentID: string): Promise<string> {
     const [row] = await db
       .select({ ticketID: comments.ticketID, projectID: tickets.projectID })
       .from(comments)
@@ -686,17 +687,18 @@ export class McpService {
       .where(eq(comments.id, commentID))
       .limit(1);
     if (!row) throw new HTTPException(404, { message: `Comment ${commentID} not found.` });
-
-    if (!(await canAccessProject(userID, row.projectID))) throw new HTTPException(404, { message: `Comment ${commentID} not found.` });
+    if (!role.isService && !role.memberships.has(row.projectID)) {
+      throw new HTTPException(404, { message: `Comment ${commentID} not found.` });
+    }
 
     return row.ticketID;
   }
 
-  private static async resolveDeletedTicketRef(userID: string, ref: string): Promise<TicketContext> {
+  private static async resolveDeletedTicketRef(role: Role, ref: string): Promise<TicketContext> {
     const parsed = parseTicketRef(ref);
     if (!parsed) throw new HTTPException(400, { message: `Invalid ticket ref: ${ref}` });
 
-    const project = await McpService.resolveProject(userID, parsed.projectKey);
+    const project = await McpService.resolveProject(role, parsed.projectKey);
     const [ticket] = await db
       .select({ id: tickets.id })
       .from(tickets)

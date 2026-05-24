@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { validationHook } from "../lib/validation";
-import { optionalAuth, requireAuth } from "../middleware/auth";
-import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
+import { canView } from "../lib/access";
+import { optionalAuth } from "../middleware/auth";
+import { requireProjectRead } from "../middleware/projectAccess";
 import { ActivityService } from "../services/activityService";
 import { TicketService } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
@@ -21,11 +23,14 @@ const feedQuerySchema = z.object({
 });
 
 export const activity = new Hono()
-  .get("/api/projects/:key/tickets/:num/activity", requireAuth, zValidator("param", activityParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/tickets/:num/activity", optionalAuth, zValidator("param", activityParamSchema, validationHook), requireProjectRead, async (c) => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
     const ticket = await TicketService.getTicketByNumber(project.id, num);
+    if (!canView(c.get("role"), project, ticket)) {
+      throw new HTTPException(404, { message: `Ticket #${num} not found` });
+    }
     const rows = await ActivityService.listForTicket(ticket.id);
     return c.json({ activity: rows });
   })
@@ -39,13 +44,12 @@ export const activity = new Hono()
       const project = c.get("project");
       const { limit } = c.req.valid("query");
 
-      const rows = await ActivityService.listForProject(project.id, limit, c.get("viewerCanSeePrivate"));
+      const rows = await ActivityService.listForProject(project.id, limit, c.get("role"));
       return c.json({ activity: rows });
     }
   )
   .get("/api/feed", optionalAuth, zValidator("query", feedQuerySchema, validationHook), async (c) => {
     const { limit } = c.req.valid("query");
-    const userID = c.get("userID");
-    const events = await ActivityService.listGlobal(limit, { userID });
+    const events = await ActivityService.listGlobal(limit, { role: c.get("role") });
     return c.json({ events });
   });

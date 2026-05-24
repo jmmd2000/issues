@@ -4,6 +4,7 @@ import { db } from "../db";
 import { attachments, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
 import type { Priority, StatusCategory, TicketSnapshot, Transaction } from "../lib/types";
+import type { Role } from "../lib/access";
 import { ActivityService } from "./activityService";
 
 export const TICKET_LIST_SORT_COLUMNS = ["key", "title", "status", "priority", "assignee", "updatedAt"] as const;
@@ -65,8 +66,10 @@ function titleSearchCondition(titleSearch?: string): SQL | undefined {
   return ilike(tickets.title, `%${titleSearch}%`);
 }
 
-function visibilityCondition(viewerCanSeePrivate: boolean): SQL | undefined {
-  return viewerCanSeePrivate ? undefined : eq(tickets.visibility, "public");
+function visibilityCondition(role: Role | undefined, projectID: string): SQL | undefined {
+  if (role?.isService) return undefined;
+  if (role?.memberships.has(projectID)) return undefined;
+  return eq(tickets.visibility, "public");
 }
 
 type CommonFilters = {
@@ -307,7 +310,7 @@ export class TicketService {
       sortBy?: TicketListSortColumn;
       sortDirection?: TicketListSortDirection;
     },
-    viewerCanSeePrivate: boolean
+    role: Role | undefined
   ) {
     const page = filters.page ?? 1;
     const perPage = filters.perPage ?? 25;
@@ -317,7 +320,7 @@ export class TicketService {
     const where = and(
       eq(tickets.projectID, projectID),
       isNull(tickets.deletedAt),
-      visibilityCondition(viewerCanSeePrivate),
+      visibilityCondition(role, projectID),
       statusCondition(filters.statusID),
       titleSearchCondition(filters.titleSearch),
       priorityCondition(filters.priority),
@@ -358,12 +361,12 @@ export class TicketService {
     filters: CommonFilters & {
       includeClosed?: boolean;
     },
-    viewerCanSeePrivate: boolean
+    role: Role | undefined
   ) {
     const where = and(
       eq(tickets.projectID, projectID),
       isNull(tickets.deletedAt),
-      visibilityCondition(viewerCanSeePrivate),
+      visibilityCondition(role, projectID),
       notInArray(statuses.category, ["backlog"]),
       statusCondition(filters.statusID),
       titleSearchCondition(filters.titleSearch),
@@ -443,11 +446,11 @@ export class TicketService {
    * @param projectID The ID of the project
    * @param filters Optional filters
    */
-  static async listBacklogForProject(projectID: string, filters: CommonFilters, viewerCanSeePrivate: boolean) {
+  static async listBacklogForProject(projectID: string, filters: CommonFilters, role: Role | undefined) {
     const where = and(
       eq(tickets.projectID, projectID),
       isNull(tickets.deletedAt),
-      visibilityCondition(viewerCanSeePrivate),
+      visibilityCondition(role, projectID),
       eq(statuses.category, "backlog"),
       titleSearchCondition(filters.titleSearch),
       priorityCondition(filters.priority),

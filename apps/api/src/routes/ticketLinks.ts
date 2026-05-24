@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { LINK_TYPES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
-import { requireAuth } from "../middleware/auth";
-import { requireProjectAccess } from "../middleware/projectAccess";
+import { canView } from "../lib/access";
+import { optionalAuth, requireAuth } from "../middleware/auth";
+import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 import { TicketLinkService } from "../services/ticketLinkService";
 import { TicketService } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
@@ -36,11 +38,14 @@ const createLinkSchema = z
   .strict();
 
 export const ticketLinks = new Hono()
-  .get("/api/projects/:key/tickets/:num/links", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/tickets/:num/links", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async (c) => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
     const ticket = await TicketService.getTicketByNumber(project.id, num);
+    if (!canView(c.get("role"), project, ticket)) {
+      throw new HTTPException(404, { message: `Ticket #${num} not found` });
+    }
     const links = await TicketLinkService.listForTicket(ticket.id);
     return c.json({ links });
   })

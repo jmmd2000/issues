@@ -1,7 +1,7 @@
-import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { projects, ticketActivity, tickets } from "../db/schema";
-import { accessibleProjectIDs } from "./accessService";
+import { visibilityWhere, type Role } from "../lib/access";
 import type { LinkType, TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 
 const VALUE_FIELDS = ["title", "description", "priority", "visibility"] as const;
@@ -290,7 +290,8 @@ export class ActivityService {
    * @param limit Maximum number of rows to return (default 50)
    * @returns Activity rows newest-first with user and ticket joins
    */
-  static async listForProject(projectID: string, limit = 50, viewerCanSeePrivate: boolean) {
+  static async listForProject(projectID: string, limit = 50, role: Role | undefined) {
+    const memberOrService = role?.isService || !!role?.memberships.has(projectID);
     return db.query.ticketActivity.findMany({
       where: (activity, { exists }) =>
         exists(
@@ -302,7 +303,7 @@ export class ActivityService {
                 eq(tickets.id, activity.ticketID),
                 eq(tickets.projectID, projectID),
                 isNull(tickets.deletedAt),
-                viewerCanSeePrivate ? undefined : eq(tickets.visibility, "public")
+                memberOrService ? undefined : eq(tickets.visibility, "public")
               )
             )
         ),
@@ -326,10 +327,8 @@ export class ActivityService {
    * @param options.publicOnly When true, restricts results to events whose project visibility is `public`
    * @returns Activity rows newest-first with user, ticket, and project joins
    */
-  static async listGlobal(limit = 20, options: { userID?: string } = {}) {
-    const memberProjects = options.userID ? await accessibleProjectIDs(options.userID) : [];
-    const publicEvent = and(eq(projects.visibility, "public"), eq(tickets.visibility, "public"));
-    const visibilityClause = memberProjects.length ? or(inArray(tickets.projectID, memberProjects), publicEvent) : publicEvent;
+  static async listGlobal(limit = 20, options: { role?: Role } = {}) {
+    const visibilityClause = visibilityWhere(options.role);
 
     const rows = await db.query.ticketActivity.findMany({
       where: (activity, { exists }) =>

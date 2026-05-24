@@ -47,14 +47,12 @@ export const projects = new Hono()
     return c.json({ project }, 201);
   })
   .get("/api/projects", optionalAuth, async (c) => {
-    const userID = c.get("userID");
-    const projects = await ProjectService.getAllProjects(userID);
+    const projects = await ProjectService.getAllProjects(c.get("role"));
 
     return c.json({ projects }, 200);
   })
   .get("/api/projects/with-counts", requireAuth, async (c) => {
-    const userID = c.get("userID");
-    const projects = await ProjectService.getAllProjectsWithCounts(userID);
+    const projects = await ProjectService.getAllProjectsWithCounts(c.get("role"));
 
     return c.json({ projects }, 200);
   })
@@ -63,9 +61,8 @@ export const projects = new Hono()
     return c.json({ projects }, 200);
   })
   .get("/api/projects/:key", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
-    const userID = c.get("userID");
     const { key } = c.req.valid("param");
-    const project = await ProjectService.getProjectByKey(userID, key);
+    const project = await ProjectService.getProjectByKey(c.get("role"), key);
 
     return c.json({ project }, 200);
   })
@@ -91,6 +88,6 @@ export const projects = new Hono()
   })
   .get("/api/projects/:key/stats", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectRead, async (c) => {
     const { id } = c.get("project");
-    const stats = await ProjectService.getStats(id, c.get("viewerCanSeePrivate"));
+    const stats = await ProjectService.getStats(id, c.get("role"));
     return c.json({ stats });
   });
