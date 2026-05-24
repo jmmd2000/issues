@@ -451,16 +451,29 @@ describe("GET /api/projects/:key/tickets/:num", () => {
     expect(Array.isArray(body.ticket.labels)).toBe(true);
   });
 
-  it("returns 401 for non-authenticated requests", async () => {
+  it("allows anonymous reads of public tickets in public projects", async () => {
     const created = await createTicket();
     const res = await app.request(`/api/projects/TEST/tickets/${created.number}`);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
-  it("returns 404 for non-member", async () => {
+  it("allows non-member reads of public tickets in public projects", async () => {
     const created = await createTicket();
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
 
+    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, { headers: { Cookie: otherCookies } });
+    expect(res.status).toBe(200);
+  });
+
+  it("hides private tickets from anonymous viewers in public projects", async () => {
+    const created = await createTicket({ visibility: "private" });
+    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`);
+    expect(res.status).toBe(404);
+  });
+
+  it("hides private tickets from non-members in public projects", async () => {
+    const created = await createTicket({ visibility: "private" });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
     const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, { headers: { Cookie: otherCookies } });
     expect(res.status).toBe(404);
   });

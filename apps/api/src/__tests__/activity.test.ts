@@ -411,14 +411,30 @@ describe("GET /api/projects/:key/tickets/:num/activity", () => {
     expect(actions).toContain("comment_deleted");
   });
 
-  it("rejects unauthenticated requests with 401", async () => {
+  it("allows anonymous reads of activity for public tickets in public projects", async () => {
     const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, { method: "GET" });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
-  it("rejects non-members with 404", async () => {
+  it("allows non-member reads of activity for public tickets in public projects", async () => {
     const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
     const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/activity`, {
+      method: "GET",
+      headers: { Cookie: outsider },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("hides activity for private tickets from anonymous viewers", async () => {
+    const priv = await createTicket({ title: "Secret", visibility: "private" });
+    const res = await app.request(`/api/projects/TEST/tickets/${priv.number}/activity`, { method: "GET" });
+    expect(res.status).toBe(404);
+  });
+
+  it("hides activity for private tickets from non-members", async () => {
+    const priv = await createTicket({ title: "Secret", visibility: "private" });
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+    const res = await app.request(`/api/projects/TEST/tickets/${priv.number}/activity`, {
       method: "GET",
       headers: { Cookie: outsider },
     });
