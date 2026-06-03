@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { client } from "$lib/api/client";
+  import { getStackItems } from "$lib/stack";
   import Button from "$lib/components/ui/Button.svelte";
 
   let key: string = $state("");
@@ -13,13 +14,6 @@
   let stackInput: string = $state("");
   let submitting = $state(false);
   let formMessage: { text: string; error: boolean } | null = $state(null);
-
-  function getStackItems(value: string) {
-    return value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
 
   async function handleSubmit() {
     submitting = true;

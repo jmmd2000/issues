@@ -1,5 +1,6 @@
 <script lang="ts">
   import { client } from "$lib/api/client";
+  import { getStackItems } from "$lib/stack";
   import type { Project } from "@issues/api";
   import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
@@ -12,9 +13,10 @@
     description: project.description ?? "",
     visibility: project.visibility,
     repo: project.repo ?? "",
-    stack: project.stack,
     metadata: project.metadata ?? {},
   });
+  // svelte-ignore state_referenced_locally
+  let stackInput = $state(project.stack.join(", "));
   let message = $state<FormMessageType | null>(null);
   let fieldErrors: Record<string, string> = $state({});
   let submitting = $state(false);
@@ -33,7 +35,7 @@
           description: form.description,
           visibility: form.visibility,
           repo: form.repo.trim() === "" ? null : form.repo,
-          stack: form.stack,
+          stack: getStackItems(stackInput),
           metadata: form.metadata,
         },
       });
@@ -98,6 +100,14 @@
     <input type="url" id="projectRepo" class="form-input" bind:value={form.repo} placeholder="Enter project repository URL..." maxlength="2048" />
     {#if fieldErrors.repo}
       <span id="projectRepo-error" class="field-error">{fieldErrors.repo}</span>
+    {/if}
+  </div>
+
+  <div>
+    <label for="projectStack" class="form-label">Stack</label>
+    <input type="text" id="projectStack" class="form-input" bind:value={stackInput} placeholder="SvelteKit, Hono, PostgreSQL" />
+    {#if fieldErrors.stack}
+      <span id="projectStack-error" class="field-error">{fieldErrors.stack}</span>
     {/if}
   </div>
 

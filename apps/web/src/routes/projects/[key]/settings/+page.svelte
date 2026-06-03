@@ -6,6 +6,7 @@
   import GeneralSettingsForm from "$lib/components/forms/GeneralSettingsForm.svelte";
   import LabelForm from "$lib/components/forms/LabelForm.svelte";
   import StatusForm from "$lib/components/forms/StatusForm.svelte";
+  import DangerZone from "$lib/components/forms/DangerZone.svelte";
   import TrashSection from "$lib/components/tickets/TrashSection.svelte";
 
   let { data }: PageProps = $props();
@@ -50,6 +51,10 @@
         sortColumn={data.trashSortBy}
         sortDirection={data.trashSortDirection}
       />
+    </section>
+    <section class="settings-card-container">
+      <h2>Danger zone</h2>
+      <DangerZone project={data.project} />
     </section>
   {/if}
 </div>
