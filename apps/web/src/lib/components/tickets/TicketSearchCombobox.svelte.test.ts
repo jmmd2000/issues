@@ -43,12 +43,12 @@ describe("TicketSearchCombobox", () => {
   });
 
   it("renders the search input when no ticket is selected", async () => {
-    const screen = render(TicketSearchCombobox, { ...baseProps });
+    const screen = await render(TicketSearchCombobox, { ...baseProps });
     await expect.element(screen.getByPlaceholder("Search tickets by title...")).toBeVisible();
   });
 
   it("does not query the API for terms shorter than 2 characters", async () => {
-    const screen = render(TicketSearchCombobox, { ...baseProps });
+    const screen = await render(TicketSearchCombobox, { ...baseProps });
     await screen.getByPlaceholder("Search tickets by title...").fill("a");
     expect(mockState.lastQuery).toBeNull();
   });
@@ -58,7 +58,7 @@ describe("TicketSearchCombobox", () => {
       { id: "t-1", number: 1, title: "First ticket" },
       { id: "t-2", number: 2, title: "Second ticket" },
     ];
-    const screen = render(TicketSearchCombobox, { ...baseProps });
+    const screen = await render(TicketSearchCombobox, { ...baseProps });
     await screen.getByPlaceholder("Search tickets by title...").fill("ticket");
     await expect.element(screen.getByRole("button", { name: /TEST-1.*First ticket/ })).toBeVisible();
     await expect.element(screen.getByRole("button", { name: /TEST-2.*Second ticket/ })).toBeVisible();
@@ -66,7 +66,7 @@ describe("TicketSearchCombobox", () => {
 
   it("renders the no-matches hint when the API returns an empty list", async () => {
     mockState.tickets = [];
-    const screen = render(TicketSearchCombobox, { ...baseProps });
+    const screen = await render(TicketSearchCombobox, { ...baseProps });
     await screen.getByPlaceholder("Search tickets by title...").fill("none");
     await expect.element(screen.getByText("No matches.")).toBeVisible();
   });
@@ -74,7 +74,7 @@ describe("TicketSearchCombobox", () => {
   it("calls onpicked with the chosen ticket and clears the dropdown", async () => {
     mockState.tickets = [{ id: "t-1", number: 1, title: "First ticket" }];
     const onpicked = vi.fn();
-    const screen = render(TicketSearchCombobox, { ...baseProps, onpicked });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, onpicked });
     await screen.getByPlaceholder("Search tickets by title...").fill("first");
     await screen.getByRole("button", { name: /TEST-1.*First ticket/ }).click();
     expect(onpicked).toHaveBeenCalledWith({ id: "t-1", number: 1, title: "First ticket" });
@@ -85,7 +85,7 @@ describe("TicketSearchCombobox", () => {
       { id: "t-1", number: 1, title: "Self ticket" },
       { id: "t-2", number: 2, title: "Other ticket" },
     ];
-    const screen = render(TicketSearchCombobox, { ...baseProps, excludeTicketNumber: 1 });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, excludeTicketNumber: 1 });
     await screen.getByPlaceholder("Search tickets by title...").fill("ticket");
     await expect.element(screen.getByRole("button", { name: /TEST-2.*Other ticket/ })).toBeVisible();
     expect(screen.getByRole("button", { name: /TEST-1/ }).elements()).toHaveLength(0);
@@ -93,7 +93,7 @@ describe("TicketSearchCombobox", () => {
 
   it("forwards includeClosed to the API query", async () => {
     mockState.tickets = [{ id: "t-1", number: 1, title: "Closed ticket" }];
-    const screen = render(TicketSearchCombobox, { ...baseProps, includeClosed: true });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, includeClosed: true });
     await screen.getByPlaceholder("Search tickets by title...").fill("closed");
     await expect.element(screen.getByRole("button", { name: /TEST-1/ })).toBeVisible();
     expect(mockState.lastQuery).toMatchObject({ includeClosed: "true" });
@@ -101,7 +101,7 @@ describe("TicketSearchCombobox", () => {
 
   it("renders the default selection pill when a ticket is selected", async () => {
     const selected: TicketRef = { id: "t-7", number: 7, title: "Picked ticket" };
-    const screen = render(TicketSearchCombobox, { ...baseProps, selected });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, selected });
     await expect.element(screen.getByText("TEST-7")).toBeVisible();
     await expect.element(screen.getByText("Picked ticket")).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Clear selected ticket" })).toBeVisible();
@@ -110,19 +110,19 @@ describe("TicketSearchCombobox", () => {
   it("calls oncleared when the pill clear button is clicked", async () => {
     const selected: TicketRef = { id: "t-7", number: 7, title: "Picked ticket" };
     const oncleared = vi.fn();
-    const screen = render(TicketSearchCombobox, { ...baseProps, selected, oncleared });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, selected, oncleared });
     await screen.getByRole("button", { name: "Clear selected ticket" }).click();
     expect(oncleared).toHaveBeenCalledOnce();
   });
 
   it("disables the input when the disabled prop is set", async () => {
-    const screen = render(TicketSearchCombobox, { ...baseProps, disabled: true });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, disabled: true });
     await expect.element(screen.getByPlaceholder("Search tickets by title...")).toBeDisabled();
   });
 
   it("disables the pill clear button when the disabled prop is set", async () => {
     const selected: TicketRef = { id: "t-7", number: 7, title: "Picked ticket" };
-    const screen = render(TicketSearchCombobox, { ...baseProps, selected, disabled: true });
+    const screen = await render(TicketSearchCombobox, { ...baseProps, selected, disabled: true });
     await expect.element(screen.getByRole("button", { name: "Clear selected ticket" })).toBeDisabled();
   });
 });

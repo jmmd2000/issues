@@ -23,7 +23,7 @@ describe("TicketLinks", () => {
   });
 
   it("renders the empty state when there are no links", async () => {
-    const screen = render(TicketLinks, { ...baseProps });
+    const screen = await render(TicketLinks, { ...baseProps });
     await expect.element(screen.getByText("No links.")).toBeVisible();
   });
 
@@ -42,7 +42,7 @@ describe("TicketLinks", () => {
         ticket: { id: "t3", number: 3, title: "Blocking thing", projectKey: "TEST", status: { name: "Backlog", category: "backlog" }, priority: "medium", assignee: null },
       }),
     ];
-    const screen = render(TicketLinks, { ...baseProps, links });
+    const screen = await render(TicketLinks, { ...baseProps, links });
     await expect.element(screen.getByText("blocks")).toBeVisible();
     await expect.element(screen.getByText("is blocked by")).toBeVisible();
     await expect.element(screen.getByText("Blocked thing")).toBeVisible();
@@ -50,20 +50,20 @@ describe("TicketLinks", () => {
   });
 
   it("opens the add-link form when the plus button is clicked", async () => {
-    const screen = render(TicketLinks, { ...baseProps });
+    const screen = await render(TicketLinks, { ...baseProps });
     await screen.getByRole("button", { name: "Add link" }).click();
     await expect.element(screen.getByLabelText("Link type")).toBeVisible();
     await expect.element(screen.getByPlaceholder("Search tickets...")).toBeVisible();
   });
 
   it("disables the Add submit until a ticket is selected", async () => {
-    const screen = render(TicketLinks, { ...baseProps });
+    const screen = await render(TicketLinks, { ...baseProps });
     await screen.getByRole("button", { name: "Add link" }).click();
     await expect.element(screen.getByRole("button", { name: "Add", exact: true })).toBeDisabled();
   });
 
   it("closes the add-link form when Cancel is clicked", async () => {
-    const screen = render(TicketLinks, { ...baseProps });
+    const screen = await render(TicketLinks, { ...baseProps });
     await screen.getByRole("button", { name: "Add link" }).click();
     await screen.getByRole("button", { name: "Cancel" }).click();
     expect(screen.getByPlaceholder("Search tickets...").elements()).toHaveLength(0);
@@ -78,7 +78,7 @@ describe("TicketLinks", () => {
         ticket: { id: "t2", number: 2, title: "Other", projectKey: "TEST", status: { name: "Backlog", category: "backlog" }, priority: "medium", assignee: null },
       }),
     ];
-    const screen = render(TicketLinks, { ...baseProps, links });
+    const screen = await render(TicketLinks, { ...baseProps, links });
     await expect.element(screen.getByRole("button", { name: /Remove blocks TEST-2/ })).toBeVisible();
   });
 });

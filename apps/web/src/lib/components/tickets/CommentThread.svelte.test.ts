@@ -24,7 +24,7 @@ describe("CommentThread", () => {
   });
 
   it("renders the empty state when there are no comments", async () => {
-    const screen = render(CommentThread, { ...baseProps });
+    const screen = await render(CommentThread, { ...baseProps });
     await expect.element(screen.getByText("No comments yet.")).toBeVisible();
     await expect.element(screen.getByRole("heading", { name: "Comments" })).toBeVisible();
   });
@@ -34,13 +34,13 @@ describe("CommentThread", () => {
       makeComment({ id: "c-1", body: "First post.", author: { id: "u-1", name: "Alice", avatarURL: null } }),
       makeComment({ id: "c-2", body: "Second post.", author: { id: "u-2", name: "Bob", avatarURL: null } }),
     ];
-    const screen = render(CommentThread, { ...baseProps, comments });
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await expect.element(screen.getByText("First post.")).toBeVisible();
     await expect.element(screen.getByText("Second post.")).toBeVisible();
   });
 
   it("opens the composer when the Add a comment trigger is clicked", async () => {
-    const screen = render(CommentThread, { ...baseProps });
+    const screen = await render(CommentThread, { ...baseProps });
     await screen.getByRole("button", { name: "Add a comment" }).click();
     await expect.element(screen.getByRole("heading", { name: "Add a comment" })).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Comment" })).toBeDisabled();
@@ -48,27 +48,27 @@ describe("CommentThread", () => {
 
   it("renders a tombstone for deleted comments", async () => {
     const comments = [makeComment({ id: "c-dead", body: null, isDeleted: true, author: { id: "u-1", name: "Alice", avatarURL: null } })];
-    const screen = render(CommentThread, { ...baseProps, comments });
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await expect.element(screen.getByText("Comment deleted.")).toBeVisible();
   });
 
   it("hides edit / delete actions for comments authored by other users", async () => {
     const comments = [makeComment({ id: "c-other", authorID: "u-other", body: "Hi", author: { id: "u-other", name: "Other", avatarURL: null } })];
-    const screen = render(CommentThread, { ...baseProps, comments });
+    const screen = await render(CommentThread, { ...baseProps, comments });
     expect(screen.getByRole("button", { name: "Edit" }).elements()).toHaveLength(0);
     expect(screen.getByRole("button", { name: "Delete" }).elements()).toHaveLength(0);
   });
 
   it("shows edit / delete actions for the current user's comments", async () => {
     const comments = [makeComment({ id: "c-mine", authorID: "u-current", body: "Mine", author: { id: "u-current", name: "Me", avatarURL: null } })];
-    const screen = render(CommentThread, { ...baseProps, comments });
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await expect.element(screen.getByRole("button", { name: "Edit" })).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Delete" })).toBeVisible();
   });
 
   it("opens an inline editor when the user clicks Edit", async () => {
     const comments = [makeComment({ id: "c-mine", authorID: "u-current", body: "Mine", author: { id: "u-current", name: "Me", avatarURL: null } })];
-    const screen = render(CommentThread, { ...baseProps, comments });
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await screen.getByRole("button", { name: "Edit" }).click();
     await expect.element(screen.getByRole("button", { name: "Save" })).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Cancel" })).toBeVisible();
@@ -76,7 +76,7 @@ describe("CommentThread", () => {
 
   it("requires a confirm click before deleting", async () => {
     const comments = [makeComment({ id: "c-mine", authorID: "u-current", body: "Mine", author: { id: "u-current", name: "Me", avatarURL: null } })];
-    const screen = render(CommentThread, { ...baseProps, comments });
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await screen.getByRole("button", { name: "Delete" }).click();
     await expect.element(screen.getByRole("button", { name: "Confirm delete" })).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Cancel" })).toBeVisible();

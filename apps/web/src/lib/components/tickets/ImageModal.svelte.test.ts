@@ -27,7 +27,7 @@ function makeImage(overrides: Partial<Attachment> = {}): Attachment {
 describe("ImageModal", () => {
   it("renders the image, filename, and an open-original link when open", async () => {
     const attachment = makeImage({ filename: "diagram.png", sizeBytes: 1_500_000 });
-    const screen = render(ImageModal, { open: true, attachment, onclose: () => {} });
+    const screen = await render(ImageModal, { open: true, attachment, onclose: () => {} });
 
     await expect.element(screen.getByRole("img", { name: "diagram.png" })).toBeVisible();
     await expect.element(screen.getByText("diagram.png")).toBeVisible();
@@ -38,14 +38,14 @@ describe("ImageModal", () => {
   it("invokes onclose when the close button is clicked", async () => {
     const attachment = makeImage();
     let closed = false;
-    const screen = render(ImageModal, { open: true, attachment, onclose: () => (closed = true) });
+    const screen = await render(ImageModal, { open: true, attachment, onclose: () => (closed = true) });
 
     await screen.getByRole("button", { name: "Close" }).click();
     expect(closed).toBe(true);
   });
 
   it("renders nothing inside the dialog when there is no attachment", async () => {
-    const screen = render(ImageModal, { open: true, attachment: null, onclose: () => {} });
+    const screen = await render(ImageModal, { open: true, attachment: null, onclose: () => {} });
 
     await expect.element(screen.getByRole("button", { name: "Close" })).not.toBeInTheDocument();
   });
@@ -53,7 +53,7 @@ describe("ImageModal", () => {
   it("closes when the caption area is clicked", async () => {
     const attachment = makeImage({ filename: "diagram.png" });
     let closed = false;
-    const screen = render(ImageModal, { open: true, attachment, onclose: () => (closed = true) });
+    const screen = await render(ImageModal, { open: true, attachment, onclose: () => (closed = true) });
 
     await screen.getByText("diagram.png").click();
     expect(closed).toBe(true);
@@ -62,7 +62,7 @@ describe("ImageModal", () => {
   it("does not close when the image itself is clicked", async () => {
     const attachment = makeImage({ filename: "diagram.png" });
     let closed = false;
-    const screen = render(ImageModal, { open: true, attachment, onclose: () => (closed = true) });
+    const screen = await render(ImageModal, { open: true, attachment, onclose: () => (closed = true) });
 
     await screen.getByRole("img", { name: "diagram.png" }).click();
     expect(closed).toBe(false);

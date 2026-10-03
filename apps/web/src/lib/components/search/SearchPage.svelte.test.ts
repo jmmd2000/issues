@@ -93,7 +93,7 @@ function expectGoto(path: string): void {
   expect(mockApp.goto).toHaveBeenCalledWith(path, { keepFocus: true, noScroll: true });
 }
 
-async function selectSearchOption(screen: ReturnType<typeof render>, label: string, value: string): Promise<void> {
+async function selectSearchOption(screen: Awaited<ReturnType<typeof render>>, label: string, value: string): Promise<void> {
   await userEvent.selectOptions(screen.getByRole("combobox", { name: new RegExp(`^${label}`) }), value);
 }
 
@@ -106,7 +106,7 @@ beforeEach(() => {
 
 describe("SearchPage", () => {
   it("renders the empty state and syntax hints before a search runs", async () => {
-    const screen = render(SearchPage, { search: makeSearch() });
+    const screen = await render(SearchPage, { search: makeSearch() });
 
     await expect.element(screen.getByRole("heading", { name: "Search" })).toBeVisible();
     await expect.element(screen.getByText("No query or filters selected.")).toBeVisible();
@@ -115,7 +115,7 @@ describe("SearchPage", () => {
   });
 
   it("updates the URL after typing in the search input", async () => {
-    const screen = render(SearchPage, { search: makeSearch() });
+    const screen = await render(SearchPage, { search: makeSearch() });
 
     await screen.getByLabelText("Search tickets").fill("login bug");
 
@@ -125,7 +125,7 @@ describe("SearchPage", () => {
   });
 
   it("updates the URL immediately when a structured filter changes", async () => {
-    const screen = render(SearchPage, { search: makeSearch() });
+    const screen = await render(SearchPage, { search: makeSearch() });
 
     await screen.getByText("Todo").click();
 
@@ -135,7 +135,7 @@ describe("SearchPage", () => {
   });
 
   it("clears text and filters from the URL", async () => {
-    const screen = render(SearchPage, {
+    const screen = await render(SearchPage, {
       search: makeSearch({
         state: makeState({
           searchTerm: "api",
@@ -154,7 +154,7 @@ describe("SearchPage", () => {
   });
 
   it("keeps the query when changing result pages", async () => {
-    const screen = render(SearchPage, {
+    const screen = await render(SearchPage, {
       search: makeSearch({
         state: makeState({ searchTerm: "api", page: 2 }),
         searched: true,
@@ -172,7 +172,7 @@ describe("SearchPage", () => {
   });
 
   it("updates the URL when the sort column changes", async () => {
-    const screen = render(SearchPage, { search: makeSearch() });
+    const screen = await render(SearchPage, { search: makeSearch() });
 
     await selectSearchOption(screen, "Sort", "title");
 
@@ -182,7 +182,7 @@ describe("SearchPage", () => {
   });
 
   it("updates the URL when the sort direction changes", async () => {
-    const screen = render(SearchPage, { search: makeSearch() });
+    const screen = await render(SearchPage, { search: makeSearch() });
 
     await selectSearchOption(screen, "Direction", "asc");
 
@@ -190,10 +190,10 @@ describe("SearchPage", () => {
   });
 
   it("only offers relevance sorting when there is a text query", async () => {
-    const emptyScreen = render(SearchPage, { search: makeSearch() });
+    const emptyScreen = await render(SearchPage, { search: makeSearch() });
     expect(emptyScreen.getByText("Relevance").elements()).toHaveLength(0);
 
-    const queryScreen = render(SearchPage, {
+    const queryScreen = await render(SearchPage, {
       search: makeSearch({
         state: makeState({ searchTerm: "api" }),
         searched: true,
@@ -207,7 +207,7 @@ describe("SearchPage", () => {
   });
 
   it("shows title-specific direction labels when sorting by title", async () => {
-    const screen = render(SearchPage, {
+    const screen = await render(SearchPage, {
       search: makeSearch({
         state: makeState({ sortBy: "title" }),
       }),
@@ -218,7 +218,7 @@ describe("SearchPage", () => {
   });
 
   it("clears sorting back to latest updated when clearing the search", async () => {
-    const screen = render(SearchPage, {
+    const screen = await render(SearchPage, {
       search: makeSearch({
         state: makeState({
           searchTerm: "api",
@@ -237,7 +237,7 @@ describe("SearchPage", () => {
 
   it("hides the project filter and omits project params on a project-scoped search page", async () => {
     mockApp.page.url = new URL("http://localhost/projects/core/search");
-    const screen = render(SearchPage, {
+    const screen = await render(SearchPage, {
       lockedProjectKey: "core",
       search: makeSearch({
         state: makeState({ projectKey: "CORE" }),
