@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
@@ -16,24 +19,24 @@
     "test": "NODE_ENV=test vitest run"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.12",
-    "@hono/zod-validator": "^0.7.6",
+    "@hono/node-server": "1.19.12",
+    "@hono/zod-validator": "0.7.6",
     "@issues/shared": "workspace:*",
-    "argon2": "^0.44.0",
-    "dotenv": "^17.4.1",
-    "drizzle-orm": "^0.45.2",
-    "fractional-indexing": "^3.2.0",
-    "hono": "^4.12.11",
-    "pg": "^8.20.0",
-    "sharp": "^0.34.5",
-    "tsx": "^4.21.0",
-    "vitest": "^4.1.2",
-    "zod": "^4.3.6"
+    "argon2": "0.44.0",
+    "dotenv": "17.4.1",
+    "drizzle-orm": "0.45.2",
+    "fractional-indexing": "3.2.0",
+    "hono": "4.12.11",
+    "pg": "8.20.0",
+    "sharp": "0.34.5",
+    "tsx": "4.21.0",
+    "vitest": "4.1.2",
+    "zod": "4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^25.5.2",
-    "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10",
-    "typescript": "^6.0.2"
+    "@types/node": "25.5.2",
+    "@types/pg": "8.20.0",
+    "drizzle-kit": "0.31.10",
+    "typescript": "6.0.2"
   }
 }
