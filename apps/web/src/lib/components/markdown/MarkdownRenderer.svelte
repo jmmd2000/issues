@@ -17,9 +17,10 @@
 
   function attachCopyHandlers(root: HTMLElement) {
     const buttons = root.querySelectorAll<HTMLButtonElement>(".code-block__copy");
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup used only to remove listeners, never read reactively
     const handlers = new Map<HTMLButtonElement, () => void>();
     for (const button of buttons) {
-      const handler = () => copyButtonContents(button);
+      const handler = () => void copyButtonContents(button);
       button.addEventListener("click", handler);
       handlers.set(button, handler);
     }

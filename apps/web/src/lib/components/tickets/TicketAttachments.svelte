@@ -161,6 +161,7 @@
             </button>
           {:else}
             {@const Icon = iconFor(attachment.filename)}
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- links to an uploaded file, not an app route -->
             <a class="thumb" href={attachmentURL(attachment)} target="_blank" rel="noreferrer noopener" title={attachment.filename}>
               <span class="file-icon">
                 <Icon size={28} strokeWidth={1.5} />

@@ -25,7 +25,7 @@
   const owner = $derived(project.members.find((m) => m.role === "owner") ?? null);
   const repoLabel = $derived(project.repo ? project.repo.replace(/^https?:\/\//, "") : null);
 
-  let open = $state({ projectInfo: true, members: true, recent: true });
+  const open = $state({ projectInfo: true, members: true, recent: true });
 
   function toggleSection(key: keyof typeof open) {
     open[key] = !open[key];

@@ -247,7 +247,7 @@
     novalidate
     onsubmit={(event) => {
       event.preventDefault();
-      submitCreate();
+      void submitCreate();
     }}
   >
     <label class="field">

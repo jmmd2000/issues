@@ -76,7 +76,7 @@
   novalidate
   onsubmit={(e) => {
     e.preventDefault();
-    handleSubmit();
+    void handleSubmit();
   }}
 >
   <div class="avatar-row">

@@ -40,7 +40,7 @@
 
       const { project }: { project: { key: string } } = await res.json();
       formMessage = { text: "Project created successfully!", error: false };
-      setTimeout(() => goto(resolve("/projects/[key]", { key: project.key })), 1500);
+      setTimeout(() => void goto(resolve("/projects/[key]", { key: project.key })), 1500);
     } catch {
       formMessage = { text: "An error occurred while creating the project", error: true };
     } finally {
@@ -57,7 +57,7 @@
   <form
     onsubmit={(e) => {
       e.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }}
     class="form-card project-form"
   >

@@ -65,10 +65,11 @@
   }
 
   function handleBacklogConsider(items: Ticket[]) {
-    if (!primaryBacklogStatusID) return;
+    const backlogStatusID = primaryBacklogStatusID;
+    if (!backlogStatusID) return;
     const incomingIDs = new Set(items.map((i) => i.id));
     const untouched = localTickets.filter((t) => !backlogStatusSet.has(t.statusID) && !incomingIDs.has(t.id));
-    const rewritten = items.map((t) => (backlogStatusSet.has(t.statusID) ? t : { ...t, statusID: primaryBacklogStatusID! }));
+    const rewritten = items.map((t) => (backlogStatusSet.has(t.statusID) ? t : { ...t, statusID: backlogStatusID }));
     localTickets = [...untouched, ...rewritten];
   }
 

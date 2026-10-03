@@ -40,6 +40,7 @@
       if (value === null || value === "") next.searchParams.delete(key);
       else next.searchParams.set(key, value);
     }
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- next.pathname is the current URL's path, which already includes the base
     void goto(`${next.pathname}${next.search}`, { keepFocus: true, noScroll: true });
   }
 
@@ -129,6 +130,7 @@
   let visibleListColumnIDs = $state<Set<TicketListColumnID>>(readVisibleSet<TicketListColumnID>(listColumnsKey, LIST_COLUMNS.map((c) => c.id) as TicketListColumnID[]));
 
   function toggleKanbanColumn(id: string) {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- copied then reassigned to the $state, so the update is still reactive
     const next = new Set(visibleKanbanStatusIDs);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -137,6 +139,7 @@
   }
   function toggleListColumn(id: string) {
     const columnID = id as TicketListColumnID;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- copied then reassigned to the $state, so the update is still reactive
     const next = new Set(visibleListColumnIDs);
     if (next.has(columnID)) {
       if (next.size === 1) return;

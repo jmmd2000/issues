@@ -38,6 +38,7 @@ export interface PushToastInput {
 export const DEFAULT_TTL_MS = 5000;
 /** Hard cap on stack size. Older toasts are evicted (and their timers cleared) so a stuck action toast can't pin the list open forever. */
 export const MAX_TOASTS = 10;
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timer handles are bookkeeping, nothing renders from them
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function makeID(): string {

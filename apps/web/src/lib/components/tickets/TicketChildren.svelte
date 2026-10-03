@@ -74,7 +74,7 @@
       {#each children as child (child.id)}
         <li>
           <TicketRow
-            ticket={{ id: child.id, number: child.number, title: child.title, projectKey }}
+            ticket={{ number: child.number, title: child.title, projectKey }}
             status={child.status}
             priority={child.priority}
             assignee={child.assignee}

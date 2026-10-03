@@ -36,7 +36,7 @@ export function createTicketSearch<T>(inputs: TicketSearchInputs<T>) {
     let cancelled = false;
     loading = true;
 
-    const timer = setTimeout(async () => {
+    async function search() {
       try {
         const res = await client.api.projects[":key"].tickets.$get({
           param: { key: projectKey },
@@ -53,7 +53,9 @@ export function createTicketSearch<T>(inputs: TicketSearchInputs<T>) {
       } finally {
         if (!cancelled) loading = false;
       }
-    }, 200);
+    }
+
+    const timer = setTimeout(() => void search(), 200);
 
     return () => {
       cancelled = true;

@@ -8,7 +8,7 @@
   let { project }: { project: Project } = $props();
 
   // svelte-ignore state_referenced_locally
-  let form = $state({
+  const form = $state({
     name: project.name,
     description: project.description ?? "",
     visibility: project.visibility,
@@ -59,7 +59,7 @@
   novalidate
   onsubmit={(e) => {
     e.preventDefault();
-    handleSubmit();
+    void handleSubmit();
   }}
 >
   <div>

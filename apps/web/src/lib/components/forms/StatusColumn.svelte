@@ -87,7 +87,7 @@
       novalidate
       onsubmit={(e) => {
         e.preventDefault();
-        handleAdd();
+        void handleAdd();
       }}
     >
       <input type="text" class="form-input" bind:value={newName} placeholder="Status name..." maxlength="40" required disabled={submitting} />

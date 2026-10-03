@@ -21,7 +21,7 @@
     onDelete: (id: string) => void;
   } = $props();
   // svelte-ignore state_referenced_locally
-  let form = $state({ name: status.name });
+  const form = $state({ name: status.name });
   // svelte-ignore state_referenced_locally
   let lastSaved = $state({ name: status.name });
   let fieldErrors: Record<string, string> = $state({});
@@ -104,7 +104,7 @@
   novalidate
   onsubmit={(e) => {
     e.preventDefault();
-    handleSubmit();
+    void handleSubmit();
   }}
 >
   <div class="row">

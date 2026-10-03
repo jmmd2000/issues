@@ -51,7 +51,6 @@
   const selectedSet = $derived(new Set(selected));
   const selectedOptions = $derived(options.filter((option) => selectedSet.has(option.value)));
   const singleOption = $derived(options.find((option) => option.value === value) ?? options[options.length - 1]);
-  const hasSelection = $derived(multi ? selectedOptions.length > 0 : true);
   const triggerColour = $derived(multi ? (selectedOptions[0]?.colour ?? "transparent") : singleOption.colour);
 
   function selectSingle(next: Priority) {

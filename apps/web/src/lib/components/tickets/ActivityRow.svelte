@@ -46,7 +46,7 @@
       {@const linkType = asLinkType(row.fieldName)}
       {@const direction = row.newValue.direction ?? "outgoing"}
       <span class="activity-verb">added link · {linkType ? linkLabel(linkType, direction) : (row.fieldName ?? "")}</span>
-      {#if row.newValue.projectKey && row.newValue.number != null}
+      {#if row.newValue.projectKey && row.newValue.number !== null && row.newValue.number !== undefined}
         <a class="ticket-pill" href={resolve("/projects/[key]/tickets/[num]", { key: row.newValue.projectKey, num: String(row.newValue.number) })} title={row.newValue.title ?? ""}>
           {row.newValue.projectKey}-{row.newValue.number}
         </a>
@@ -55,7 +55,7 @@
       {@const linkType = asLinkType(row.fieldName)}
       {@const direction = row.oldValue.direction ?? "outgoing"}
       <span class="activity-verb">removed link · {linkType ? linkLabel(linkType, direction) : (row.fieldName ?? "")}</span>
-      {#if row.oldValue.projectKey && row.oldValue.number != null}
+      {#if row.oldValue.projectKey && row.oldValue.number !== null && row.oldValue.number !== undefined}
         <a class="ticket-pill" href={resolve("/projects/[key]/tickets/[num]", { key: row.oldValue.projectKey, num: String(row.oldValue.number) })} title={row.oldValue.title ?? ""}>
           {row.oldValue.projectKey}-{row.oldValue.number}
         </a>

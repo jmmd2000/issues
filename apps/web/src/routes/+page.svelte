@@ -15,10 +15,6 @@
     const projectWord = projectCount === 1 ? "project" : "projects";
     return `${projectCount} ${projectWord}, ${openTotal} open`;
   });
-
-  function projectHref(key: string) {
-    return resolve("/projects/[key]", { key });
-  }
 </script>
 
 <div class="home">
@@ -61,7 +57,7 @@
         <ul class="project-list">
           {#each data.projects as project (project.id)}
             <li>
-              <a class="project-card" href={projectHref(project.key)}>
+              <a class="project-card" href={resolve("/projects/[key]", { key: project.key })}>
                 <header class="project-head">
                   <code class="project-key">{project.key}</code>
                   <span class="project-rule" aria-hidden="true"></span>

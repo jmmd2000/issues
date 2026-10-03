@@ -59,7 +59,7 @@
 
   const orderedStatuses = $derived([...statuses].sort((a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.position - b.position));
 
-  let open = $state({ status: true, priority: true, assignee: true, label: true });
+  const open = $state({ status: true, priority: true, assignee: true, label: true });
 
   function toggleOpen(key: keyof typeof open) {
     open[key] = !open[key];

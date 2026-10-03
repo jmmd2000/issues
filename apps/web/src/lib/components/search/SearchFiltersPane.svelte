@@ -42,7 +42,7 @@
     onToggleCollapsed,
   }: SearchFiltersPaneProps = $props();
 
-  let open = $state({ project: true, status: true, priority: true, assignee: true, label: true });
+  const open = $state({ project: true, status: true, priority: true, assignee: true, label: true });
 
   const orderedProjects = $derived([...filters.projects].sort((a, b) => a.key.localeCompare(b.key)));
   const orderedStatuses = $derived([...filters.statuses].sort((a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name)));

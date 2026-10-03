@@ -33,6 +33,7 @@
   //     KEY-7 ...
   type Group = { label: string; entries: TicketLink[] };
   const grouped = $derived.by((): Group[] => {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local accumulator inside $derived.by, never read reactively
     const buckets = new Map<string, TicketLink[]>();
     for (const link of links) {
       const label = linkLabel(link.linkType, link.direction);
@@ -151,7 +152,7 @@
             {#each group.entries as link (link.id)}
               <li>
                 <TicketRow
-                  ticket={{ id: link.ticket.id, number: link.ticket.number, title: link.ticket.title, projectKey: link.ticket.projectKey }}
+                  ticket={{ number: link.ticket.number, title: link.ticket.title, projectKey: link.ticket.projectKey }}
                   status={link.ticket.status}
                   priority={link.ticket.priority}
                   assignee={link.ticket.assignee}

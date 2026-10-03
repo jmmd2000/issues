@@ -10,7 +10,7 @@
   let { label, projectKey, onDelete, onUpdate }: { label: Label; projectKey: string; onDelete: (labelID: string) => void; onUpdate: (label: Label) => void } = $props();
 
   // svelte-ignore state_referenced_locally
-  let form = $state({ name: label.name, colour: label.colour });
+  const form = $state({ name: label.name, colour: label.colour });
   // svelte-ignore state_referenced_locally
   let lastSaved = $state({ name: label.name, colour: label.colour });
   let fieldErrors: Record<string, string> = $state({});
@@ -100,7 +100,7 @@
   novalidate
   onsubmit={(e) => {
     e.preventDefault();
-    handleSubmit();
+    void handleSubmit();
   }}
 >
   <div class="label-row">

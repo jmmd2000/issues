@@ -44,7 +44,7 @@
       const target = safeNext();
       await invalidateAll();
       // eslint-disable-next-line svelte/no-navigation-without-resolve
-      redirectTimer = setTimeout(() => goto(target), 1200);
+      redirectTimer = setTimeout(() => void goto(target), 1200);
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
     } finally {
@@ -76,7 +76,7 @@
         novalidate
         onsubmit={(e) => {
           e.preventDefault();
-          handleSubmit();
+          void handleSubmit();
         }}
       >
         <div class="field">

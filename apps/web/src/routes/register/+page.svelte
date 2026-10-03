@@ -36,7 +36,7 @@
       }
       message = { type: "success", text: "Account created." };
       await invalidateAll();
-      redirectTimer = setTimeout(() => goto(resolve("/login")), 1200);
+      redirectTimer = setTimeout(() => void goto(resolve("/login")), 1200);
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
     } finally {
@@ -77,7 +77,7 @@
           novalidate
           onsubmit={(e) => {
             e.preventDefault();
-            handleSubmit();
+            void handleSubmit();
           }}
         >
           <div class="field">

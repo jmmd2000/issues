@@ -100,16 +100,17 @@
 
   async function confirmRevoke() {
     if (!confirmTarget || revoking) return;
+    const target = confirmTarget;
 
     revoking = true;
     try {
-      const result = await onRevoke(confirmTarget.id);
+      const result = await onRevoke(target.id);
       if (!result.ok) {
         message = { type: "error", text: result.message ?? "Failed to revoke token." };
         confirmOpen = false;
         return;
       }
-      tokenList = tokenList.filter((token) => token.id !== confirmTarget!.id);
+      tokenList = tokenList.filter((token) => token.id !== target.id);
       confirmOpen = false;
       confirmTarget = null;
     } catch {
@@ -133,8 +134,8 @@
             <span class="token-name">{token.name}</span>
             <span class="token-meta">
               Created {formatDate(token.createdAt)}
-              {" · Last used "}{formatDate(token.lastUsedAt)}
-              {" · "}
+              · Last used {formatDate(token.lastUsedAt)}
+              ·
               <span class="expiry" data-warning={remaining <= 14}>
                 {remaining > 0 ? `Expires in ${remaining} days` : "Expired"}
               </span>
@@ -153,7 +154,7 @@
     novalidate
     onsubmit={(e) => {
       e.preventDefault();
-      handleCreate();
+      void handleCreate();
     }}
   >
     <input type="text" id="token-name" class="form-input" bind:value={form.name} {placeholder} required maxlength="80" disabled={submitting} />

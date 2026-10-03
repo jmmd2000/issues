@@ -8,7 +8,7 @@
 
   let { user }: { user: CurrentUser | null } = $props();
 
-  let detailsEl: HTMLDetailsElement = $state(null!);
+  let detailsEl: HTMLDetailsElement | null = $state(null);
 
   async function handleLogout() {
     await client.api.auth.logout.$post();
@@ -17,7 +17,7 @@
 
   $effect(() => {
     function handleClick(e: MouseEvent) {
-      if (detailsEl.open && !detailsEl.contains(e.target as Node)) detailsEl.open = false;
+      if (detailsEl?.open && !detailsEl.contains(e.target as Node)) detailsEl.open = false;
     }
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
@@ -33,8 +33,10 @@
       </div>
     </summary>
     <div class="dropdown-menu">
-      <a href={resolve("/settings")} onclick={() => (detailsEl.open = false)}>Settings</a>
-      <button onclick={handleLogout}>Logout</button>
+      <a href={resolve("/settings")} onclick={() => {
+          if (detailsEl) detailsEl.open = false;
+        }}>Settings</a>
+      <button type="button" onclick={handleLogout}>Logout</button>
     </div>
   </details>
 {:else}

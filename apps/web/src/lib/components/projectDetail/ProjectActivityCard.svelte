@@ -147,7 +147,11 @@
         if (fieldName) return `updated ${fieldName.replace(/_/g, " ")}`;
         return "updated";
       }
-      default:
+      case "cloned_from":
+      case "label_added":
+      case "label_removed":
+      case "link_added":
+      case "link_removed":
         return action.replace(/_/g, " ");
     }
   }

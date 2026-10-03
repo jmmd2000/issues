@@ -15,7 +15,6 @@
 
   let { ticket }: SearchResultCardProps = $props();
 
-  const href = $derived(resolve("/projects/[key]/tickets/[num]", { key: ticket.project.key, num: String(ticket.number) }));
   const key = $derived(`${ticket.project.key}-${ticket.number}`);
   const descriptionParts = $derived(ticket.highlights.description.length > 0 ? ticket.highlights.description : ticket.description.trim() ? [{ text: ticket.description, highlighted: false }] : []);
   const hasDescription = $derived(descriptionParts.length > 0);
@@ -25,7 +24,7 @@
   const visibilityLabel = $derived(ticket.visibility === "public" && ticket.project.visibility === "public" ? "Public" : "Private");
 </script>
 
-<a class="result-card" {href} aria-label={`${key}: ${ticket.title}`}>
+<a class="result-card" href={resolve("/projects/[key]/tickets/[num]", { key: ticket.project.key, num: String(ticket.number) })} aria-label={`${key}: ${ticket.title}`}>
   <div class="result-topline">
     <code class="ticket-key">{key}</code>
     <StatusChip name={ticket.status.name} category={ticket.status.category} />

@@ -80,6 +80,7 @@
     };
     const params = serialiseSearchPageState(nextState, normalisedLockedProjectKey);
     const queryString = params.toString();
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- page.url.pathname is the current path, which already includes the base
     void goto(queryString ? `${page.url.pathname}?${queryString}` : page.url.pathname, { keepFocus: true, noScroll: true });
   }
 

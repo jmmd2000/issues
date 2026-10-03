@@ -88,7 +88,7 @@
             {@const member = result.assigneeID ? (memberByID.get(result.assigneeID) ?? null) : null}
             <li>
               <TicketRow
-                ticket={{ id: result.id, number: result.number, title: result.title, projectKey }}
+                ticket={{ number: result.number, title: result.title, projectKey }}
                 status={status ? { name: status.name, category: status.category } : { name: "Unknown", category: "backlog" }}
                 priority={result.priority}
                 assignee={member ? { name: member.user.name, avatarURL: member.user.avatarURL } : null}

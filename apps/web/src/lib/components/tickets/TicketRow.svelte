@@ -7,7 +7,7 @@
   import UserAvatar from "$lib/components/UserAvatar.svelte";
 
   interface TicketRowProps {
-    ticket: { id: string; number: number; title: string; projectKey: string };
+    ticket: { number: number; title: string; projectKey: string };
     status: { name: string; category: Status["category"] };
     priority?: Priority;
     assignee?: { name: string; avatarURL: string | null } | null;
@@ -18,8 +18,6 @@
   }
 
   let { ticket, status, priority, assignee, trailing, onclick }: TicketRowProps = $props();
-
-  const href = $derived(resolve("/projects/[key]/tickets/[num]", { key: ticket.projectKey, num: String(ticket.number) }));
 </script>
 
 {#snippet body()}
@@ -42,7 +40,7 @@
       {@render body()}
     </button>
   {:else}
-    <a class="ticket-target" {href} title={ticket.title}>
+    <a class="ticket-target" href={resolve("/projects/[key]/tickets/[num]", { key: ticket.projectKey, num: String(ticket.number) })} title={ticket.title}>
       {@render body()}
     </a>
   {/if}

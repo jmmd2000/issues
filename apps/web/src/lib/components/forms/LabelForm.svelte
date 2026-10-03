@@ -64,7 +64,7 @@
     novalidate
     onsubmit={(e) => {
       e.preventDefault();
-      handleAdd();
+      void handleAdd();
     }}
   >
     <div class="label-row">
