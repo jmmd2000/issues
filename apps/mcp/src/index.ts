@@ -4,12 +4,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { IssuesClient } from "./client.js";
 import { loadEnv } from "./env.js";
 import { registerAllTools } from "./tools/index.js";
+import { packageVersion } from "./version.js";
 
 async function main() {
   const { apiURL, apiToken } = loadEnv();
   const client = new IssuesClient(apiURL, apiToken);
 
-  const server = new McpServer({ name: "issues", version: "0.0.1" });
+  const server = new McpServer({ name: "issues", version: packageVersion });
   registerAllTools(server, client);
 
   await server.connect(new StdioServerTransport());
