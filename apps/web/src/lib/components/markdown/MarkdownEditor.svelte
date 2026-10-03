@@ -184,8 +184,7 @@
       onpaste={handlePaste}
       ondragover={handleDragOver}
       ondragleave={handleDragLeave}
-      ondrop={handleDrop}
-    ></textarea>
+      ondrop={handleDrop}></textarea>
   {:else}
     <div class="preview">
       {#if value.trim()}
