@@ -5,7 +5,7 @@
   "description": "",
   "scripts": {
     "prepare": "husky",
-    "dev": "pnpm --parallel --filter @issues/api --filter @issues/web dev",
+    "dev": "pnpm --parallel --filter @issues/api --filter web dev",
     "build": "pnpm -r build",
     "check": "pnpm -r check",
     "lint": "eslint .",
