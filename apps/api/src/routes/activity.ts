@@ -23,7 +23,7 @@ const feedQuerySchema = z.object({
 });
 
 export const activity = new Hono()
-  .get("/api/projects/:key/tickets/:num/activity", optionalAuth, zValidator("param", activityParamSchema, validationHook), requireProjectRead, async (c) => {
+  .get("/api/projects/:key/tickets/:num/activity", optionalAuth, zValidator("param", activityParamSchema, validationHook), requireProjectRead, async c => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
@@ -40,7 +40,7 @@ export const activity = new Hono()
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", projectActivityQuerySchema, validationHook),
     requireProjectRead,
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const { limit } = c.req.valid("query");
 
@@ -48,7 +48,7 @@ export const activity = new Hono()
       return c.json({ activity: rows });
     }
   )
-  .get("/api/feed", optionalAuth, zValidator("query", feedQuerySchema, validationHook), async (c) => {
+  .get("/api/feed", optionalAuth, zValidator("query", feedQuerySchema, validationHook), async c => {
     const { limit } = c.req.valid("query");
     const events = await ActivityService.listGlobal(limit, { role: c.get("role") });
     return c.json({ events });

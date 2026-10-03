@@ -43,25 +43,25 @@ const serviceTokenColumns = {
 } as const;
 
 export const serviceUsers = new Hono()
-  .get("/api/users/service", requireAuth, async (c) => {
+  .get("/api/users/service", requireAuth, async c => {
     await requireHuman(c.get("userID"));
     const serviceUsersList = await AuthService.listServiceUsers();
     return c.json({ serviceUsers: serviceUsersList }, 200);
   })
-  .post("/api/users/service", requireAuth, zValidator("json", createUserSchema, validationHook), async (c) => {
+  .post("/api/users/service", requireAuth, zValidator("json", createUserSchema, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { name } = c.req.valid("json");
     const user = await AuthService.createServiceUser(name);
     return c.json({ user }, 201);
   })
-  .get("/api/users/service/:id/tokens", requireAuth, zValidator("param", userIdParam, validationHook), async (c) => {
+  .get("/api/users/service/:id/tokens", requireAuth, zValidator("param", userIdParam, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { id } = c.req.valid("param");
     await requireServiceUser(id);
     const list = await db.select(serviceTokenColumns).from(apiTokens).where(eq(apiTokens.userID, id)).orderBy(desc(apiTokens.createdAt));
     return c.json({ apiTokens: list }, 200);
   })
-  .post("/api/users/service/:id/tokens", requireAuth, zValidator("param", userIdParam, validationHook), zValidator("json", createTokenSchema, validationHook), async (c) => {
+  .post("/api/users/service/:id/tokens", requireAuth, zValidator("param", userIdParam, validationHook), zValidator("json", createTokenSchema, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { id } = c.req.valid("param");
     await requireServiceUser(id);
@@ -69,7 +69,7 @@ export const serviceUsers = new Hono()
     const result = await TokenService.createToken(id, name, expiresInDays);
     return c.json(result, 201);
   })
-  .delete("/api/users/service/:id/tokens/:tokenID", requireAuth, zValidator("param", userAndTokenIdParam, validationHook), async (c) => {
+  .delete("/api/users/service/:id/tokens/:tokenID", requireAuth, zValidator("param", userAndTokenIdParam, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { id, tokenID } = c.req.valid("param");
     await requireServiceUser(id);
@@ -80,7 +80,7 @@ export const serviceUsers = new Hono()
     if (deleted.length === 0) throw new HTTPException(404, { message: "Token not found." });
     return c.body(null, 204);
   })
-  .post("/api/users/service/:id/avatar", requireAuth, zValidator("param", userIdParam, validationHook), async (c) => {
+  .post("/api/users/service/:id/avatar", requireAuth, zValidator("param", userIdParam, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { id } = c.req.valid("param");
     await requireServiceUser(id);
@@ -94,7 +94,7 @@ export const serviceUsers = new Hono()
     const user = await UserService.setAvatar(id, bytes);
     return c.json({ user }, 200);
   })
-  .delete("/api/users/service/:id/avatar", requireAuth, zValidator("param", userIdParam, validationHook), async (c) => {
+  .delete("/api/users/service/:id/avatar", requireAuth, zValidator("param", userIdParam, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { id } = c.req.valid("param");
     await requireServiceUser(id);

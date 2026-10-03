@@ -338,5 +338,4 @@
     flex-direction: column;
     gap: 0.55em;
   }
-
 </style>

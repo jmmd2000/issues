@@ -36,7 +36,7 @@ export class AuthService {
     if (!user || !(await argon2.verify(user.passwordHash, password))) throw new HTTPException(401, { message: "Invalid credentials." });
 
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-    const session = await db.transaction(async (tx) => {
+    const session = await db.transaction(async tx => {
       await tx.delete(sessions).where(eq(sessions.userID, user.id));
       const [created] = await tx.insert(sessions).values({ userID: user.id, expiresAt }).returning({ id: sessions.id, expiresAt: sessions.expiresAt });
       return created;
@@ -97,7 +97,7 @@ export class AuthService {
     const newHash = await argon2.hash(newPassword);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
-    const session = await db.transaction(async (tx) => {
+    const session = await db.transaction(async tx => {
       await tx.update(users).set({ passwordHash: newHash }).where(eq(users.id, userID));
       await tx.delete(sessions).where(eq(sessions.userID, userID));
       const [created] = await tx.insert(sessions).values({ userID, expiresAt }).returning({ id: sessions.id, expiresAt: sessions.expiresAt });
@@ -154,5 +154,4 @@ export class AuthService {
       .where(eq(users.isService, true))
       .orderBy(asc(users.createdAt));
   }
-
 }

@@ -10,18 +10,26 @@ let userID: string;
 let projectID: string;
 
 async function statusBySlug(slug: string) {
-  const [row] = await db.select().from(statuses).where(and(eq(statuses.projectID, projectID), eq(statuses.slug, slug))).limit(1);
+  const [row] = await db
+    .select()
+    .from(statuses)
+    .where(and(eq(statuses.projectID, projectID), eq(statuses.slug, slug)))
+    .limit(1);
   return row;
 }
 
 async function labelByName(name: string) {
-  const [row] = await db.select().from(labels).where(and(eq(labels.projectID, projectID), eq(labels.name, name))).limit(1);
+  const [row] = await db
+    .select()
+    .from(labels)
+    .where(and(eq(labels.projectID, projectID), eq(labels.name, name)))
+    .limit(1);
   return row;
 }
 
 async function createTicketRow(overrides: { title?: string; statusSlug?: string; priority?: string; assignee?: string | null; labels?: string[] } = {}) {
   const status = await statusBySlug(overrides.statusSlug ?? "backlog");
-  const labelIDs = overrides.labels ? await Promise.all(overrides.labels.map(async (name) => (await labelByName(name)).id)) : undefined;
+  const labelIDs = overrides.labels ? await Promise.all(overrides.labels.map(async name => (await labelByName(name)).id)) : undefined;
 
   const res = await app.request("/api/projects/TEST/tickets", {
     method: "POST",
@@ -508,7 +516,7 @@ describe("GET /api/mcp/tickets/:ref/comments", () => {
       headers: { "Content-Type": "application/json", Cookie: cookies },
       body: JSON.stringify({ body: "first" }),
     });
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise(resolve => setTimeout(resolve, 5));
     await app.request("/api/mcp/tickets/TEST-1/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -663,9 +671,9 @@ describe("GET /api/mcp/tickets sort", () => {
 
   it("returns the most recent N when sortBy=updatedAt with perPage", async () => {
     await createTicketRow({ title: "First" });
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise(resolve => setTimeout(resolve, 5));
     await createTicketRow({ title: "Second" });
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise(resolve => setTimeout(resolve, 5));
     await createTicketRow({ title: "Third" });
 
     const res = await app.request("/api/mcp/tickets?project=TEST&sortBy=updatedAt&sortDirection=desc&perPage=2", { method: "GET", headers: { Cookie: cookies } });
@@ -897,7 +905,11 @@ describe("POST /api/mcp/tickets parentTicketRef", () => {
     const otherProject = await createProject(other.cookies, { key: "OTHR", name: "Other Project" });
     await db.insert(projectMembers).values({ projectID: otherProject.id, userID, role: "member" });
 
-    const otherStatus = await db.select().from(statuses).where(and(eq(statuses.projectID, otherProject.id), eq(statuses.slug, "backlog"))).limit(1);
+    const otherStatus = await db
+      .select()
+      .from(statuses)
+      .where(and(eq(statuses.projectID, otherProject.id), eq(statuses.slug, "backlog")))
+      .limit(1);
     await app.request("/api/projects/OTHR/tickets", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -976,7 +988,11 @@ describe("PATCH /api/mcp/tickets/:ref parentTicketRef", () => {
     const other = await createExtraUser("Other Owner 2", "other-owner-2@test.com");
     const otherProject = await createProject(other.cookies, { key: "OTHR", name: "Other Project" });
     await db.insert(projectMembers).values({ projectID: otherProject.id, userID, role: "member" });
-    const otherStatus = await db.select().from(statuses).where(and(eq(statuses.projectID, otherProject.id), eq(statuses.slug, "backlog"))).limit(1);
+    const otherStatus = await db
+      .select()
+      .from(statuses)
+      .where(and(eq(statuses.projectID, otherProject.id), eq(statuses.slug, "backlog")))
+      .limit(1);
     await app.request("/api/projects/OTHR/tickets", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },

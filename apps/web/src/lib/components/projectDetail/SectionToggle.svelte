@@ -31,7 +31,9 @@
     border-radius: var(--border-radius-inner);
     text-align: left;
     color: var(--colour-text-secondary);
-    transition: background var(--motion-fast) var(--ease-out-quart), color var(--motion-fast) var(--ease-out-quart);
+    transition:
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
       background: var(--colour-bg-lighter);

@@ -43,8 +43,8 @@
   let open = $state(false);
 
   const selectedSet = $derived(new Set(selected));
-  const selectedStatuses = $derived(statuses.filter((status) => selectedSet.has(status.id)));
-  const singleStatus = $derived(statuses.find((status) => status.id === value) ?? null);
+  const selectedStatuses = $derived(statuses.filter(status => selectedSet.has(status.id)));
+  const singleStatus = $derived(statuses.find(status => status.id === value) ?? null);
   const singleColour = $derived(singleStatus ? categoryColours[singleStatus.category] : "var(--colour-status-backlog)");
 
   function selectSingle(next: string) {
@@ -57,7 +57,7 @@
 
   function toggleMulti(next: string) {
     if (disabled) return;
-    onChange?.(selectedSet.has(next) ? selected.filter((id) => id !== next) : [...selected, next]);
+    onChange?.(selectedSet.has(next) ? selected.filter(id => id !== next) : [...selected, next]);
   }
 </script>
 

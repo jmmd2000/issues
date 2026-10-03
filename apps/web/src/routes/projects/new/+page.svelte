@@ -55,7 +55,7 @@
 
 <div class="project-form-container">
   <form
-    onsubmit={(e) => {
+    onsubmit={e => {
       e.preventDefault();
       void handleSubmit();
     }}

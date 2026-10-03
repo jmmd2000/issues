@@ -22,7 +22,7 @@ const statusPatchSchema = z
     slug: z.string().optional(),
   })
   .strict()
-  .refine((data) => Object.values(data).some((v) => v !== undefined), {
+  .refine(data => Object.values(data).some(v => v !== undefined), {
     message: "At least one field must be provided",
   });
 
@@ -53,7 +53,7 @@ export const statuses = new Hono()
     zValidator("json", statusMutationSchema, validationHook),
     zValidator("param", projectKeyParamSchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const { id } = c.get("project");
       const { name, slug, category } = c.req.valid("json");
       const status = await StatusService.createStatus(name, category, id, slug);
@@ -61,7 +61,7 @@ export const statuses = new Hono()
       return c.json({ status }, 201);
     }
   )
-  .get("/api/projects/:key/statuses", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/statuses", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const { id } = c.get("project");
     const projectStatuses = await StatusService.getStatuses(id);
 
@@ -73,7 +73,7 @@ export const statuses = new Hono()
     zValidator("json", reorderSchema, validationHook),
     zValidator("param", projectKeyParamSchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const { id: projectID } = c.get("project");
       const { order } = c.req.valid("json");
       const statuses = await StatusService.reorderStatuses(projectID, order);
@@ -87,7 +87,7 @@ export const statuses = new Hono()
     zValidator("json", statusPatchSchema, validationHook),
     zValidator("param", statusParamSchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const { id: projectID } = c.get("project");
       const { id: statusID } = c.req.valid("param");
       const patch = c.req.valid("json");
@@ -102,7 +102,7 @@ export const statuses = new Hono()
     zValidator("json", deleteSchema, validationHook),
     zValidator("param", statusParamSchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const { id: projectID } = c.get("project");
       const { id: statusID } = c.req.valid("param");
       const { reassignTo } = c.req.valid("json");

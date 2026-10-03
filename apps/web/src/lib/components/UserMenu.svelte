@@ -33,9 +33,12 @@
       </div>
     </summary>
     <div class="dropdown-menu">
-      <a href={resolve("/settings")} onclick={() => {
+      <a
+        href={resolve("/settings")}
+        onclick={() => {
           if (detailsEl) detailsEl.open = false;
-        }}>Settings</a>
+        }}>Settings</a
+      >
       <button type="button" onclick={handleLogout}>Logout</button>
     </div>
   </details>

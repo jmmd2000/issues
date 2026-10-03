@@ -87,7 +87,7 @@ app.onError((err, c) => {
 });
 
 const routes = app
-  .get("/api/health", (c) => {
+  .get("/api/health", c => {
     return c.json({ status: "ok", timestamp: new Date().toISOString() });
   })
   .route("", auth)
@@ -115,13 +115,13 @@ async function start() {
 
   const { PORT: port } = getEnv();
 
-  serve({ fetch: routes.fetch, port }, (info) => {
+  serve({ fetch: routes.fetch, port }, info => {
     console.log(`Server running at http://localhost:${info.port}`);
   });
 }
 
 if (getEnv().NODE_ENV !== "test") {
-  start().catch((error) => {
+  start().catch(error => {
     console.error("Failed to start:", error);
     process.exit(1);
   });

@@ -121,7 +121,7 @@ describe("GET /api/auth/tokens", () => {
 
   it("lists the user's tokens newest first", async () => {
     await createTokenForUser(userID, { name: "First" });
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise(resolve => setTimeout(resolve, 5));
     await createTokenForUser(userID, { name: "Second" });
 
     const res = await app.request("/api/auth/tokens", { method: "GET", headers: { Cookie: cookies } });

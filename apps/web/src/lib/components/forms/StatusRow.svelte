@@ -102,7 +102,7 @@
 <form
   class="status-card"
   novalidate
-  onsubmit={(e) => {
+  onsubmit={e => {
     e.preventDefault();
     void handleSubmit();
   }}

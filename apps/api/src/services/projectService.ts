@@ -13,7 +13,7 @@ export class ProjectService {
    * @returns The created project
    */
   static async createProject(data: { key: string; name: string; description: string; visibility: "public" | "private"; repo: string | null; stack: string[]; ownerID: string }) {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const [project] = await tx.insert(projects).values(data).returning();
       await Promise.all([StatusService.seedDefaults(tx, project.id), LabelService.seedDefaults(tx, project.id)]);
       await tx.insert(projectMembers).values({ projectID: project.id, userID: data.ownerID, role: "owner" });
@@ -94,7 +94,12 @@ export class ProjectService {
     }
 
     const memberProjects = Array.from(role.memberships.keys());
-    const memberClause = memberProjects.length ? sql`${projects.id} in (${sql.join(memberProjects.map((id) => sql`${id}`), sql`, `)})` : sql`false`;
+    const memberClause = memberProjects.length
+      ? sql`${projects.id} in (${sql.join(
+          memberProjects.map(id => sql`${id}`),
+          sql`, `
+        )})`
+      : sql`false`;
     return await db
       .select({
         id: projects.id,
@@ -144,7 +149,7 @@ export class ProjectService {
     if (!role) {
       return {
         ...project,
-        members: project.members.map((member) => ({
+        members: project.members.map(member => ({
           ...member,
           user: {
             id: member.user.id,

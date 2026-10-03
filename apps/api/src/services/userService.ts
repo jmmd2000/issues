@@ -73,7 +73,11 @@ export class UserService {
    * serve the file when it is not backed by an `attachments` row.
    */
   static async isAvatarStorageKey(storageKey: string): Promise<boolean> {
-    const [row] = await db.select({ id: users.id }).from(users).where(eq(users.avatarURL, `/uploads/${storageKey}`)).limit(1);
+    const [row] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.avatarURL, `/uploads/${storageKey}`))
+      .limit(1);
     return !!row;
   }
 }

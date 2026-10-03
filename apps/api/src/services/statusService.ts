@@ -21,7 +21,7 @@ export class StatusService {
    * @param projectID ID of the project to seed statuses for
    */
   static async seedDefaults(tx: Transaction, projectID: string) {
-    await tx.insert(statuses).values(DEFAULT_STATUSES.map((status) => ({ ...status, projectID })));
+    await tx.insert(statuses).values(DEFAULT_STATUSES.map(status => ({ ...status, projectID })));
   }
 
   /**
@@ -104,7 +104,7 @@ export class StatusService {
    * @returns The full updated status list
    */
   static async reorderStatuses(projectID: string, order: Array<{ id: string; position: number; category?: StatusCategory }>) {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       for (const item of order) {
         const updates: { position: number; category?: StatusCategory } = { position: item.position };
         if (item.category) updates.category = item.category;
@@ -135,13 +135,13 @@ export class StatusService {
       throw new HTTPException(409, { message: "Cannot delete the last status in a project." });
     }
 
-    const targetStatus = projectStatuses.find((s) => s.id === statusID);
-    const reassignStatus = projectStatuses.find((s) => s.id === reassignToID);
+    const targetStatus = projectStatuses.find(s => s.id === statusID);
+    const reassignStatus = projectStatuses.find(s => s.id === reassignToID);
 
     if (!targetStatus) throw new HTTPException(404, { message: `Status with id ${statusID} not found.` });
     if (!reassignStatus) throw new HTTPException(404, { message: `Status with id ${reassignToID} not found.` });
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       const affected = await tx
         .select({ id: tickets.id })
         .from(tickets)

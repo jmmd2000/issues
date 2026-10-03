@@ -11,7 +11,7 @@
   export type TicketListColumnID = (typeof LIST_COLUMNS)[number]["id"];
   export type TicketListSortDirection = "asc" | "desc";
 
-  export const LIST_COLUMN_IDS = LIST_COLUMNS.map((column) => column.id) as readonly TicketListColumnID[] as readonly [TicketListColumnID, ...TicketListColumnID[]];
+  export const LIST_COLUMN_IDS = LIST_COLUMNS.map(column => column.id) as readonly TicketListColumnID[] as readonly [TicketListColumnID, ...TicketListColumnID[]];
 </script>
 
 <script lang="ts">
@@ -29,7 +29,7 @@
     statuses,
     members,
     tickets,
-    visibleColumnIDs = new Set<TicketListColumnID>(LIST_COLUMNS.map((column) => column.id)),
+    visibleColumnIDs = new Set<TicketListColumnID>(LIST_COLUMNS.map(column => column.id)),
     sortColumn,
     sortDirection,
     page,
@@ -64,9 +64,9 @@
     month: "short",
   });
 
-  const visibleColumns = $derived(LIST_COLUMNS.filter((column) => visibleColumnIDs.has(column.id)));
-  const statusByID = $derived(new Map(statuses.map((status) => [status.id, status])));
-  const memberByID = $derived(new Map(members.map((member) => [member.userID, member])));
+  const visibleColumns = $derived(LIST_COLUMNS.filter(column => visibleColumnIDs.has(column.id)));
+  const statusByID = $derived(new Map(statuses.map(status => [status.id, status])));
+  const memberByID = $derived(new Map(members.map(member => [member.userID, member])));
 
   const totalPages = $derived(total === 0 ? 0 : Math.ceil(total / perPage));
   const rangeStart = $derived(total === 0 ? 0 : (page - 1) * perPage + 1);
@@ -129,9 +129,13 @@
           <tr>
             {#each visibleColumns as column (column.id)}
               {#if column.id === "key"}
-                <td class="key">{#if readonly}{projectKey}-{ticket.number}{:else}<a href={ticketHref}>{projectKey}-{ticket.number}</a>{/if}</td>
+                <td class="key"
+                  >{#if readonly}{projectKey}-{ticket.number}{:else}<a href={ticketHref}>{projectKey}-{ticket.number}</a>{/if}</td
+                >
               {:else if column.id === "title"}
-                <td class="title">{#if readonly}{ticket.title}{:else}<a href={ticketHref}>{ticket.title}</a>{/if}</td>
+                <td class="title"
+                  >{#if readonly}{ticket.title}{:else}<a href={ticketHref}>{ticket.title}</a>{/if}</td
+                >
               {:else if column.id === "status"}
                 {@const status = statusByID.get(ticket.statusID)}
                 <td>

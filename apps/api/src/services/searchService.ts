@@ -79,11 +79,7 @@ function assigneeCondition(assigneeIDs?: string[]): SQL | undefined {
 
 function labelCondition(labelNames?: string[]): SQL | undefined {
   if (!labelNames?.length) return undefined;
-  const matchingTickets = db
-    .select({ id: ticketLabels.ticketID })
-    .from(ticketLabels)
-    .innerJoin(labelsTable, eq(ticketLabels.labelID, labelsTable.id))
-    .where(inArray(labelsTable.name, labelNames));
+  const matchingTickets = db.select({ id: ticketLabels.ticketID }).from(ticketLabels).innerJoin(labelsTable, eq(ticketLabels.labelID, labelsTable.id)).where(inArray(labelsTable.name, labelNames));
   return inArray(tickets.id, matchingTickets);
 }
 
@@ -125,7 +121,7 @@ function parseHighlightParts(value: string): SearchHighlightPart[] {
     cursor = end + HIGHLIGHT_END.length;
   }
 
-  return parts.filter((part) => part.text.length > 0);
+  return parts.filter(part => part.text.length > 0);
 }
 
 function orderLabelsByName(rows: LabelRow[]): Map<string, SearchResult["labels"]> {
@@ -213,9 +209,7 @@ export class SearchService {
     const sortDirection = defaultSearchSortDirection(sortBy, params.sortDirection);
     const rank = query ? sql<number>`ts_rank(${tickets.descriptionSearch}, websearch_to_tsquery('english', ${query}))` : sql<number>`0`;
     const titleHeadline = query ? sql<string>`ts_headline('english', ${tickets.title}, websearch_to_tsquery('english', ${query}), ${HEADLINE_OPTIONS})` : tickets.title;
-    const descriptionHeadline = query
-      ? sql<string>`ts_headline('english', ${tickets.description}, websearch_to_tsquery('english', ${query}), ${HEADLINE_OPTIONS})`
-      : tickets.description;
+    const descriptionHeadline = query ? sql<string>`ts_headline('english', ${tickets.description}, websearch_to_tsquery('english', ${query}), ${HEADLINE_OPTIONS})` : tickets.description;
 
     const where = and(
       isNull(tickets.deletedAt),
@@ -263,7 +257,7 @@ export class SearchService {
     ]);
 
     const pageRows = rows.slice(0, perPage);
-    const ticketIDs = pageRows.map((row) => row.id);
+    const ticketIDs = pageRows.map(row => row.id);
     const labelRows = ticketIDs.length
       ? await db
           .select({
@@ -277,7 +271,7 @@ export class SearchService {
 
     const labelsByTicketID = orderLabelsByName(labelRows);
     return {
-      tickets: pageRows.map((row) => shapeResult(row, labelsByTicketID.get(row.id) ?? [], Boolean(query))),
+      tickets: pageRows.map(row => shapeResult(row, labelsByTicketID.get(row.id) ?? [], Boolean(query))),
       total,
       page,
       perPage,
@@ -296,23 +290,14 @@ export class SearchService {
     const where = and(projectVisibilityCondition(role), projectKeyCondition(projectKey));
 
     const [projectRows, statusRows, labelRows, memberRows] = await Promise.all([
-      db
-        .select({ id: projects.id, key: projects.key, name: projects.name, visibility: projects.visibility })
-        .from(projects)
-        .where(where)
-        .orderBy(asc(projects.key)),
+      db.select({ id: projects.id, key: projects.key, name: projects.name, visibility: projects.visibility }).from(projects).where(where).orderBy(asc(projects.key)),
       db
         .select({ slug: statuses.slug, name: statuses.name, category: statuses.category })
         .from(statuses)
         .innerJoin(projects, eq(statuses.projectID, projects.id))
         .where(where)
         .orderBy(asc(statuses.slug)),
-      db
-        .select({ name: labelsTable.name, colour: labelsTable.colour })
-        .from(labelsTable)
-        .innerJoin(projects, eq(labelsTable.projectID, projects.id))
-        .where(where)
-        .orderBy(asc(labelsTable.name)),
+      db.select({ name: labelsTable.name, colour: labelsTable.colour }).from(labelsTable).innerJoin(projects, eq(labelsTable.projectID, projects.id)).where(where).orderBy(asc(labelsTable.name)),
       db
         .select({ id: users.id, name: users.name, avatarURL: users.avatarURL })
         .from(projectMembers)
@@ -324,11 +309,9 @@ export class SearchService {
 
     return {
       projects: projectRows,
-      statuses: uniqueBy(statusRows, (row) => row.slug).sort(
-        (a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name)
-      ),
-      labels: uniqueBy(labelRows, (row) => row.name).sort((a, b) => a.name.localeCompare(b.name)),
-      assignees: uniqueBy(memberRows, (row) => row.id).sort((a, b) => a.name.localeCompare(b.name)),
+      statuses: uniqueBy(statusRows, row => row.slug).sort((a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name)),
+      labels: uniqueBy(labelRows, row => row.name).sort((a, b) => a.name.localeCompare(b.name)),
+      assignees: uniqueBy(memberRows, row => row.id).sort((a, b) => a.name.localeCompare(b.name)),
     };
   }
 }

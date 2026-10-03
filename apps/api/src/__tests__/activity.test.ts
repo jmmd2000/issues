@@ -67,7 +67,7 @@ describe("logUpdate", () => {
     const ticket = await createTicket({ title: "Stable" });
     const snapshot = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logUpdate(tx, userID, snapshot, snapshot);
     });
 
@@ -83,7 +83,7 @@ describe("logUpdate", () => {
     const before = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
     const after: TicketSnapshot = { ...before, title: "After", description: "New body", priority: "high" };
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logUpdate(tx, userID, before, after);
     });
 
@@ -91,7 +91,7 @@ describe("logUpdate", () => {
       .select()
       .from(ticketActivity)
       .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "updated")));
-    const byField = new Map(rows.map((r) => [r.fieldName, r]));
+    const byField = new Map(rows.map(r => [r.fieldName, r]));
 
     expect(byField.get("title")?.oldValue).toEqual({ value: "Before" });
     expect(byField.get("title")?.newValue).toEqual({ value: "After" });
@@ -110,7 +110,7 @@ describe("logUpdate", () => {
       assignee: { id: other.id, name: other.name },
     };
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logUpdate(tx, userID, before, after);
     });
 
@@ -118,7 +118,7 @@ describe("logUpdate", () => {
       .select()
       .from(ticketActivity)
       .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "updated")));
-    const byField = new Map(rows.map((r) => [r.fieldName, r]));
+    const byField = new Map(rows.map(r => [r.fieldName, r]));
 
     expect((byField.get("statusID")?.oldValue as { id: string }).id).toBe(before.status.id);
     expect((byField.get("statusID")?.newValue as { id: string }).id).toBe(altStatusID);
@@ -140,7 +140,7 @@ describe("logUpdate", () => {
       ],
     };
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logUpdate(tx, userID, before, after);
     });
 
@@ -165,7 +165,7 @@ describe("logUpdate", () => {
     const after: TicketSnapshot = { ...before, title: "Would be lost" };
 
     await expect(
-      db.transaction(async (tx) => {
+      db.transaction(async tx => {
         await ActivityService.logUpdate(tx, userID, before, after);
         throw new Error("boom");
       })
@@ -211,7 +211,7 @@ describe("logComment", () => {
     const ticket = await createTicket({ title: "Comment add" });
     const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Hello" }).returning();
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logComment(tx, {
         userID,
         ticketID: ticket.id,
@@ -234,7 +234,7 @@ describe("logComment", () => {
     const ticket = await createTicket({ title: "Comment edit" });
     const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Updated body" }).returning();
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logComment(tx, {
         userID,
         ticketID: ticket.id,
@@ -257,7 +257,7 @@ describe("logComment", () => {
     const ticket = await createTicket({ title: "Comment delete" });
     const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Goodbye" }).returning();
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logComment(tx, {
         userID,
         ticketID: ticket.id,
@@ -280,7 +280,7 @@ describe("logComment", () => {
     const longBody = "word ".repeat(100).trim();
     const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: longBody }).returning();
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await ActivityService.logComment(tx, {
         userID,
         ticketID: ticket.id,
@@ -303,7 +303,7 @@ describe("logComment", () => {
     const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Lost" }).returning();
 
     await expect(
-      db.transaction(async (tx) => {
+      db.transaction(async tx => {
         await ActivityService.logComment(tx, {
           userID,
           ticketID: ticket.id,
@@ -667,9 +667,7 @@ describe("GET /api/feed", () => {
     const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
     const body = await res.json();
 
-    const keysByTitle = new Map<string, string>(
-      body.events.map((event: { project: { key: string }; ticket: { title: string } }) => [event.ticket.title, event.project.key])
-    );
+    const keysByTitle = new Map<string, string>(body.events.map((event: { project: { key: string }; ticket: { title: string } }) => [event.ticket.title, event.project.key]));
     expect(keysByTitle.get("From one")).toBe("ONE");
     expect(keysByTitle.get("From two")).toBe("TWO");
   });

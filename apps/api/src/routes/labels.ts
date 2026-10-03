@@ -23,7 +23,7 @@ export const labels = new Hono()
     zValidator("json", labelMutationSchema, validationHook),
     zValidator("param", projectKeyParamSchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const { id } = c.get("project");
       const { name, colour } = c.req.valid("json");
       const label = await LabelService.createLabel(name, colour, id);
@@ -31,7 +31,7 @@ export const labels = new Hono()
       return c.json({ label }, 201);
     }
   )
-  .get("/api/projects/:key/labels", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .get("/api/projects/:key/labels", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const { id } = c.get("project");
     const projectLabels = await LabelService.getLabels(id);
 
@@ -43,7 +43,7 @@ export const labels = new Hono()
     zValidator("json", labelMutationSchema, validationHook),
     zValidator("param", labelParamSchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const { id: projectID } = c.get("project");
       const { id: labelID } = c.req.valid("param");
       const { name, colour } = c.req.valid("json");
@@ -52,7 +52,7 @@ export const labels = new Hono()
       return c.json({ label }, 200);
     }
   )
-  .delete("/api/projects/:key/labels/:id", requireAuth, zValidator("param", labelParamSchema, validationHook), requireProjectAccess("owner"), async (c) => {
+  .delete("/api/projects/:key/labels/:id", requireAuth, zValidator("param", labelParamSchema, validationHook), requireProjectAccess("owner"), async c => {
     const { id: projectID } = c.get("project");
     const { id: labelID } = c.req.valid("param");
     await LabelService.deleteLabel(labelID, projectID);

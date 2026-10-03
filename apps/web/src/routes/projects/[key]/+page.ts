@@ -23,7 +23,10 @@ const searchSchema = z.object({
 
 function parseList(value: string | null): string[] {
   if (!value) return [];
-  return value.split(",").map((part) => part.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map(part => part.trim())
+    .filter(Boolean);
 }
 
 function parsePriorities(value: string | null): Priority[] {
@@ -68,34 +71,34 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   if (filters.assigneeID.length) sharedQuery.assigneeID = filters.assigneeID;
   if (filters.labelID.length) sharedQuery.labelID = filters.labelID;
 
-  const boardRequest = view === "kanban"
-    ? api.tickets.board.$get({
-        param: { key: params.key },
-        query: { ...sharedQuery, includeClosed: showClosed ? "true" : "false" },
-      })
-    : null;
+  const boardRequest =
+    view === "kanban"
+      ? api.tickets.board.$get({
+          param: { key: params.key },
+          query: { ...sharedQuery, includeClosed: showClosed ? "true" : "false" },
+        })
+      : null;
 
   // Backlog-category tickets live behind a separate endpoint because /board
   // excludes them. Merging them in lets statuses like "Todo" still appear in
   // their own kanban column even when the "Include backlog" toggle hides the
   // dedicated Backlog status.
-  const backlogRequest = view === "kanban"
-    ? api.tickets.backlog.$get({ param: { key: params.key }, query: sharedQuery })
-    : null;
+  const backlogRequest = view === "kanban" ? api.tickets.backlog.$get({ param: { key: params.key }, query: sharedQuery }) : null;
 
-  const listRequest = view === "list"
-    ? api.tickets.$get({
-        param: { key: params.key },
-        query: {
-          ...sharedQuery,
-          page: String(parsed.page),
-          perPage: String(parsed.perPage),
-          sortBy: parsed.sortBy,
-          sortDirection: parsed.sortDir,
-          includeClosed: showClosed ? "true" : "false",
-        },
-      })
-    : null;
+  const listRequest =
+    view === "list"
+      ? api.tickets.$get({
+          param: { key: params.key },
+          query: {
+            ...sharedQuery,
+            page: String(parsed.page),
+            perPage: String(parsed.perPage),
+            sortBy: parsed.sortBy,
+            sortDirection: parsed.sortDir,
+            includeClosed: showClosed ? "true" : "false",
+          },
+        })
+      : null;
 
   const [projectRes, boardRes, backlogRes, listRes, statsRes, activityRes] = await Promise.all([
     api.$get({ param: { key: params.key } }),

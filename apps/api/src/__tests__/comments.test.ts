@@ -112,7 +112,7 @@ describe("GET /api/projects/:key/tickets/:num/comments", () => {
 
   it("returns comments in chronological order", async () => {
     await postComment(cookies, "First");
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await new Promise(resolve => setTimeout(resolve, 5));
     await postComment(cookies, "Second");
 
     const res = await app.request(`/api/projects/TEST/tickets/${ticketNumber}/comments`, {

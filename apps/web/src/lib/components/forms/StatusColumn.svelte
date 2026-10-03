@@ -77,7 +77,7 @@
   <div class="column-header">{label}</div>
   <div class="cards" use:dndzone={{ items: statuses, type: "status", flipDurationMs: 150, dropTargetStyle: {} }} onconsider={handleConsider} onfinalize={handleFinalize}>
     {#each statuses as status (status.id)}
-      <StatusRow {status} {projectKey} otherStatuses={allStatuses.filter((s) => s.id !== status.id)} {onUpdate} {onDelete} />
+      <StatusRow {status} {projectKey} otherStatuses={allStatuses.filter(s => s.id !== status.id)} {onUpdate} {onDelete} />
     {/each}
   </div>
 
@@ -85,7 +85,7 @@
     <form
       class="add-form"
       novalidate
-      onsubmit={(e) => {
+      onsubmit={e => {
         e.preventDefault();
         void handleAdd();
       }}

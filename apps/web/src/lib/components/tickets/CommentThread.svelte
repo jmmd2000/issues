@@ -196,7 +196,7 @@
     {#if composing}
       <form
         class="comment-composer"
-        onsubmit={(event) => {
+        onsubmit={event => {
           event.preventDefault();
           void postComment();
         }}

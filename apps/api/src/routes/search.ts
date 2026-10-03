@@ -11,16 +11,16 @@ const projectKeyQuerySchema = z
   .trim()
   .min(2)
   .max(6)
-  .transform((value) => value.toUpperCase());
+  .transform(value => value.toUpperCase());
 
 const listParam = <T extends z.ZodTypeAny>(item: T) =>
-  z.preprocess((value) => {
+  z.preprocess(value => {
     if (value === undefined) return undefined;
     const values = Array.isArray(value) ? value : [value];
-    return values.flatMap((entry) =>
+    return values.flatMap(entry =>
       String(entry)
         .split(",")
-        .map((part) => part.trim())
+        .map(part => part.trim())
         .filter(Boolean)
     );
   }, z.array(item).optional());
@@ -43,12 +43,12 @@ const filterOptionsQuerySchema = z.object({
 });
 
 export const search = new Hono()
-  .get("/api/search/filters", optionalAuth, zValidator("query", filterOptionsQuerySchema, validationHook), async (c) => {
+  .get("/api/search/filters", optionalAuth, zValidator("query", filterOptionsQuerySchema, validationHook), async c => {
     const query = c.req.valid("query");
     const filters = await SearchService.listFilterOptions(c.get("role"), query.project);
     return c.json({ filters });
   })
-  .get("/api/search", optionalAuth, zValidator("query", searchQuerySchema, validationHook), async (c) => {
+  .get("/api/search", optionalAuth, zValidator("query", searchQuerySchema, validationHook), async c => {
     const query = c.req.valid("query");
     const result = await SearchService.search(
       {

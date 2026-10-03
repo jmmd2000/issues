@@ -15,7 +15,7 @@ async function main() {
   await server.connect(new StdioServerTransport());
 }
 
-main().catch((err) => {
+main().catch(err => {
   process.stderr.write(`@issues/mcp: fatal error: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);
 });

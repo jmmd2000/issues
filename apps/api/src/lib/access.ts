@@ -37,7 +37,7 @@ export async function loadRole(userID: string): Promise<Role> {
 
   return {
     isService: !!userRows[0]?.isService,
-    memberships: new Map(memberRows.map((row) => [row.projectID, row.role])),
+    memberships: new Map(memberRows.map(row => [row.projectID, row.role])),
   };
 }
 
@@ -49,11 +49,7 @@ export async function loadRole(userID: string): Promise<Role> {
  * a ticket is supplied, only its public tickets. Members of the project bypass
  * the visibility check entirely; service users bypass everything.
  */
-export function canView(
-  role: Role | undefined,
-  project: { id: string; visibility: "public" | "private" },
-  ticket?: { visibility: "public" | "private" }
-): boolean {
+export function canView(role: Role | undefined, project: { id: string; visibility: "public" | "private" }, ticket?: { visibility: "public" | "private" }): boolean {
   if (role?.isService) return true;
   if (role?.memberships.has(project.id)) return true;
   if (project.visibility !== "public") return false;

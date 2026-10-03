@@ -193,16 +193,13 @@ describe("SearchPage", () => {
     const emptyScreen = render(SearchPage, { search: makeSearch() });
     expect(emptyScreen.getByText("Relevance").elements()).toHaveLength(0);
 
-    const queryScreen = render(
-      SearchPage,
-      {
-        search: makeSearch({
-          state: makeState({ searchTerm: "api" }),
-          searched: true,
-          tickets: [ticket],
-        }),
-      }
-    );
+    const queryScreen = render(SearchPage, {
+      search: makeSearch({
+        state: makeState({ searchTerm: "api" }),
+        searched: true,
+        tickets: [ticket],
+      }),
+    });
 
     expect(queryScreen.getByText("Relevance").elements()).toHaveLength(1);
     expect(queryScreen.getByText("Most relevant").elements()).toHaveLength(1);
@@ -210,34 +207,28 @@ describe("SearchPage", () => {
   });
 
   it("shows title-specific direction labels when sorting by title", async () => {
-    const screen = render(
-      SearchPage,
-      {
-        search: makeSearch({
-          state: makeState({ sortBy: "title" }),
-        }),
-      }
-    );
+    const screen = render(SearchPage, {
+      search: makeSearch({
+        state: makeState({ sortBy: "title" }),
+      }),
+    });
 
     expect(screen.getByText("A-Z").elements()).toHaveLength(1);
     expect(screen.getByText("Z-A").elements()).toHaveLength(1);
   });
 
   it("clears sorting back to latest updated when clearing the search", async () => {
-    const screen = render(
-      SearchPage,
-      {
-        search: makeSearch({
-          state: makeState({
-            searchTerm: "api",
-            sortBy: "title",
-            sortDirection: "desc",
-          }),
-          searched: true,
-          tickets: [ticket],
+    const screen = render(SearchPage, {
+      search: makeSearch({
+        state: makeState({
+          searchTerm: "api",
+          sortBy: "title",
+          sortDirection: "desc",
         }),
-      }
-    );
+        searched: true,
+        tickets: [ticket],
+      }),
+    });
 
     await screen.getByRole("button", { name: "Clear" }).click();
 

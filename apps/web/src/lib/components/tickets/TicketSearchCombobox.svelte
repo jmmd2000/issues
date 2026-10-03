@@ -45,7 +45,7 @@
     enabled: () => !selected,
     includeClosed: () => includeClosed,
     excludeNumbers: () => (excludeTicketNumber !== undefined ? [excludeTicketNumber] : []),
-    mapper: (ticket) => ({ id: ticket.id, number: ticket.number, title: ticket.title }),
+    mapper: ticket => ({ id: ticket.id, number: ticket.number, title: ticket.title }),
   });
 
   function pick(ticket: TicketRef) {

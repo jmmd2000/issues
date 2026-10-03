@@ -16,7 +16,7 @@ const searchParamSchema = z.object({
     .trim()
     .min(2)
     .max(6)
-    .transform((value) => value.toUpperCase())
+    .transform(value => value.toUpperCase())
     .nullable()
     .catch(null),
   page: z.coerce.number().int().min(1).catch(DEFAULT_PAGE),
@@ -49,8 +49,8 @@ export type SearchPageResult = {
 function parseList(params: URLSearchParams, key: string): string[] {
   return params
     .getAll(key)
-    .flatMap((value) => value.split(","))
-    .map((part) => part.trim())
+    .flatMap(value => value.split(","))
+    .map(part => part.trim())
     .filter(Boolean);
 }
 

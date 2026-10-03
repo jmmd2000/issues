@@ -44,7 +44,7 @@ export function registerLinkTools(server: McpServer, client: IssuesClient) {
       description: "List every link involving a ticket — outgoing and incoming combined. Each entry shows the partner ref, title, status, link type, and direction.",
       inputSchema: listSchema.shape,
     },
-    (args) => handleListLinks(client, args)
+    args => handleListLinks(client, args)
   );
 
   server.registerTool(
@@ -53,7 +53,7 @@ export function registerLinkTools(server: McpServer, client: IssuesClient) {
       description: "Add a link from one ticket to another. The first ref is the source; the link type describes how it relates to the target (blocks / depends_on / duplicates / relates_to / clones).",
       inputSchema: mutateSchema.shape,
     },
-    (args) => handleAddLink(client, args)
+    args => handleAddLink(client, args)
   );
 
   server.registerTool(
@@ -62,6 +62,6 @@ export function registerLinkTools(server: McpServer, client: IssuesClient) {
       description: "Remove a link between two tickets. Only the canonical (source -> target) direction is matched; to remove an incoming link, call this from the other side.",
       inputSchema: mutateSchema.shape,
     },
-    (args) => handleRemoveLink(client, args)
+    args => handleRemoveLink(client, args)
   );
 }

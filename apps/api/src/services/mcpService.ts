@@ -126,9 +126,7 @@ export class McpService {
    */
   static async listProjects(role: Role): Promise<{ projects: CompactProject[] }> {
     const baseQuery = db.select({ key: projects.key, name: projects.name }).from(projects);
-    const rows = role.isService
-      ? await baseQuery.orderBy(asc(projects.key))
-      : await baseQuery.where(inArray(projects.id, Array.from(role.memberships.keys()))).orderBy(asc(projects.key));
+    const rows = role.isService ? await baseQuery.orderBy(asc(projects.key)) : await baseQuery.where(inArray(projects.id, Array.from(role.memberships.keys()))).orderBy(asc(projects.key));
     return { projects: rows };
   }
 
@@ -162,12 +160,12 @@ export class McpService {
     );
 
     return {
-      tickets: result.tickets.map((row) => ({
+      tickets: result.tickets.map(row => ({
         ref: formatTicketRef(row.project.key, row.number),
         title: row.title,
         status: row.status.name,
         priority: row.priority,
-        labels: row.labels.map((label) => label.name),
+        labels: row.labels.map(label => label.name),
         created: toYYYYMMDD(row.createdAt),
         updated: toYYYYMMDD(row.updatedAt),
       })),
@@ -198,7 +196,7 @@ export class McpService {
         title: ticket.title,
         status: ticket.status.name,
         priority: ticket.priority,
-        labels: ticket.labels.map((label) => label.name).sort((a, b) => a.localeCompare(b)),
+        labels: ticket.labels.map(label => label.name).sort((a, b) => a.localeCompare(b)),
         created: toYYYYMMDD(ticket.createdAt),
         updated: toYYYYMMDD(ticket.updatedAt),
         description,
@@ -296,10 +294,10 @@ export class McpService {
   static async listComments(role: Role, ref: string): Promise<{ comments: CompactComment[] }> {
     const context = await McpService.resolveTicketRef(role, ref);
     const rows = await CommentService.listForTicket(context.ticketID);
-    const live = rows.filter((row) => !row.isDeleted);
+    const live = rows.filter(row => !row.isDeleted);
 
     return {
-      comments: live.map((row) => ({
+      comments: live.map(row => ({
         id: row.id,
         body: row.body ?? "",
         by: row.author.name,
@@ -323,7 +321,7 @@ export class McpService {
     const rows = await ActivityService.listForProject(project.id, cappedLimit, role);
 
     return {
-      activity: rows.map((row) => ({
+      activity: rows.map(row => ({
         ref: formatTicketRef(project.key, row.ticket?.number ?? 0),
         action: row.action,
         field: row.fieldName,
@@ -364,9 +362,12 @@ export class McpService {
         key: project.key,
         name: project.name,
         description: project.description,
-        members: project.members.map((member) => ({ name: member.user.name, email: member.user.email, role: member.role })),
+        members: project.members.map(member => ({ name: member.user.name, email: member.user.email, role: member.role })),
         statuses: project.statuses.slice().sort(McpService.compareStatuses).map(McpService.toCompactStatus),
-        labels: project.labels.slice().sort((a, b) => a.name.localeCompare(b.name)).map(McpService.toCompactLabel),
+        labels: project.labels
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(McpService.toCompactLabel),
       },
     };
   }
@@ -392,10 +393,7 @@ export class McpService {
    */
   static async listStatuses(role: Role, projectKey: string): Promise<{ statuses: CompactStatus[] }> {
     const project = await McpService.resolveProject(role, projectKey);
-    const rows = await db
-      .select({ name: statuses.name, slug: statuses.slug, category: statuses.category })
-      .from(statuses)
-      .where(eq(statuses.projectID, project.id));
+    const rows = await db.select({ name: statuses.name, slug: statuses.slug, category: statuses.category }).from(statuses).where(eq(statuses.projectID, project.id));
     return { statuses: rows.sort(McpService.compareStatuses).map(McpService.toCompactStatus) };
   }
 
@@ -405,11 +403,7 @@ export class McpService {
    */
   static async listLabels(role: Role, projectKey: string): Promise<{ labels: CompactLabel[] }> {
     const project = await McpService.resolveProject(role, projectKey);
-    const rows = await db
-      .select({ name: labels.name, colour: labels.colour })
-      .from(labels)
-      .where(eq(labels.projectID, project.id))
-      .orderBy(asc(labels.name));
+    const rows = await db.select({ name: labels.name, colour: labels.colour }).from(labels).where(eq(labels.projectID, project.id)).orderBy(asc(labels.name));
     return { labels: rows };
   }
 
@@ -422,10 +416,8 @@ export class McpService {
     const stats = await ProjectService.getStats(project.id, role);
 
     const memberIDs = Object.keys(stats.byMember);
-    const nameRows = memberIDs.length
-      ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, memberIDs))
-      : [];
-    const nameByID = new Map(nameRows.map((row) => [row.id, row.name]));
+    const nameRows = memberIDs.length ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, memberIDs)) : [];
+    const nameByID = new Map(nameRows.map(row => [row.id, row.name]));
 
     const byMember: CompactStats["byMember"] = {};
     for (const [id, value] of Object.entries(stats.byMember)) {
@@ -453,7 +445,7 @@ export class McpService {
     const rows = await ActivityService.listForTicket(context.ticketID);
 
     return {
-      activity: rows.map((row) => ({
+      activity: rows.map(row => ({
         ref: formatTicketRef(context.project.key, context.number),
         action: row.action,
         field: row.fieldName,
@@ -495,13 +487,8 @@ export class McpService {
     const source = await TicketService.getTicketByNumber(context.project.id, context.number);
 
     const statusID = input.statusSlug ? await McpService.resolveStatusSlug(context.project.id, input.statusSlug) : source.statusID;
-    const labelIDs = input.labels ? await McpService.resolveLabelNames(context.project.id, input.labels) : source.labels.map((label) => label.id);
-    const assigneeID =
-      input.assignee === undefined
-        ? source.assignee?.id ?? undefined
-        : input.assignee === null
-          ? undefined
-          : await McpService.resolveAssigneeName(input.assignee);
+    const labelIDs = input.labels ? await McpService.resolveLabelNames(context.project.id, input.labels) : source.labels.map(label => label.id);
+    const assigneeID = input.assignee === undefined ? (source.assignee?.id ?? undefined) : input.assignee === null ? undefined : await McpService.resolveAssigneeName(input.assignee);
 
     const clone = await TicketService.cloneTicket(source.id, context.project.id, userID, {
       projectID: context.project.id,
@@ -526,7 +513,7 @@ export class McpService {
     const rows = await TicketLinkService.listForTicket(context.ticketID);
 
     return {
-      links: rows.map((row) => ({
+      links: rows.map(row => ({
         ref: formatTicketRef(row.ticket.projectKey, row.ticket.number),
         title: row.ticket.title,
         status: row.ticket.status.name,
@@ -621,7 +608,7 @@ export class McpService {
     const rows = await AttachmentService.listForTicket(context.ticketID);
 
     return {
-      attachments: rows.map((row) => ({
+      attachments: rows.map(row => ({
         id: row.id,
         filename: row.filename,
         sizeBytes: row.sizeBytes,
@@ -651,11 +638,7 @@ export class McpService {
   }
 
   private static async resolveProject(role: Role, key: string): Promise<ProjectContext> {
-    const [row] = await db
-      .select({ id: projects.id, key: projects.key, visibility: projects.visibility })
-      .from(projects)
-      .where(eq(projects.key, key.toUpperCase()))
-      .limit(1);
+    const [row] = await db.select({ id: projects.id, key: projects.key, visibility: projects.visibility }).from(projects).where(eq(projects.key, key.toUpperCase())).limit(1);
 
     const notFound = new HTTPException(404, { message: `Project ${key} not found.` });
     if (!row) throw notFound;
@@ -710,7 +693,11 @@ export class McpService {
   }
 
   private static async resolveStatusSlug(projectID: string, slug: string): Promise<string> {
-    const [row] = await db.select({ id: statuses.id }).from(statuses).where(and(eq(statuses.projectID, projectID), eq(statuses.slug, slug))).limit(1);
+    const [row] = await db
+      .select({ id: statuses.id })
+      .from(statuses)
+      .where(and(eq(statuses.projectID, projectID), eq(statuses.slug, slug)))
+      .limit(1);
     if (!row) throw new HTTPException(400, { message: `Unknown status slug: ${slug}` });
     return row.id;
   }
@@ -724,13 +711,16 @@ export class McpService {
   private static async resolveLabelNames(projectID: string, names: string[]): Promise<string[]> {
     if (!names.length) return [];
     const unique = Array.from(new Set(names));
-    const rows = await db.select({ id: labels.id, name: labels.name }).from(labels).where(and(eq(labels.projectID, projectID), inArray(labels.name, unique)));
+    const rows = await db
+      .select({ id: labels.id, name: labels.name })
+      .from(labels)
+      .where(and(eq(labels.projectID, projectID), inArray(labels.name, unique)));
     if (rows.length !== unique.length) {
-      const found = new Set(rows.map((row) => row.name));
-      const missing = unique.filter((name) => !found.has(name));
+      const found = new Set(rows.map(row => row.name));
+      const missing = unique.filter(name => !found.has(name));
       throw new HTTPException(400, { message: `Unknown label name(s): ${missing.join(", ")}` });
     }
-    return rows.map((row) => row.id);
+    return rows.map(row => row.id);
   }
 
   /**
@@ -764,20 +754,27 @@ export class McpService {
   }
 
   private static async resolveAssigneeName(name: string): Promise<string> {
-    const [row] = await db.select({ id: users.id }).from(users).where(and(ilike(users.name, name), eq(users.isService, false))).limit(1);
+    const [row] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(ilike(users.name, name), eq(users.isService, false)))
+      .limit(1);
     if (!row) throw new HTTPException(400, { message: `Unknown assignee: ${name}` });
     return row.id;
   }
 
   private static async resolveAssigneeNames(names: string[]): Promise<string[]> {
     const unique = Array.from(new Set(names));
-    const rows = await db.select({ id: users.id, name: users.name }).from(users).where(and(inArray(users.name, unique), eq(users.isService, false)));
+    const rows = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(and(inArray(users.name, unique), eq(users.isService, false)));
     if (rows.length !== unique.length) {
-      const found = new Set(rows.map((row) => row.name));
-      const missing = unique.filter((name) => !found.has(name));
+      const found = new Set(rows.map(row => row.name));
+      const missing = unique.filter(name => !found.has(name));
       throw new HTTPException(400, { message: `Unknown assignee(s): ${missing.join(", ")}` });
     }
-    return rows.map((row) => row.id);
+    return rows.map(row => row.id);
   }
 
   private static async compactSummaryFor(project: ProjectContext, number: number): Promise<{ ticket: CompactTicket }> {
@@ -788,7 +785,7 @@ export class McpService {
         title: ticket.title,
         status: ticket.status.name,
         priority: ticket.priority,
-        labels: ticket.labels.map((label) => label.name).sort((a, b) => a.localeCompare(b)),
+        labels: ticket.labels.map(label => label.name).sort((a, b) => a.localeCompare(b)),
         created: toYYYYMMDD(ticket.createdAt),
         updated: toYYYYMMDD(ticket.updatedAt),
       },
@@ -811,7 +808,7 @@ export class McpService {
       db.select({ labelID: ticketLabels.labelID }).from(ticketLabels).where(eq(ticketLabels.ticketID, ticketID)),
     ]);
 
-    const next = new Set(currentRows.map((row) => row.labelID));
+    const next = new Set(currentRows.map(row => row.labelID));
     for (const id of addIDs) next.add(id);
     for (const id of removeIDs) next.delete(id);
     return Array.from(next);

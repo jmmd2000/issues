@@ -104,7 +104,7 @@ export class TicketService {
    * @returns The created ticket
    */
   static async createTicket(data: TicketCreateInput) {
-    return await db.transaction((tx) => this.insertTicket(tx, data));
+    return await db.transaction(tx => this.insertTicket(tx, data));
   }
 
   /**
@@ -156,7 +156,7 @@ export class TicketService {
       .returning();
 
     if (data.labelIDs?.length) {
-      await tx.insert(ticketLabels).values(data.labelIDs.map((labelID) => ({ ticketID: ticket.id, labelID })));
+      await tx.insert(ticketLabels).values(data.labelIDs.map(labelID => ({ ticketID: ticket.id, labelID })));
     }
 
     await ActivityService.logCreate(tx, data.reporterID, ticket);
@@ -178,7 +178,7 @@ export class TicketService {
    * @returns The new clone ticket
    */
   static async cloneTicket(sourceID: string, projectID: string, userID: string, data: TicketCreateInput & { copyAttachments?: boolean }) {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const source = await tx.query.tickets.findFirst({
         where: and(eq(tickets.id, sourceID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)),
         columns: { id: true, number: true, title: true, projectID: true },
@@ -204,7 +204,7 @@ export class TicketService {
           .where(eq(attachments.ticketID, sourceID));
 
         if (sourceAttachments.length) {
-          await tx.insert(attachments).values(sourceAttachments.map((row) => ({ ...row, ticketID: clone.id, commentID: null, uploaderID: userID })));
+          await tx.insert(attachments).values(sourceAttachments.map(row => ({ ...row, ticketID: clone.id, commentID: null, uploaderID: userID })));
         }
       }
 
@@ -282,7 +282,7 @@ export class TicketService {
 
     const categoryRank: Record<string, number> = { backlog: 0, active: 1, done: 2, cancelled: 3 };
     const children = ticket.children
-      .filter((child) => !child.deletedAt)
+      .filter(child => !child.deletedAt)
       .map(({ deletedAt: _deletedAt, ...child }) => child)
       .sort((a, b) => {
         const rankDelta = (categoryRank[a.status.category] ?? 99) - (categoryRank[b.status.category] ?? 99);
@@ -497,7 +497,7 @@ export class TicketService {
       visibility?: "public" | "private";
     }
   ) {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const before = await this.loadSnapshot(tx, { ticketID });
 
       const { labelIDs, ...fields } = data;
@@ -532,7 +532,7 @@ export class TicketService {
       if (labelIDs !== undefined) {
         await tx.delete(ticketLabels).where(eq(ticketLabels.ticketID, ticketID));
         if (labelIDs.length) {
-          await tx.insert(ticketLabels).values(labelIDs.map((labelID) => ({ ticketID, labelID })));
+          await tx.insert(ticketLabels).values(labelIDs.map(labelID => ({ ticketID, labelID })));
         }
       }
 
@@ -569,7 +569,7 @@ export class TicketService {
       afterID?: string | null;
     }
   ) {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const before = await this.loadSnapshot(tx, { ticketID });
 
       if (data.statusID) await this.assertStatusInProject(tx, projectID, data.statusID);
@@ -612,7 +612,7 @@ export class TicketService {
    * @throws HTTPException 404
    */
   static async softDeleteTicket(ticketID: string, projectID: string, userID: string) {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       const [ticket] = await tx
         .update(tickets)
         .set({ deletedAt: new Date() })
@@ -633,7 +633,10 @@ export class TicketService {
    * @throws HTTPException 404
    */
   static async hardDeleteTicket(ticketID: string, projectID: string) {
-    const result = await db.delete(tickets).where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNotNull(tickets.deletedAt))).returning({ id: tickets.id });
+    const result = await db
+      .delete(tickets)
+      .where(and(eq(tickets.id, ticketID), eq(tickets.projectID, projectID), isNotNull(tickets.deletedAt)))
+      .returning({ id: tickets.id });
     if (!result.length) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
   }
 
@@ -648,7 +651,7 @@ export class TicketService {
    * @returns The restored ticket
    */
   static async restoreTicket(ticketID: string, projectID: string, userID: string) {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const [ticket] = await tx
         .update(tickets)
         .set({ deletedAt: null })
@@ -854,7 +857,7 @@ export class TicketService {
       reporter: { id: row.reporter.id, name: row.reporter.name },
       assignee: row.assignee ? { id: row.assignee.id, name: row.assignee.name } : null,
       parent: row.parent && !row.parent.deletedAt ? { id: row.parent.id, name: row.parent.title } : null,
-      labels: row.labels.map((l) => ({ id: l.label.id, name: l.label.name })),
+      labels: row.labels.map(l => ({ id: l.label.id, name: l.label.name })),
     };
   }
 }

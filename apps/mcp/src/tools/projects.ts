@@ -47,7 +47,7 @@ export function registerProjectTools(server: McpServer, client: IssuesClient) {
       description: "Fetch one project with its members, statuses, and labels. Call this before mutations to learn the valid status slugs and label names — beats trial-and-error 400 responses.",
       inputSchema: keySchema.shape,
     },
-    (args) => handleGetProject(client, args)
+    args => handleGetProject(client, args)
   );
 
   server.registerTool(
@@ -56,7 +56,7 @@ export function registerProjectTools(server: McpServer, client: IssuesClient) {
       description: "List the members of a project: name + email + role. Use when you only need the assignee pool.",
       inputSchema: keySchema.shape,
     },
-    (args) => handleListMembers(client, args)
+    args => handleListMembers(client, args)
   );
 
   server.registerTool(
@@ -65,7 +65,7 @@ export function registerProjectTools(server: McpServer, client: IssuesClient) {
       description: "List the statuses of a project in display order. Each entry has a name (display), slug (for API calls), and category.",
       inputSchema: keySchema.shape,
     },
-    (args) => handleListStatuses(client, args)
+    args => handleListStatuses(client, args)
   );
 
   server.registerTool(
@@ -74,7 +74,7 @@ export function registerProjectTools(server: McpServer, client: IssuesClient) {
       description: "List the labels available on a project, alphabetised. Each entry has a name + hex colour.",
       inputSchema: keySchema.shape,
     },
-    (args) => handleListLabels(client, args)
+    args => handleListLabels(client, args)
   );
 
   server.registerTool(
@@ -83,6 +83,6 @@ export function registerProjectTools(server: McpServer, client: IssuesClient) {
       description: "Get ticket counts for a project: total / open / closed / last activity + a per-member breakdown keyed by user name.",
       inputSchema: keySchema.shape,
     },
-    (args) => handleGetStats(client, args)
+    args => handleGetStats(client, args)
   );
 }

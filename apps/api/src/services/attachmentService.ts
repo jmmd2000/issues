@@ -95,7 +95,7 @@ export class AttachmentService {
 
     const storageKey = `${processed.contentHash}${processed.extension}`;
 
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const [{ value: existingCount }] = await tx.select({ value: count() }).from(attachments).where(eq(attachments.ticketID, ticketID));
       if (existingCount >= MAX_ATTACHMENTS_PER_TICKET) {
         throw new HTTPException(409, { message: `A ticket can have at most ${MAX_ATTACHMENTS_PER_TICKET} attachments.` });
@@ -151,7 +151,7 @@ export class AttachmentService {
    * 404 if the row's ticket isn't in the requested project.
    */
   static async delete(attachmentID: string, projectID: string, requestingUserID: string): Promise<void> {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       const row = await tx.query.attachments.findFirst({
         where: eq(attachments.id, attachmentID),
         with: {
@@ -192,11 +192,11 @@ export class AttachmentService {
 
     if (rows.length === 0) return null;
 
-    const isPublic = rows.some((row) => row.ticketVisibility === "public" && row.projectVisibility === "public");
+    const isPublic = rows.some(row => row.ticketVisibility === "public" && row.projectVisibility === "public");
     return {
       found: true,
       isPublic,
-      projectIDs: [...new Set(rows.map((row) => row.ticketProjectID))],
+      projectIDs: [...new Set(rows.map(row => row.ticketProjectID))],
       mimeType: rows[0].mimeType,
       filename: rows[0].filename,
       isImage: rows[0].isImage,

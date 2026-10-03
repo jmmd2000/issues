@@ -19,7 +19,7 @@ const attachmentParamSchema = projectKeyParamSchema.extend({
 });
 
 export const attachments = new Hono()
-  .get("/api/projects/:key/tickets/:num/attachments", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async (c) => {
+  .get("/api/projects/:key/tickets/:num/attachments", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async c => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
     const ticket = await TicketService.getTicketByNumber(project.id, num);
@@ -29,7 +29,7 @@ export const attachments = new Hono()
     const list = await AttachmentService.listForTicket(ticket.id);
     return c.json({ attachments: list });
   })
-  .post("/api/projects/:key/tickets/:num/attachments", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .post("/api/projects/:key/tickets/:num/attachments", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const project = c.get("project");
     const userID = c.get("userID");
     const { num } = c.req.valid("param");
@@ -53,7 +53,7 @@ export const attachments = new Hono()
 
     return c.json({ attachment }, 201);
   })
-  .delete("/api/projects/:key/attachments/:id", requireAuth, zValidator("param", attachmentParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .delete("/api/projects/:key/attachments/:id", requireAuth, zValidator("param", attachmentParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const project = c.get("project");
     const userID = c.get("userID");
     const { id } = c.req.valid("param");

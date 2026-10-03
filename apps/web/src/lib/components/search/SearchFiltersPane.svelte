@@ -84,7 +84,13 @@
           </li>
           {#each orderedProjects as project (project.id)}
             <li>
-              <button type="button" class="option-button" class:selected={searchState.projectKey === project.key} onclick={() => onProjectChange(project.key)} aria-pressed={searchState.projectKey === project.key}>
+              <button
+                type="button"
+                class="option-button"
+                class:selected={searchState.projectKey === project.key}
+                onclick={() => onProjectChange(project.key)}
+                aria-pressed={searchState.projectKey === project.key}
+              >
                 <code class="project-key">{project.key}</code>
                 <span>{project.name}</span>
               </button>

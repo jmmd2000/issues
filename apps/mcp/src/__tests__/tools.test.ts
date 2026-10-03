@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { IssuesApiError, type IssuesClient } from "../client.js";
 import { handleGetProject, handleGetStats, handleListLabels, handleListMembers, handleListProjects, handleListStatuses } from "../tools/projects.js";
-import { __testing as ticketsTesting, handleCloneTicket, handleCreateTicket, handleDeleteTicket, handleGetTicket, handleRestoreTicket, handleSearchTickets, handleUpdateTicket } from "../tools/tickets.js";
+import {
+  __testing as ticketsTesting,
+  handleCloneTicket,
+  handleCreateTicket,
+  handleDeleteTicket,
+  handleGetTicket,
+  handleRestoreTicket,
+  handleSearchTickets,
+  handleUpdateTicket,
+} from "../tools/tickets.js";
 import { handleAddComment, handleDeleteComment, handleListComments, handleUpdateComment } from "../tools/comments.js";
 import { handleListAttachments } from "../tools/attachments.js";
 import { handleGetActivity, handleGetTicketActivity } from "../tools/activity.js";

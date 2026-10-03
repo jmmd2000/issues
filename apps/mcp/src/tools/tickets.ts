@@ -38,7 +38,10 @@ const createSchema = z.object({
   priority: priorityEnum.optional().describe("Priority. Defaults to 'medium'."),
   labels: z.array(labelName).optional().describe("Label names to attach."),
   assignee: assigneeName.nullable().optional().describe("Assignee name. Pass null to leave unassigned."),
-  parentTicketRef: ticketRefSchema.nullable().optional().describe("Parent ticket ref in the same project (e.g. 'DASH-12'). Creates the new ticket as a subticket of the parent. Cross-project parents are rejected."),
+  parentTicketRef: ticketRefSchema
+    .nullable()
+    .optional()
+    .describe("Parent ticket ref in the same project (e.g. 'DASH-12'). Creates the new ticket as a subticket of the parent. Cross-project parents are rejected."),
 });
 
 const updateSchema = z.object({
@@ -51,7 +54,10 @@ const updateSchema = z.object({
   addLabels: z.array(labelName).optional().describe("Adds these labels without touching existing ones."),
   removeLabels: z.array(labelName).optional().describe("Removes these labels if present."),
   assignee: assigneeName.nullable().optional().describe("Assignee name, or null to clear."),
-  parentTicketRef: ticketRefSchema.nullable().optional().describe("Parent ticket ref in the same project, or null to clear the parent. Cycles (setting a descendant as a parent) are rejected with 400."),
+  parentTicketRef: ticketRefSchema
+    .nullable()
+    .optional()
+    .describe("Parent ticket ref in the same project, or null to clear the parent. Cycles (setting a descendant as a parent) are rejected with 400."),
 });
 
 const deleteSchema = z.object({
@@ -131,10 +137,11 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
   server.registerTool(
     "search_tickets",
     {
-      description: "Search tickets visible to the user. Supports optional full-text query, filters (project, status, priority, label, assignee), and sorting by relevance / updatedAt / createdAt / title. Returns compact summaries (max 50).",
+      description:
+        "Search tickets visible to the user. Supports optional full-text query, filters (project, status, priority, label, assignee), and sorting by relevance / updatedAt / createdAt / title. Returns compact summaries (max 50).",
       inputSchema: searchSchema.shape,
     },
-    (args) => handleSearchTickets(client, args)
+    args => handleSearchTickets(client, args)
   );
 
   server.registerTool(
@@ -143,16 +150,17 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
       description: "Fetch one ticket by its ref (e.g. 'DASH-12'). Description is excerpted to 200 chars. Comments and links are not included; use list_comments / list_links for those.",
       inputSchema: getSchema.shape,
     },
-    (args) => handleGetTicket(client, args)
+    args => handleGetTicket(client, args)
   );
 
   server.registerTool(
     "create_ticket",
     {
-      description: "Create a new ticket. Provide project key + title; description, priority, labels, assignee, and parentTicketRef are optional. Pass parentTicketRef to create the ticket as a subticket of an existing ticket in the same project.",
+      description:
+        "Create a new ticket. Provide project key + title; description, priority, labels, assignee, and parentTicketRef are optional. Pass parentTicketRef to create the ticket as a subticket of an existing ticket in the same project.",
       inputSchema: createSchema.shape,
     },
-    (args) => handleCreateTicket(client, args)
+    args => handleCreateTicket(client, args)
   );
 
   server.registerTool(
@@ -161,7 +169,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
       description: "Patch any subset of editable fields on an existing ticket. Pass assignee: null to clear the assignee, parentTicketRef: null to clear the parent.",
       inputSchema: updateSchema.shape,
     },
-    (args) => handleUpdateTicket(client, args)
+    args => handleUpdateTicket(client, args)
   );
 
   server.registerTool(
@@ -170,7 +178,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
       description: "Soft-delete a ticket. The row stays in the trash and can be brought back with restore_ticket.",
       inputSchema: deleteSchema.shape,
     },
-    (args) => handleDeleteTicket(client, args)
+    args => handleDeleteTicket(client, args)
   );
 
   server.registerTool(
@@ -179,7 +187,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
       description: "Restore a soft-deleted ticket from the trash.",
       inputSchema: restoreSchema.shape,
     },
-    (args) => handleRestoreTicket(client, args)
+    args => handleRestoreTicket(client, args)
   );
 
   server.registerTool(
@@ -188,7 +196,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
       description: "Clone a ticket. The new ticket lives in the same project. Any field omitted defaults to the source ticket's value. Attachments are skipped unless copyAttachments is true.",
       inputSchema: cloneSchema.shape,
     },
-    (args) => handleCloneTicket(client, args)
+    args => handleCloneTicket(client, args)
   );
 }
 

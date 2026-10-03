@@ -17,18 +17,18 @@ const idParamSchema = z.object({
 });
 
 export const tokens = new Hono()
-  .post("/api/auth/tokens", requireAuth, zValidator("json", createSchema, validationHook), async (c) => {
+  .post("/api/auth/tokens", requireAuth, zValidator("json", createSchema, validationHook), async c => {
     const userID = c.get("userID");
     const { name, expiresInDays } = c.req.valid("json");
     const result = await TokenService.createToken(userID, name, expiresInDays);
     return c.json(result, 201);
   })
-  .get("/api/auth/tokens", requireAuth, async (c) => {
+  .get("/api/auth/tokens", requireAuth, async c => {
     const userID = c.get("userID");
     const apiTokens = await TokenService.listTokens(userID);
     return c.json({ apiTokens });
   })
-  .delete("/api/auth/tokens/:id", requireAuth, zValidator("param", idParamSchema, validationHook), async (c) => {
+  .delete("/api/auth/tokens/:id", requireAuth, zValidator("param", idParamSchema, validationHook), async c => {
     const userID = c.get("userID");
     const { id } = c.req.valid("param");
     await TokenService.revokeToken(userID, id);

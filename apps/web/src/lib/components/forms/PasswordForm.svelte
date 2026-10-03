@@ -47,21 +47,14 @@
 <form
   class="settings-card"
   novalidate
-  onsubmit={(e) => {
+  onsubmit={e => {
     e.preventDefault();
     void handleSubmit();
   }}
 >
   <div>
     <label for="currentPassword" class="form-label">Current password</label>
-    <input
-      type="password"
-      id="currentPassword"
-      class="form-input"
-      bind:value={form.currentPassword}
-      autocomplete="current-password"
-      required
-    />
+    <input type="password" id="currentPassword" class="form-input" bind:value={form.currentPassword} autocomplete="current-password" required />
     {#if fieldErrors.currentPassword}
       <span id="currentPassword-error" class="field-error">{fieldErrors.currentPassword}</span>
     {/if}
@@ -69,15 +62,7 @@
 
   <div>
     <label for="newPassword" class="form-label">New password</label>
-    <input
-      type="password"
-      id="newPassword"
-      class="form-input"
-      bind:value={form.newPassword}
-      autocomplete="new-password"
-      minlength="8"
-      required
-    />
+    <input type="password" id="newPassword" class="form-input" bind:value={form.newPassword} autocomplete="new-password" minlength="8" required />
     {#if fieldErrors.newPassword}
       <span id="newPassword-error" class="field-error">{fieldErrors.newPassword}</span>
     {/if}
@@ -85,15 +70,7 @@
 
   <div>
     <label for="confirmPassword" class="form-label">Confirm new password</label>
-    <input
-      type="password"
-      id="confirmPassword"
-      class="form-input"
-      bind:value={form.confirmPassword}
-      autocomplete="new-password"
-      minlength="8"
-      required
-    />
+    <input type="password" id="confirmPassword" class="form-input" bind:value={form.confirmPassword} autocomplete="new-password" minlength="8" required />
     {#if fieldErrors.confirmPassword}
       <span id="confirmPassword-error" class="field-error">{fieldErrors.confirmPassword}</span>
     {/if}

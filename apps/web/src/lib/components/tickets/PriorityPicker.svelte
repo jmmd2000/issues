@@ -49,8 +49,8 @@
   let open = $state(false);
 
   const selectedSet = $derived(new Set(selected));
-  const selectedOptions = $derived(options.filter((option) => selectedSet.has(option.value)));
-  const singleOption = $derived(options.find((option) => option.value === value) ?? options[options.length - 1]);
+  const selectedOptions = $derived(options.filter(option => selectedSet.has(option.value)));
+  const singleOption = $derived(options.find(option => option.value === value) ?? options[options.length - 1]);
   const triggerColour = $derived(multi ? (selectedOptions[0]?.colour ?? "transparent") : singleOption.colour);
 
   function selectSingle(next: Priority) {
@@ -63,7 +63,7 @@
 
   function toggleMulti(next: Priority) {
     if (disabled) return;
-    onChange?.(selectedSet.has(next) ? selected.filter((p) => p !== next) : [...selected, next]);
+    onChange?.(selectedSet.has(next) ? selected.filter(p => p !== next) : [...selected, next]);
   }
 </script>
 

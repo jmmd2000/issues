@@ -18,11 +18,11 @@
   let submitting = $state(false);
 
   function handleLabelDelete(labelID: string) {
-    labelList = labelList.filter((label) => label.id !== labelID);
+    labelList = labelList.filter(label => label.id !== labelID);
   }
 
   function handleLabelUpdate(nextLabel: Label) {
-    labelList = labelList.map((label) => (label.id === nextLabel.id ? nextLabel : label));
+    labelList = labelList.map(label => (label.id === nextLabel.id ? nextLabel : label));
   }
 
   async function handleAdd() {
@@ -62,7 +62,7 @@
   <form
     class="new-label-footer"
     novalidate
-    onsubmit={(e) => {
+    onsubmit={e => {
       e.preventDefault();
       void handleAdd();
     }}

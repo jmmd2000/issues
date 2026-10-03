@@ -44,7 +44,7 @@
   let assigneeID = $derived<string | undefined>(ticket.assignee?.id ?? undefined);
   let statusID = $derived(ticket.status.id);
   let priority = $derived<Priority>(ticket.priority);
-  let labelIDs = $derived(ticket.labels.map((label) => label.id));
+  let labelIDs = $derived(ticket.labels.map(label => label.id));
   let visibility = $derived<"public" | "private">(ticket.visibility);
   let savingAssignee = $state(false);
   let savingStatus = $state(false);
@@ -461,7 +461,9 @@
               {#if ticket.parent}
                 {#if canEdit}
                   <span class="parent-cluster">
-                    <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}>{project.key}-{ticket.parent.number}</a>
+                    <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}
+                      >{project.key}-{ticket.parent.number}</a
+                    >
                     <button type="button" class="parent-icon-btn" onclick={() => (parentSearchOpen = true)} disabled={savingParent} aria-label="Change parent" title="Change parent">
                       <Pencil size={12} strokeWidth={2.5} />
                     </button>
@@ -470,7 +472,9 @@
                     </button>
                   </span>
                 {:else}
-                  <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}>{project.key}-{ticket.parent.number}</a>
+                  <a class="parent-pill" href={resolve("/projects/[key]/tickets/[num]", { key: project.key, num: String(ticket.parent.number) })} title={ticket.parent.title}
+                    >{project.key}-{ticket.parent.number}</a
+                  >
                 {/if}
               {:else if canEdit}
                 <button type="button" class="set-parent" onclick={() => (parentSearchOpen = true)} disabled={savingParent}>+ Set parent</button>
@@ -547,7 +551,7 @@
     statuses={project.statuses}
     members={project.members}
     excludeTicketNumbers={[ticket.number]}
-    onpicked={(picked) => {
+    onpicked={picked => {
       parentSearchOpen = false;
       void saveParent(picked.id);
     }}

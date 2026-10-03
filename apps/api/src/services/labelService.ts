@@ -19,7 +19,7 @@ export class LabelService {
    * @param projectID ID of the project to seed labels for
    */
   static async seedDefaults(tx: Transaction, projectID: string) {
-    await tx.insert(labels).values(DEFAULT_LABELS.map((label) => ({ ...label, projectID })));
+    await tx.insert(labels).values(DEFAULT_LABELS.map(label => ({ ...label, projectID })));
   }
 
   /**

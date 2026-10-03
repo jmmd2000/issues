@@ -8,7 +8,7 @@
 
   let { projectKey, ticket, members }: { projectKey: string; ticket: Ticket; members: ProjectMember[] } = $props();
 
-  const assignee = $derived(ticket.assigneeID ? (members.find((member) => member.userID === ticket.assigneeID) ?? null) : null);
+  const assignee = $derived(ticket.assigneeID ? (members.find(member => member.userID === ticket.assigneeID) ?? null) : null);
 
   let pointerStart: { x: number; y: number } | null = null;
   let movedPointer = false;

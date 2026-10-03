@@ -39,20 +39,20 @@
   let query = $state("");
   let searchInput: HTMLInputElement | null = $state(null);
 
-  const otherMembers = $derived(currentUserID ? members.filter((member) => member.userID !== currentUserID) : members);
+  const otherMembers = $derived(currentUserID ? members.filter(member => member.userID !== currentUserID) : members);
 
   const filtered = $derived.by(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return otherMembers;
-    return otherMembers.filter((member) => member.user.name.toLowerCase().includes(needle));
+    return otherMembers.filter(member => member.user.name.toLowerCase().includes(needle));
   });
 
   const selectedSet = $derived(new Set(selected));
-  const selectedMembers = $derived(members.filter((member) => selectedSet.has(member.userID)));
+  const selectedMembers = $derived(members.filter(member => selectedSet.has(member.userID)));
 
-  const singleMember = $derived(value ? (members.find((member) => member.userID === value) ?? null) : null);
+  const singleMember = $derived(value ? (members.find(member => member.userID === value) ?? null) : null);
   const singleName = $derived(singleMember?.user.name ?? null);
-  const currentUserMember = $derived(currentUserID ? (members.find((member) => member.userID === currentUserID) ?? null) : null);
+  const currentUserMember = $derived(currentUserID ? (members.find(member => member.userID === currentUserID) ?? null) : null);
 
   $effect(() => {
     if (open) queueMicrotask(() => searchInput?.focus());
@@ -69,7 +69,7 @@
 
   function toggleMulti(next: string) {
     if (disabled) return;
-    onChange?.(selectedSet.has(next) ? selected.filter((id) => id !== next) : [...selected, next]);
+    onChange?.(selectedSet.has(next) ? selected.filter(id => id !== next) : [...selected, next]);
   }
 </script>
 

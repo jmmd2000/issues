@@ -22,6 +22,6 @@ export function registerAttachmentTools(server: McpServer, client: IssuesClient)
       description: "List every attachment on a ticket. Each entry has filename, size, MIME type, uploader name, and a URL relative to the API origin.",
       inputSchema: listSchema.shape,
     },
-    (args) => handleListAttachments(client, args)
+    args => handleListAttachments(client, args)
   );
 }

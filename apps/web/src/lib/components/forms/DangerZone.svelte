@@ -63,16 +63,7 @@
     <p>This permanently deletes <strong>{project.name}</strong> and all of its tickets, comments, activity, links, labels and statuses. This cannot be undone.</p>
     <div>
       <label for="confirmProjectKey" class="confirm-label">Type <strong>{project.key}</strong> to confirm</label>
-      <input
-        id="confirmProjectKey"
-        class="form-input"
-        bind:value={confirmKey}
-        placeholder={project.key}
-        autocomplete="off"
-        autocapitalize="characters"
-        spellcheck="false"
-        disabled={deleting}
-      />
+      <input id="confirmProjectKey" class="form-input" bind:value={confirmKey} placeholder={project.key} autocomplete="off" autocapitalize="characters" spellcheck="false" disabled={deleting} />
     </div>
   </div>
   {#snippet footer()}

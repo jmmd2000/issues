@@ -59,7 +59,7 @@ async function setTicketTimes(ticketID: string, times: { createdAt: Date; update
 }
 
 function highlightedText(parts: Array<{ text: string; highlighted: boolean }>) {
-  return parts.filter((part) => part.highlighted).map((part) => part.text);
+  return parts.filter(part => part.highlighted).map(part => part.text);
 }
 
 describe("GET /api/search", () => {
@@ -143,7 +143,14 @@ describe("GET /api/search", () => {
       assigneeID: assignee.id,
       labelIDs: [bugLabelID],
     });
-    await createTicket("TEST", { title: "Wrong priority login bug", description: "Authentication filter target.", statusID: doneStatusID, priority: "low", assigneeID: assignee.id, labelIDs: [bugLabelID] });
+    await createTicket("TEST", {
+      title: "Wrong priority login bug",
+      description: "Authentication filter target.",
+      statusID: doneStatusID,
+      priority: "low",
+      assigneeID: assignee.id,
+      labelIDs: [bugLabelID],
+    });
     await createTicket("OTHER", { title: "Wrong project login bug", description: "Authentication filter target.", statusID: otherStatusID, priority: "high" });
 
     const res = await app.request(`/api/search?q=authentication&project=TEST&status=done&priority=high&label=Bug&assignee=${assignee.id}`, {
@@ -167,7 +174,7 @@ describe("GET /api/search", () => {
 
     const body = await res.json();
     expect(body.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["High two", "High one"]);
-    expect(body.tickets.every((ticket: { highlights: { title: Array<{ highlighted: boolean }> } }) => ticket.highlights.title.every((part) => !part.highlighted))).toBe(true);
+    expect(body.tickets.every((ticket: { highlights: { title: Array<{ highlighted: boolean }> } }) => ticket.highlights.title.every(part => !part.highlighted))).toBe(true);
   });
 
   it("sorts results by updated time in both directions", async () => {
@@ -270,11 +277,7 @@ describe("GET /api/search", () => {
     const ownerRes = await app.request("/api/search?q=visibility", { headers: { Cookie: cookies } });
     expect(ownerRes.status).toBe(200);
     const ownerBody = await ownerRes.json();
-    expect(ownerBody.tickets.map((ticket: { title: string }) => ticket.title).sort()).toEqual([
-      "Private project visible to member",
-      "Private ticket hidden anonymously",
-      "Public visible",
-    ]);
+    expect(ownerBody.tickets.map((ticket: { title: string }) => ticket.title).sort()).toEqual(["Private project visible to member", "Private ticket hidden anonymously", "Public visible"]);
 
     const otherRes = await app.request("/api/search?q=visibility", { headers: { Cookie: otherCookies } });
     expect(otherRes.status).toBe(200);

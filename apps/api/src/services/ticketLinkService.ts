@@ -75,7 +75,7 @@ export class TicketLinkService {
         .orderBy(asc(ticketLinks.createdAt)),
     ]);
 
-    return [...outgoing.map((row) => shape(row, "outgoing")), ...incoming.map((row) => shape(row, "incoming"))];
+    return [...outgoing.map(row => shape(row, "outgoing")), ...incoming.map(row => shape(row, "incoming"))];
   }
 
   /**
@@ -143,7 +143,7 @@ export class TicketLinkService {
     const source = direction === "outgoing" ? viewingRef : partnerRef;
     const target = direction === "outgoing" ? partnerRef : viewingRef;
 
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       let inserted: typeof ticketLinks.$inferSelect;
       try {
         [inserted] = await tx.insert(ticketLinks).values({ sourceTicketID, targetTicketID, linkType, createdByID: userID }).returning();
@@ -165,9 +165,7 @@ export class TicketLinkService {
           projectKey: partner.projectKey,
           status: partner.status,
           priority: partner.priority,
-          assignee: partner.assignee?.id
-            ? { id: partner.assignee.id, name: partner.assignee.name, avatarURL: partner.assignee.avatarURL }
-            : null,
+          assignee: partner.assignee?.id ? { id: partner.assignee.id, name: partner.assignee.name, avatarURL: partner.assignee.avatarURL } : null,
         },
         createdAt: inserted.createdAt.toISOString(),
       };
@@ -184,7 +182,7 @@ export class TicketLinkService {
    * @throws HTTPException 404 if the link does not exist or is not connected to the requesting ticket
    */
   static async deleteLink(linkID: string, requestingTicketID: string, userID: string): Promise<void> {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       const [link] = await tx
         .select({
           id: ticketLinks.id,
@@ -211,8 +209,8 @@ export class TicketLinkService {
         .where(inArray(tickets.id, [link.sourceTicketID, link.targetTicketID]));
 
       // FK cascade guarantees both sides exist while the link row exists.
-      const sourceSide = sides.find((side) => side.id === link.sourceTicketID);
-      const targetSide = sides.find((side) => side.id === link.targetTicketID);
+      const sourceSide = sides.find(side => side.id === link.sourceTicketID);
+      const targetSide = sides.find(side => side.id === link.targetTicketID);
       if (!sourceSide || !targetSide) throw new HTTPException(500, { message: "Linked ticket not found." });
 
       await tx.delete(ticketLinks).where(eq(ticketLinks.id, linkID));

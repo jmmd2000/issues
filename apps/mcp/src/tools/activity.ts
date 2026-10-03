@@ -32,7 +32,7 @@ export function registerActivityTools(server: McpServer, client: IssuesClient) {
       description: "Fetch recent activity for one project. Each entry carries the ticket ref, the field that changed, and human-readable old/new values.",
       inputSchema: projectActivitySchema.shape,
     },
-    (args) => handleGetActivity(client, args)
+    args => handleGetActivity(client, args)
   );
 
   server.registerTool(
@@ -41,6 +41,6 @@ export function registerActivityTools(server: McpServer, client: IssuesClient) {
       description: "Fetch the full activity log for one ticket: every field change, comment, link, and attachment event.",
       inputSchema: ticketActivitySchema.shape,
     },
-    (args) => handleGetTicketActivity(client, args)
+    args => handleGetTicketActivity(client, args)
   );
 }

@@ -24,7 +24,7 @@
   let deletingID = $state<string | null>(null);
   let fileInput: HTMLInputElement | null = $state(null);
   let previewID = $state<string | null>(null);
-  const preview = $derived(previewID ? (attachments.find((row) => row.id === previewID) ?? null) : null);
+  const preview = $derived(previewID ? (attachments.find(row => row.id === previewID) ?? null) : null);
 
   const isEmpty = $derived(attachments.length === 0 && pending.length === 0);
 
@@ -61,7 +61,7 @@
 
   async function uploadAll(files: File[]) {
     errorMessage = null;
-    const placeholders = files.map((file) => ({
+    const placeholders = files.map(file => ({
       id: `pending-${crypto.randomUUID()}`,
       filename: file.name,
       sizeBytes: file.size,
@@ -76,7 +76,7 @@
           errorMessage = err instanceof Error ? err.message : "Upload failed.";
         } finally {
           const placeholderID = placeholders[idx].id;
-          pending = pending.filter((p) => p.id !== placeholderID);
+          pending = pending.filter(p => p.id !== placeholderID);
         }
       })
     );

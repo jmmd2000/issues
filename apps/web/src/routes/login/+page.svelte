@@ -74,7 +74,7 @@
 
       <form
         novalidate
-        onsubmit={(e) => {
+        onsubmit={e => {
           e.preventDefault();
           void handleSubmit();
         }}

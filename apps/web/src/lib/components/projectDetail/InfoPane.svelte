@@ -22,7 +22,7 @@
 
   let { project, stats, activity, collapsed, onToggleCollapsed }: InfoPaneProps = $props();
 
-  const owner = $derived(project.members.find((m) => m.role === "owner") ?? null);
+  const owner = $derived(project.members.find(m => m.role === "owner") ?? null);
   const repoLabel = $derived(project.repo ? project.repo.replace(/^https?:\/\//, "") : null);
 
   const open = $state({ projectInfo: true, members: true, recent: true });

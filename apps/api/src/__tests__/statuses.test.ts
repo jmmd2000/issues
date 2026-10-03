@@ -323,11 +323,7 @@ describe("DELETE /api/projects/:key/statuses/:id", () => {
   });
 
   it("writes a statusID activity row for each reassigned ticket", async () => {
-    const [sourceStatus, reassignStatus] = await db
-      .select({ id: statuses.id, name: statuses.name })
-      .from(statuses)
-      .where(eq(statuses.projectID, projectID))
-      .limit(2);
+    const [sourceStatus, reassignStatus] = await db.select({ id: statuses.id, name: statuses.name }).from(statuses).where(eq(statuses.projectID, projectID)).limit(2);
 
     const ticketIDs: string[] = [];
     for (const title of ["First", "Second"]) {
@@ -362,11 +358,7 @@ describe("DELETE /api/projects/:key/statuses/:id", () => {
   });
 
   it("does not write activity rows when no tickets are using the deleted status", async () => {
-    const [sourceStatus, reassignStatus] = await db
-      .select({ id: statuses.id })
-      .from(statuses)
-      .where(eq(statuses.projectID, projectID))
-      .limit(2);
+    const [sourceStatus, reassignStatus] = await db.select({ id: statuses.id }).from(statuses).where(eq(statuses.projectID, projectID)).limit(2);
 
     const before = await db.select().from(ticketActivity);
 

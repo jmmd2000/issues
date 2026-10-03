@@ -109,7 +109,7 @@
     const files = imageFilesFromClipboard(event);
     if (files.length === 0) return;
     event.preventDefault();
-    files.forEach((file) => void uploadAndInsert(file));
+    files.forEach(file => void uploadAndInsert(file));
   }
 
   function handleDragOver(event: DragEvent) {
@@ -129,7 +129,7 @@
     if (files.length === 0) return;
     event.preventDefault();
     dragOver = false;
-    files.forEach((file) => void uploadAndInsert(file));
+    files.forEach(file => void uploadAndInsert(file));
   }
 
   function handleInsert(action: ToolbarInsert) {

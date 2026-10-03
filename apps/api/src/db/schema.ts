@@ -120,9 +120,7 @@ export const tickets = pgTable(
     number: integer("number").notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description").notNull().default(""),
-    descriptionSearch: tsvector("description_search").generatedAlwaysAs(
-      sql`to_tsvector('english', title || ' ' || coalesce(description, ''))`
-    ),
+    descriptionSearch: tsvector("description_search").generatedAlwaysAs(sql`to_tsvector('english', title || ' ' || coalesce(description, ''))`),
     statusID: uuid("status_id")
       .notNull()
       .references(() => statuses.id),
@@ -144,7 +142,7 @@ export const tickets = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (table) => [
+  table => [
     unique("uq_tickets_project_number").on(table.projectID, table.number),
     index("idx_tickets_project_active")
       .on(table.projectID)
@@ -185,7 +183,7 @@ export const ticketLabels = pgTable(
       .notNull()
       .references(() => labels.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.ticketID, table.labelID] })]
+  table => [primaryKey({ columns: [table.ticketID, table.labelID] })]
 );
 
 export const ticketsRelations = relations(tickets, ({ one, many }) => ({
@@ -223,7 +221,7 @@ export const ticketActivity = pgTable(
     newValue: jsonb("new_value").$type<ActivityValue | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("idx_activity_ticket_time").on(table.ticketID, table.createdAt), index("idx_activity_project_time").on(table.createdAt)]
+  table => [index("idx_activity_ticket_time").on(table.ticketID, table.createdAt), index("idx_activity_project_time").on(table.createdAt)]
 );
 
 export const ticketActivityRelations = relations(ticketActivity, ({ one }) => ({
@@ -246,7 +244,7 @@ export const comments = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
+  table => [
     index("idx_comments_ticket")
       .on(table.ticketID)
       .where(sql`${table.deletedAt} IS NULL`),
@@ -276,7 +274,7 @@ export const ticketLinks = pgTable(
       .references(() => users.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
+  table => [
     unique("uq_ticket_links").on(table.sourceTicketID, table.targetTicketID, table.linkType),
     index("idx_ticket_links_source").on(table.sourceTicketID),
     index("idx_ticket_links_target").on(table.targetTicketID),
@@ -309,7 +307,7 @@ export const attachments = pgTable(
     isImage: boolean("is_image").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
+  table => [
     index("idx_attachments_ticket").on(table.ticketID),
     index("idx_attachments_comment").on(table.commentID),
     index("idx_attachments_hash").on(table.contentHash),

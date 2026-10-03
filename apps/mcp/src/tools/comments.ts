@@ -51,7 +51,7 @@ export function registerCommentTools(server: McpServer, client: IssuesClient) {
       description: "Add a markdown comment to a ticket. Returns the new comment id.",
       inputSchema: addInput,
     },
-    (args) => handleAddComment(client, args)
+    args => handleAddComment(client, args)
   );
 
   server.registerTool(
@@ -60,7 +60,7 @@ export function registerCommentTools(server: McpServer, client: IssuesClient) {
       description: "List every non-deleted comment on a ticket in chronological order.",
       inputSchema: listInput,
     },
-    (args) => handleListComments(client, args)
+    args => handleListComments(client, args)
   );
 
   server.registerTool(
@@ -69,7 +69,7 @@ export function registerCommentTools(server: McpServer, client: IssuesClient) {
       description: "Edit a comment's body. Only the comment's author can edit. Pass the comment id from add_comment or list_comments.",
       inputSchema: updateInput,
     },
-    (args) => handleUpdateComment(client, args)
+    args => handleUpdateComment(client, args)
   );
 
   server.registerTool(
@@ -78,6 +78,6 @@ export function registerCommentTools(server: McpServer, client: IssuesClient) {
       description: "Soft-delete a comment. Only the comment's author can delete. The thread keeps its shape; the deleted body is hidden.",
       inputSchema: deleteInput,
     },
-    (args) => handleDeleteComment(client, args)
+    args => handleDeleteComment(client, args)
   );
 }

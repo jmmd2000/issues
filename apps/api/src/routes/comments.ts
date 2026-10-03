@@ -25,7 +25,7 @@ const commentBodySchema = z
   .strict();
 
 export const comments = new Hono()
-  .get("/api/projects/:key/tickets/:num/comments", optionalAuth, zValidator("param", commentParamSchema, validationHook), requireProjectRead, async (c) => {
+  .get("/api/projects/:key/tickets/:num/comments", optionalAuth, zValidator("param", commentParamSchema, validationHook), requireProjectRead, async c => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
@@ -42,7 +42,7 @@ export const comments = new Hono()
     zValidator("json", commentBodySchema, validationHook),
     zValidator("param", commentParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const userID = c.get("userID");
       const { num } = c.req.valid("param");
@@ -59,7 +59,7 @@ export const comments = new Hono()
     zValidator("json", commentBodySchema, validationHook),
     zValidator("param", commentIDParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const userID = c.get("userID");
       const { num, id } = c.req.valid("param");
@@ -70,7 +70,7 @@ export const comments = new Hono()
       return c.json({ comment });
     }
   )
-  .delete("/api/projects/:key/tickets/:num/comments/:id", requireAuth, zValidator("param", commentIDParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .delete("/api/projects/:key/tickets/:num/comments/:id", requireAuth, zValidator("param", commentIDParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const project = c.get("project");
     const userID = c.get("userID");
     const { num, id } = c.req.valid("param");

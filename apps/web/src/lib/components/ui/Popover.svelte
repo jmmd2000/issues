@@ -41,13 +41,7 @@
   {@render trigger({ toggle, open })}
 
   {#if open}
-    <div
-      class="popover-menu"
-      role={menuRole}
-      aria-label={menuLabel}
-      in:fly={{ y: -4, duration: 160, easing: quartOut }}
-      out:fly={{ y: -4, duration: 100, easing: quartOut }}
-    >
+    <div class="popover-menu" role={menuRole} aria-label={menuLabel} in:fly={{ y: -4, duration: 160, easing: quartOut }} out:fly={{ y: -4, duration: 100, easing: quartOut }}>
       {@render menu()}
     </div>
   {/if}

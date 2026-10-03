@@ -38,7 +38,23 @@
     onclose: () => void;
   }
 
-  let { open, mode, projectKey, statuses, labels, members, currentUserID, source, initialValues, excludeParentNumber, title, submitLabel, onSuccess = "navigate", oncreated, onclose }: TicketModalProps = $props();
+  let {
+    open,
+    mode,
+    projectKey,
+    statuses,
+    labels,
+    members,
+    currentUserID,
+    source,
+    initialValues,
+    excludeParentNumber,
+    title,
+    submitLabel,
+    onSuccess = "navigate",
+    oncreated,
+    onclose,
+  }: TicketModalProps = $props();
 
   let copyAttachments = $state(false);
 
@@ -58,14 +74,14 @@
   // via {#if open} -- always sees the freshest defaults at mount.
   const formPrefill = $derived.by<Partial<TicketFormValues>>(() => {
     if (mode === "clone" && source) {
-      const backlogStatusID = (statuses.find((status) => status.category === "backlog") ?? statuses[0])?.id ?? "";
+      const backlogStatusID = (statuses.find(status => status.category === "backlog") ?? statuses[0])?.id ?? "";
       return {
         title: `${source.title} - Copy`,
         description: source.description,
         statusID: backlogStatusID,
         priority: source.priority,
         assigneeID: undefined,
-        labelIDs: source.labels.map((label) => label.id),
+        labelIDs: source.labels.map(label => label.id),
         parentTicket: null,
         visibility: source.visibility,
       };

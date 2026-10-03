@@ -20,7 +20,7 @@
   // The slug "backlog" identifies the dedicated Backlog status seeded with
   // every project. The "Include backlog" toggle gates this specific status;
   // other backlog-category statuses (e.g. "Todo") stay visible regardless.
-  const backlogStatusID = $derived(project.statuses.find((s) => s.slug === "backlog")?.id ?? null);
+  const backlogStatusID = $derived(project.statuses.find(s => s.slug === "backlog")?.id ?? null);
 
   const view = $derived(data.view);
   const showClosed = $derived(data.showClosed);
@@ -45,7 +45,7 @@
   }
 
   function toggleEntry(current: readonly string[], value: string): string[] {
-    return current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+    return current.includes(value) ? current.filter(v => v !== value) : [...current, value];
   }
 
   function setView(next: "kanban" | "list") {
@@ -124,10 +124,10 @@
   let visibleKanbanStatusIDs = $state<Set<string>>(
     readVisibleSet(
       kanbanColumnsKey,
-      data.project.statuses.map((s) => s.id)
+      data.project.statuses.map(s => s.id)
     )
   );
-  let visibleListColumnIDs = $state<Set<TicketListColumnID>>(readVisibleSet<TicketListColumnID>(listColumnsKey, LIST_COLUMNS.map((c) => c.id) as TicketListColumnID[]));
+  let visibleListColumnIDs = $state<Set<TicketListColumnID>>(readVisibleSet<TicketListColumnID>(listColumnsKey, LIST_COLUMNS.map(c => c.id) as TicketListColumnID[]));
 
   function toggleKanbanColumn(id: string) {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- copied then reassigned to the $state, so the update is still reactive
@@ -159,7 +159,7 @@
   // "Include backlog" toggle hiding tickets in the dedicated Backlog status.
   function applyBacklogToggle(tickets: Ticket[]): Ticket[] {
     if (includeBacklog || !backlogStatusID) return tickets;
-    return tickets.filter((t) => t.statusID !== backlogStatusID);
+    return tickets.filter(t => t.statusID !== backlogStatusID);
   }
 
   // /board excludes backlog-category tickets, so merge /backlog in for kanban.
@@ -167,7 +167,7 @@
   const listTickets = $derived(applyBacklogToggle(data.listTickets));
 
   const kanbanVisibleStatuses = $derived(
-    project.statuses.filter((s) => {
+    project.statuses.filter(s => {
       if (!showClosed && s.category === "cancelled") return false;
       if (!includeBacklog && s.id === backlogStatusID) return false;
       if (!visibleKanbanStatusIDs.has(s.id)) return false;
@@ -176,9 +176,7 @@
   );
 
   const kanbanPickerStatuses = $derived(
-    project.statuses
-      .filter((s) => (showClosed || s.category !== "cancelled") && (includeBacklog || s.id !== backlogStatusID))
-      .map((s) => ({ id: s.id, label: s.name }))
+    project.statuses.filter(s => (showClosed || s.category !== "cancelled") && (includeBacklog || s.id !== backlogStatusID)).map(s => ({ id: s.id, label: s.name }))
   );
 </script>
 

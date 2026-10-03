@@ -49,7 +49,7 @@ export function createTicketSearch<T>(inputs: TicketSearchInputs<T>) {
         }
         const body = await res.json();
         if (cancelled) return;
-        results = body.tickets.filter((ticket) => !exclude.includes(ticket.number)).map(inputs.mapper);
+        results = body.tickets.filter(ticket => !exclude.includes(ticket.number)).map(inputs.mapper);
       } finally {
         if (!cancelled) loading = false;
       }

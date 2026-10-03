@@ -69,5 +69,5 @@ export async function deleteAttachment(storageKey: string): Promise<void> {
 export async function listStoredKeys(): Promise<string[]> {
   const dir = getUploadsDir();
   const entries = await fs.promises.readdir(dir);
-  return entries.filter((name) => STORAGE_KEY_RE.test(name));
+  return entries.filter(name => STORAGE_KEY_RE.test(name));
 }

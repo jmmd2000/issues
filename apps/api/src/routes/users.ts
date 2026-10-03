@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { UserService } from "../services/userService";
 
 export const users = new Hono()
-  .post("/api/users/me/avatar", requireAuth, async (c) => {
+  .post("/api/users/me/avatar", requireAuth, async c => {
     const userID = c.get("userID");
 
     const body = await c.req.parseBody({ all: false });
@@ -17,7 +17,7 @@ export const users = new Hono()
 
     return c.json({ user }, 200);
   })
-  .delete("/api/users/me/avatar", requireAuth, async (c) => {
+  .delete("/api/users/me/avatar", requireAuth, async c => {
     const userID = c.get("userID");
     const user = await UserService.clearAvatar(userID);
 

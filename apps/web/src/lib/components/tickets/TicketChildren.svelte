@@ -23,10 +23,10 @@
   const canWrite = $derived(!!currentUserID);
 
   const total = $derived(children.length);
-  const done = $derived(children.filter((child) => child.status.category === "done" || child.status.category === "cancelled").length);
+  const done = $derived(children.filter(child => child.status.category === "done" || child.status.category === "cancelled").length);
   const completionPercent = $derived(total === 0 ? 0 : Math.round((done / total) * 100));
 
-  const excludeNumbers = $derived([parentTicketNumber, ...children.map((child) => child.number)]);
+  const excludeNumbers = $derived([parentTicketNumber, ...children.map(child => child.number)]);
 
   let searchOpen = $state(false);
   let createOpen = $state(false);
@@ -73,12 +73,7 @@
     <ul class="children-list">
       {#each children as child (child.id)}
         <li>
-          <TicketRow
-            ticket={{ number: child.number, title: child.title, projectKey }}
-            status={child.status}
-            priority={child.priority}
-            assignee={child.assignee}
-          />
+          <TicketRow ticket={{ number: child.number, title: child.title, projectKey }} status={child.status} priority={child.priority} assignee={child.assignee} />
         </li>
       {/each}
     </ul>
@@ -102,7 +97,7 @@
     {statuses}
     {members}
     excludeTicketNumbers={excludeNumbers}
-    onpicked={(ticket) => void attachExisting(ticket)}
+    onpicked={ticket => void attachExisting(ticket)}
     onclose={() => (searchOpen = false)}
     primaryAction={{ label: "+ Create new", run: openCreate }}
   />

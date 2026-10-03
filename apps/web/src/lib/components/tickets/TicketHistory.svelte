@@ -18,7 +18,7 @@
 
   let { comments, activity, statuses, labels, members, projectKey, ticketNumber, currentUserID, onmutated }: TicketHistoryProps = $props();
 
-  const commentsByID = $derived(new Map(comments.map((comment) => [comment.id, comment])));
+  const commentsByID = $derived(new Map(comments.map(comment => [comment.id, comment])));
 
   function commentForRow(row: TicketActivity): Comment | undefined {
     if (row.action !== "comment_added") return undefined;

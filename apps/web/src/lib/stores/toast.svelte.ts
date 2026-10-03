@@ -87,11 +87,11 @@ class ToastStore {
       clearTimeout(handle);
       timers.delete(id);
     }
-    this.toasts = this.toasts.filter((toast) => toast.id !== id);
+    this.toasts = this.toasts.filter(toast => toast.id !== id);
   }
 
   async invokeAction(id: string): Promise<void> {
-    const toast = this.toasts.find((entry) => entry.id === id);
+    const toast = this.toasts.find(entry => entry.id === id);
     if (!toast?.action) return;
     try {
       await toast.action.run();

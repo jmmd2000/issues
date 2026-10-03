@@ -75,7 +75,10 @@ export type LinkArgs = {
  * this and surfaces the message to the model so it can adjust its next call.
  */
 export class IssuesApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string
+  ) {
     super(message);
     this.name = "IssuesApiError";
   }
@@ -87,7 +90,10 @@ export class IssuesApiError extends Error {
  * {@link IssuesApiError} with the API's error message intact.
  */
 export class IssuesClient {
-  constructor(private readonly apiURL: string, private readonly apiToken: string) {}
+  constructor(
+    private readonly apiURL: string,
+    private readonly apiToken: string
+  ) {}
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers = new Headers(init.headers);

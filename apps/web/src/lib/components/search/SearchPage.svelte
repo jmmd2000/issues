@@ -21,7 +21,7 @@
 
   const normalisedLockedProjectKey = $derived(lockedProjectKey?.toUpperCase() ?? null);
   const searchState = $derived(search.state);
-  const selectedProject = $derived(search.filters.projects.find((project) => project.key === searchState.projectKey) ?? null);
+  const selectedProject = $derived(search.filters.projects.find(project => project.key === searchState.projectKey) ?? null);
   const title = $derived(normalisedLockedProjectKey ? `${selectedProject?.name ?? normalisedLockedProjectKey} search` : "Search");
   const subtitle = $derived(normalisedLockedProjectKey ? normalisedLockedProjectKey : "All visible projects");
   const activeFilterCount = $derived(
@@ -44,11 +44,11 @@
         ? [
             { value: "asc" as const, label: "A-Z" },
             { value: "desc" as const, label: "Z-A" },
-        ]
-      : [
-          { value: "desc" as const, label: "Newest" },
-          { value: "asc" as const, label: "Oldest" },
-        ]
+          ]
+        : [
+            { value: "desc" as const, label: "Newest" },
+            { value: "asc" as const, label: "Oldest" },
+          ]
   );
   const isLoading = $derived(Boolean(navigating.to));
   const resultSummary = $derived(search.searched ? `${search.tickets.length}${search.hasNextPage ? "+" : ""} result${search.tickets.length === 1 && !search.hasNextPage ? "" : "s"}` : "No search");
@@ -85,7 +85,7 @@
   }
 
   function toggleEntry<T extends string>(current: readonly T[], value: T): T[] {
-    return current.includes(value) ? current.filter((entry) => entry !== value) : [...current, value];
+    return current.includes(value) ? current.filter(entry => entry !== value) : [...current, value];
   }
 
   function handleSearchInput(value: string) {

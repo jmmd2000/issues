@@ -28,7 +28,7 @@
   const visibleTickets = $derived.by(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return tickets;
-    return tickets.filter((ticket) => ticket.title.toLowerCase().includes(needle));
+    return tickets.filter(ticket => ticket.title.toLowerCase().includes(needle));
   });
 
   function handleConsider(event: CustomEvent<DndEvent<Ticket>>) {

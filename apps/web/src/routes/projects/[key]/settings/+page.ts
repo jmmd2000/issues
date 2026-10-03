@@ -22,7 +22,7 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   if (!res.ok) throw error(res.status, "Failed to load project");
   const { project }: { project: ProjectDetail } = await res.json();
 
-  const isOwner = project.members.some((member) => member.userID === user.id && member.role === "owner");
+  const isOwner = project.members.some(member => member.userID === user.id && member.role === "owner");
   const trashPage = trashPageSchema.parse(url.searchParams.get("trashPage"));
   const trashSortBy = trashSortBySchema.parse(url.searchParams.get("trashSortBy"));
   const trashSortDirection = trashSortDirectionSchema.parse(url.searchParams.get("trashSortDirection"));

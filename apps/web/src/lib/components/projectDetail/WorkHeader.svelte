@@ -20,18 +20,7 @@
     onOpenCreate: () => void;
   }
 
-  let {
-    project,
-    view,
-    kanbanPickerStatuses,
-    visibleKanbanStatusIDs,
-    visibleListColumnIDs,
-    canEdit,
-    onSetView,
-    onToggleKanbanColumn,
-    onToggleListColumn,
-    onOpenCreate,
-  }: WorkHeaderProps = $props();
+  let { project, view, kanbanPickerStatuses, visibleKanbanStatusIDs, visibleListColumnIDs, canEdit, onSetView, onToggleKanbanColumn, onToggleListColumn, onOpenCreate }: WorkHeaderProps = $props();
 
   const projectSearchHref = $derived(resolve("/projects/[key]/search", { key: project.key }));
 </script>
@@ -52,19 +41,9 @@
     </div>
 
     {#if view === "kanban"}
-      <ColumnPicker
-        items={kanbanPickerStatuses}
-        visible={visibleKanbanStatusIDs}
-        onToggle={onToggleKanbanColumn}
-        variant="secondary"
-      />
+      <ColumnPicker items={kanbanPickerStatuses} visible={visibleKanbanStatusIDs} onToggle={onToggleKanbanColumn} variant="secondary" />
     {:else}
-      <ColumnPicker
-        items={LIST_COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
-        visible={visibleListColumnIDs as Set<string>}
-        onToggle={onToggleListColumn}
-        variant="secondary"
-      />
+      <ColumnPicker items={LIST_COLUMNS.map(c => ({ id: c.id, label: c.label }))} visible={visibleListColumnIDs as Set<string>} onToggle={onToggleListColumn} variant="secondary" />
     {/if}
 
     <Button variant="secondary" size="md" href={projectSearchHref}>

@@ -75,7 +75,7 @@ async function pruneOrphanFiles(): Promise<string[]> {
   if (onDisk.length === 0) return [];
 
   const known = await db.select({ storageKey: attachments.storageKey }).from(attachments);
-  const knownSet = new Set(known.map((r) => r.storageKey));
+  const knownSet = new Set(known.map(r => r.storageKey));
 
   const removed: string[] = [];
   for (const key of onDisk) {
@@ -89,7 +89,7 @@ async function pruneOrphanFiles(): Promise<string[]> {
 
 function summariseQuota(): { fileCount: number; totalBytes: number; quotaBytes: number; pct: string } {
   const dir = getUploadsDir();
-  const entries = fs.readdirSync(dir).filter((name) => STORAGE_KEY_RE.test(name));
+  const entries = fs.readdirSync(dir).filter(name => STORAGE_KEY_RE.test(name));
   let totalBytes = 0;
   for (const name of entries) {
     totalBytes += fs.statSync(path.join(dir, name)).size;
@@ -132,7 +132,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((err) => {
+  .catch(err => {
     console.error("[sweep] failed:", err);
     process.exit(1);
   });

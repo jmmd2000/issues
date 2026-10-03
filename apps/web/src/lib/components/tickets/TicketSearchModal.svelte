@@ -28,8 +28,8 @@
   let query = $state("");
   let inputElement: HTMLInputElement | null = $state(null);
 
-  const statusByID = $derived(new Map(statuses.map((s) => [s.id, s])));
-  const memberByID = $derived(new Map(members.map((m) => [m.userID, m])));
+  const statusByID = $derived(new Map(statuses.map(s => [s.id, s])));
+  const memberByID = $derived(new Map(members.map(m => [m.userID, m])));
 
   const search = createTicketSearch({
     projectKey: () => projectKey,
@@ -37,7 +37,7 @@
     enabled: () => open,
     includeClosed: () => includeClosed,
     excludeNumbers: () => excludeTicketNumbers ?? [],
-    mapper: (ticket) => ({
+    mapper: ticket => ({
       id: ticket.id,
       number: ticket.number,
       title: ticket.title,
@@ -64,15 +64,7 @@
 
 <Modal {open} {title} {onclose} maxWidth="34rem">
   <div class="search-panel">
-    <input
-      bind:this={inputElement}
-      class="search-input"
-      type="text"
-      bind:value={query}
-      placeholder="Search tickets by title..."
-      autocomplete="off"
-      aria-label="Search tickets by title"
-    />
+    <input bind:this={inputElement} class="search-input" type="text" bind:value={query} placeholder="Search tickets by title..." autocomplete="off" aria-label="Search tickets by title" />
 
     <div class="results-area" aria-live="polite">
       {#if query.trim().length < 2}

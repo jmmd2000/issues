@@ -114,8 +114,8 @@ export class ActivityService {
       });
     }
 
-    const beforeLabels = new Map(before.labels.map((l) => [l.id, l.name] as const));
-    const afterLabels = new Map(after.labels.map((l) => [l.id, l.name] as const));
+    const beforeLabels = new Map(before.labels.map(l => [l.id, l.name] as const));
+    const afterLabels = new Map(after.labels.map(l => [l.id, l.name] as const));
     for (const [id, name] of afterLabels) {
       if (beforeLabels.has(id)) continue;
       rows.push({ ...base, action: "label_added", fieldName: null, oldValue: null, newValue: { id, name } });
@@ -298,14 +298,7 @@ export class ActivityService {
           db
             .select({ id: tickets.id })
             .from(tickets)
-            .where(
-              and(
-                eq(tickets.id, activity.ticketID),
-                eq(tickets.projectID, projectID),
-                isNull(tickets.deletedAt),
-                memberOrService ? undefined : eq(tickets.visibility, "public")
-              )
-            )
+            .where(and(eq(tickets.id, activity.ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt), memberOrService ? undefined : eq(tickets.visibility, "public")))
         ),
       orderBy: [desc(ticketActivity.createdAt)],
       limit,

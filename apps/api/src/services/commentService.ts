@@ -51,7 +51,7 @@ export class CommentService {
    * @returns The newly created comment.
    */
   static async createComment(ticketID: string, authorID: string, body: string): Promise<Comment> {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const [row] = await tx.insert(comments).values({ ticketID, authorID, body }).returning();
       await ActivityService.logComment(tx, { userID: authorID, ticketID, kind: "added", comment: { id: row.id, body: row.body } });
 
@@ -77,7 +77,7 @@ export class CommentService {
    * @returns The updated comment.
    */
   static async updateComment(commentID: string, ticketID: string, authorID: string, body: string): Promise<Comment> {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async tx => {
       const existing = await tx.query.comments.findFirst({
         where: and(eq(comments.id, commentID), eq(comments.ticketID, ticketID), isNull(comments.deletedAt)),
         with: { author: { columns: { id: true, name: true, avatarURL: true } } },
@@ -103,7 +103,7 @@ export class CommentService {
    * @throws HTTPException 404 when missing/wrong ticket/already deleted, 403 when caller is not the author.
    */
   static async softDeleteComment(commentID: string, ticketID: string, authorID: string): Promise<void> {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       const existing = await tx.query.comments.findFirst({
         where: and(eq(comments.id, commentID), eq(comments.ticketID, ticketID), isNull(comments.deletedAt)),
       });

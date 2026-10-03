@@ -110,7 +110,7 @@
         confirmOpen = false;
         return;
       }
-      tokenList = tokenList.filter((token) => token.id !== target.id);
+      tokenList = tokenList.filter(token => token.id !== target.id);
       confirmOpen = false;
       confirmTarget = null;
     } catch {
@@ -152,7 +152,7 @@
   <form
     class="create-row"
     novalidate
-    onsubmit={(e) => {
+    onsubmit={e => {
       e.preventDefault();
       void handleCreate();
     }}

@@ -105,7 +105,7 @@
         const body = (await res.json()) as { message?: string };
         return { ok: false as const, message: body.message };
       }
-      tokensByUser = { ...tokensByUser, [userID]: (tokensByUser[userID] ?? []).filter((token) => token.id !== tokenID) };
+      tokensByUser = { ...tokensByUser, [userID]: (tokensByUser[userID] ?? []).filter(token => token.id !== tokenID) };
       return { ok: true as const };
     };
   }
@@ -135,7 +135,7 @@
     avatarMessage = { ...avatarMessage, [userID]: null };
     try {
       const updated = await uploadServiceUserAvatar(userID, file);
-      users = users.map((user) => (user.id === userID ? { ...user, avatarURL: updated.avatarURL } : user));
+      users = users.map(user => (user.id === userID ? { ...user, avatarURL: updated.avatarURL } : user));
       clearAvatarSelection(userID);
       avatarMessage = { ...avatarMessage, [userID]: { type: "success", text: "Avatar updated." } };
     } catch (err) {
@@ -151,7 +151,7 @@
     avatarMessage = { ...avatarMessage, [userID]: null };
     try {
       await deleteServiceUserAvatar(userID);
-      users = users.map((user) => (user.id === userID ? { ...user, avatarURL: null } : user));
+      users = users.map(user => (user.id === userID ? { ...user, avatarURL: null } : user));
       clearAvatarSelection(userID);
       avatarMessage = { ...avatarMessage, [userID]: { type: "success", text: "Avatar removed." } };
     } catch (err) {
@@ -200,7 +200,14 @@
                 </div>
                 <div class="avatar-controls">
                   <label for={`avatar-${user.id}`} class="form-label">Avatar</label>
-                  <input id={`avatar-${user.id}`} type="file" accept="image/*" class="form-input file-input" disabled={avatarSaving === user.id} onchange={(event) => handleAvatarChange(user.id, event)} />
+                  <input
+                    id={`avatar-${user.id}`}
+                    type="file"
+                    accept="image/*"
+                    class="form-input file-input"
+                    disabled={avatarSaving === user.id}
+                    onchange={event => handleAvatarChange(user.id, event)}
+                  />
                   <p class="hint">Cropped to 512x512. PNG, JPEG, or WebP.</p>
                   <div class="avatar-actions">
                     <FormMessage message={avatarMessage[user.id] ?? null} />
@@ -245,7 +252,7 @@
   <form
     class="create-form"
     novalidate
-    onsubmit={(event) => {
+    onsubmit={event => {
       event.preventDefault();
       void submitCreate();
     }}

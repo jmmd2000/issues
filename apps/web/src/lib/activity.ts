@@ -11,16 +11,16 @@ export function asLinkType(value: string | null | undefined): LinkType | null {
 }
 
 export function statusCategory(statuses: Status[], id: string | null | undefined): Status["category"] {
-  return (id && statuses.find((s) => s.id === id)?.category) || "backlog";
+  return (id && statuses.find(s => s.id === id)?.category) || "backlog";
 }
 
 export function labelColour(labels: Label[], id: string | null | undefined): string {
-  return (id && labels.find((l) => l.id === id)?.colour) || "var(--colour-muted)";
+  return (id && labels.find(l => l.id === id)?.colour) || "var(--colour-muted)";
 }
 
 export function memberAvatar(members: ProjectMember[], id: string | null | undefined): string | null {
   if (!id) return null;
-  return members.find((m) => m.user.id === id)?.user.avatarURL ?? null;
+  return members.find(m => m.user.id === id)?.user.avatarURL ?? null;
 }
 
 function refName(value: ActivityValue | null | undefined): string | null {

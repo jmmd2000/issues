@@ -708,7 +708,7 @@ describe("PATCH /api/projects/:key/tickets/:num", () => {
       .from(ticketActivity)
       .where(and(eq(ticketActivity.ticketID, created.id), eq(ticketActivity.action, "updated")));
 
-    const byField = new Map(rows.map((r) => [r.fieldName, r]));
+    const byField = new Map(rows.map(r => [r.fieldName, r]));
     expect(byField.get("title")?.oldValue).toEqual({ value: "Before" });
     expect(byField.get("title")?.newValue).toEqual({ value: "After" });
     expect(byField.get("priority")?.oldValue).toEqual({ value: "medium" });
@@ -1081,11 +1081,11 @@ describe("POST /api/projects/:key/tickets/:num/clone", () => {
     expect(links[0]).toMatchObject({ targetTicketID: source.id, linkType: "clones" });
 
     const cloneActivity = await db.select().from(ticketActivity).where(eq(ticketActivity.ticketID, clone.id));
-    const cloneActions = cloneActivity.map((row) => row.action).sort();
+    const cloneActions = cloneActivity.map(row => row.action).sort();
     expect(cloneActions).toContain("cloned_from");
     expect(cloneActions).toContain("link_added");
 
-    const clonedFrom = cloneActivity.find((row) => row.action === "cloned_from");
+    const clonedFrom = cloneActivity.find(row => row.action === "cloned_from");
     expect(clonedFrom?.newValue).toMatchObject({ id: source.id, number: source.number, title: "Source", projectKey: "TEST" });
 
     const sourceActivity = await db
@@ -1405,7 +1405,7 @@ describe("PATCH /api/projects/:key/tickets/:num cross-project references", () =>
 
     expect(res.status).toBe(400);
     const rows = await db.select().from(ticketLabels).where(eq(ticketLabels.ticketID, created.id));
-    expect(rows.map((row) => row.labelID)).toEqual([label.id]);
+    expect(rows.map(row => row.labelID)).toEqual([label.id]);
   });
 
   it("rejects duplicate label IDs", async () => {

@@ -31,14 +31,14 @@ const createLinkSchema = z
       .string()
       .trim()
       .min(1)
-      .transform((value) => value.toUpperCase()),
+      .transform(value => value.toUpperCase()),
     linkType: z.enum(MANUAL_LINK_TYPES),
     direction: z.enum(["outgoing", "incoming"]).default("outgoing"),
   })
   .strict();
 
 export const ticketLinks = new Hono()
-  .get("/api/projects/:key/tickets/:num/links", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async (c) => {
+  .get("/api/projects/:key/tickets/:num/links", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async c => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
@@ -55,7 +55,7 @@ export const ticketLinks = new Hono()
     zValidator("json", createLinkSchema, validationHook),
     zValidator("param", ticketParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const userID = c.get("userID");
       const { num, key } = c.req.valid("param");
@@ -73,7 +73,7 @@ export const ticketLinks = new Hono()
       return c.json({ link }, 201);
     }
   )
-  .delete("/api/projects/:key/tickets/:num/links/:id", requireAuth, zValidator("param", linkParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .delete("/api/projects/:key/tickets/:num/links/:id", requireAuth, zValidator("param", linkParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const project = c.get("project");
     const userID = c.get("userID");
     const { num, id } = c.req.valid("param");

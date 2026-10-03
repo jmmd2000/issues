@@ -14,7 +14,7 @@ const envSchema = z.object({
 export function loadEnv() {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
-    const missing = result.error.issues.map((issue) => `${issue.path.join(".") || "(env)"}: ${issue.message}`).join("\n  ");
+    const missing = result.error.issues.map(issue => `${issue.path.join(".") || "(env)"}: ${issue.message}`).join("\n  ");
     process.stderr.write(`@issues/mcp: invalid environment.\n  ${missing}\n`);
     process.exit(1);
   }

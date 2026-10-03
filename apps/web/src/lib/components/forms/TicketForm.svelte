@@ -51,14 +51,27 @@
     oncancel: () => void;
   }
 
-  let { statuses, labels, members, currentUserID, projectKey, initialValues = {}, submitLabel = "Create ticket", cancelLabel = "Cancel", extras, excludeParentNumber, onsubmit, oncancel }: TicketFormProps = $props();
+  let {
+    statuses,
+    labels,
+    members,
+    currentUserID,
+    projectKey,
+    initialValues = {},
+    submitLabel = "Create ticket",
+    cancelLabel = "Cancel",
+    extras,
+    excludeParentNumber,
+    onsubmit,
+    oncancel,
+  }: TicketFormProps = $props();
 
   // Snapshot defaults exactly once on mount. The form fields below are user-
   // editable from that point on, so we don't want a parent re-render to clobber
   // typing-in-progress. The modal that hosts this form unmounts/remounts on
   // open, which is when fresh defaults get picked up.
   const defaults = untrack(() => {
-    const fallbackStatusID = (statuses.find((status) => status.category === "backlog") ?? statuses[0])?.id ?? "";
+    const fallbackStatusID = (statuses.find(status => status.category === "backlog") ?? statuses[0])?.id ?? "";
     return {
       title: initialValues.title ?? "",
       description: initialValues.description ?? "",
@@ -124,7 +137,7 @@
 <form
   class="ticket-form"
   novalidate
-  onsubmit={(event) => {
+  onsubmit={event => {
     event.preventDefault();
     void handleSubmit();
   }}
@@ -181,7 +194,7 @@
       inputID="ticket-parent"
       excludeTicketNumber={excludeParentNumber}
       selected={parentTicket}
-      onpicked={(ticket) => (parentTicket = ticket)}
+      onpicked={ticket => (parentTicket = ticket)}
       oncleared={() => (parentTicket = null)}
     />
   </div>

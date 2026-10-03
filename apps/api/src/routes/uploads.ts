@@ -8,7 +8,7 @@ import { STORAGE_KEY_RE, attachmentSize, readAttachmentStream } from "../lib/sto
 
 const AVATAR_ACCESS = { isPublic: true, projectIDs: [] as string[], mimeType: "image/webp", filename: "avatar.webp", isImage: true } as const;
 
-export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, async (c) => {
+export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, async c => {
   const storageKey = c.req.param("storageKey");
   if (!STORAGE_KEY_RE.test(storageKey)) {
     throw new HTTPException(400, { message: "Invalid attachment key." });
@@ -21,7 +21,7 @@ export const uploads = new Hono().get("/uploads/:storageKey", optionalAuth, asyn
   const role = c.get("role");
   if (!access.isPublic) {
     if (!role) throw new HTTPException(404, { message: "Attachment not found." });
-    const isAccessible = role.isService || access.projectIDs.some((projectID) => role.memberships.has(projectID));
+    const isAccessible = role.isService || access.projectIDs.some(projectID => role.memberships.has(projectID));
     if (!isAccessible) throw new HTTPException(404, { message: "Attachment not found." });
   }
 

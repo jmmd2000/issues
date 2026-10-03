@@ -256,7 +256,10 @@ describe("Ticket links", () => {
       });
       const clone = (await cloneRes.json()).ticket;
 
-      const [link] = await db.select().from(ticketLinks).where(and(eq(ticketLinks.sourceTicketID, clone.id), eq(ticketLinks.targetTicketID, source.id)));
+      const [link] = await db
+        .select()
+        .from(ticketLinks)
+        .where(and(eq(ticketLinks.sourceTicketID, clone.id), eq(ticketLinks.targetTicketID, source.id)));
 
       const res = await app.request(`/api/projects/TEST/tickets/${source.number}/links/${link.id}`, { method: "DELETE", headers: { Cookie: cookies } });
       expect(res.status).toBe(403);

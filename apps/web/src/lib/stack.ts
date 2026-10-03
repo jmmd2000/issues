@@ -9,6 +9,6 @@
 export function getStackItems(value: string): string[] {
   return value
     .split(",")
-    .map((item) => item.trim())
+    .map(item => item.trim())
     .filter(Boolean);
 }

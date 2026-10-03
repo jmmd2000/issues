@@ -54,12 +54,12 @@ const cloneSchema = z
 const arrayParam = <T extends z.ZodTypeAny>(item: T) =>
   z
     .union([item, z.array(item)])
-    .transform((value) => (Array.isArray(value) ? value : [value]))
+    .transform(value => (Array.isArray(value) ? value : [value]))
     .optional();
 
 const boolParam = z
   .enum(["true", "false"])
-  .transform((value) => value === "true")
+  .transform(value => value === "true")
   .default(false);
 
 const ticketFilterQuerySchema = z.object({
@@ -93,7 +93,7 @@ export const tickets = new Hono()
     zValidator("json", createSchema, validationHook),
     zValidator("param", projectKeyParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const body = c.req.valid("json");
       const project = c.get("project");
       const userID = c.get("userID");
@@ -106,27 +106,20 @@ export const tickets = new Hono()
       return c.json({ ticket }, 201);
     }
   )
-  .get(
-    "/api/projects/:key/tickets",
-    optionalAuth,
-    zValidator("param", projectKeyParamSchema, validationHook),
-    zValidator("query", listQuerySchema, validationHook),
-    requireProjectRead,
-    async (c) => {
-      const project = c.get("project");
-      const query = c.req.valid("query");
+  .get("/api/projects/:key/tickets", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), zValidator("query", listQuerySchema, validationHook), requireProjectRead, async c => {
+    const project = c.get("project");
+    const query = c.req.valid("query");
 
-      const result = await TicketService.listForProject(project.id, query, c.get("role"));
-      return c.json(result);
-    }
-  )
+    const result = await TicketService.listForProject(project.id, query, c.get("role"));
+    return c.json(result);
+  })
   .get(
     "/api/projects/:key/tickets/trash",
     requireAuth,
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", listQuerySchema, validationHook),
     requireProjectAccess("owner"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const query = c.req.valid("query");
 
@@ -140,7 +133,7 @@ export const tickets = new Hono()
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", ticketFilterQuerySchema, validationHook),
     requireProjectRead,
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const query = c.req.valid("query");
 
@@ -154,7 +147,7 @@ export const tickets = new Hono()
     zValidator("param", projectKeyParamSchema, validationHook),
     zValidator("query", backlogQuerySchema, validationHook),
     requireProjectRead,
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const query = c.req.valid("query");
 
@@ -162,7 +155,7 @@ export const tickets = new Hono()
       return c.json({ tickets });
     }
   )
-  .get("/api/projects/:key/tickets/:num", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async (c) => {
+  .get("/api/projects/:key/tickets/:num", optionalAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectRead, async c => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
@@ -178,7 +171,7 @@ export const tickets = new Hono()
     zValidator("json", patchSchema, validationHook),
     zValidator("param", ticketParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const userID = c.get("userID");
       const { num } = c.req.valid("param");
@@ -195,7 +188,7 @@ export const tickets = new Hono()
     zValidator("json", moveSchema, validationHook),
     zValidator("param", ticketParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const userID = c.get("userID");
       const { num } = c.req.valid("param");
@@ -206,7 +199,7 @@ export const tickets = new Hono()
       return c.json({ ticket });
     }
   )
-  .delete("/api/projects/:key/tickets/:num", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .delete("/api/projects/:key/tickets/:num", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const project = c.get("project");
     const userID = c.get("userID");
     const { num } = c.req.valid("param");
@@ -215,7 +208,7 @@ export const tickets = new Hono()
     await TicketService.softDeleteTicket(existing.id, project.id, userID);
     return c.body(null, 204);
   })
-  .post("/api/projects/:key/tickets/:num/restore", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async (c) => {
+  .post("/api/projects/:key/tickets/:num/restore", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async c => {
     const project = c.get("project");
     const userID = c.get("userID");
     const { num } = c.req.valid("param");
@@ -224,27 +217,21 @@ export const tickets = new Hono()
     const ticket = await TicketService.restoreTicket(deleted.id, project.id, userID);
     return c.json({ ticket });
   })
-  .delete(
-    "/api/projects/:key/tickets/:num/permanent",
-    requireAuth,
-    zValidator("param", ticketParamSchema, validationHook),
-    requireProjectAccess("owner"),
-    async (c) => {
-      const project = c.get("project");
-      const { num } = c.req.valid("param");
+  .delete("/api/projects/:key/tickets/:num/permanent", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("owner"), async c => {
+    const project = c.get("project");
+    const { num } = c.req.valid("param");
 
-      const deleted = await TicketService.getDeletedByNumber(project.id, num);
-      await TicketService.hardDeleteTicket(deleted.id, project.id);
-      return c.body(null, 204);
-    }
-  )
+    const deleted = await TicketService.getDeletedByNumber(project.id, num);
+    await TicketService.hardDeleteTicket(deleted.id, project.id);
+    return c.body(null, 204);
+  })
   .post(
     "/api/projects/:key/tickets/:num/clone",
     requireAuth,
     zValidator("json", cloneSchema, validationHook),
     zValidator("param", ticketParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const project = c.get("project");
       const userID = c.get("userID");
       const { num } = c.req.valid("param");

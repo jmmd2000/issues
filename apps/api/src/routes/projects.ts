@@ -10,7 +10,7 @@ const projectKeySchema = z
   .string()
   .min(2)
   .max(6)
-  .transform((v) => v.toUpperCase());
+  .transform(v => v.toUpperCase());
 
 const projectBaseSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(25),
@@ -39,28 +39,28 @@ export const projectKeyParamSchema = z.object({
 });
 
 export const projects = new Hono()
-  .post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async (c) => {
+  .post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async c => {
     const data = c.req.valid("json");
     const userID = c.get("userID");
     const project = await ProjectService.createProject({ ...data, ownerID: userID });
 
     return c.json({ project }, 201);
   })
-  .get("/api/projects", optionalAuth, async (c) => {
+  .get("/api/projects", optionalAuth, async c => {
     const projects = await ProjectService.getAllProjects(c.get("role"));
 
     return c.json({ projects }, 200);
   })
-  .get("/api/projects/with-counts", requireAuth, async (c) => {
+  .get("/api/projects/with-counts", requireAuth, async c => {
     const projects = await ProjectService.getAllProjectsWithCounts(c.get("role"));
 
     return c.json({ projects }, 200);
   })
-  .get("/api/projects/public", async (c) => {
+  .get("/api/projects/public", async c => {
     const projects = await ProjectService.getPublicProjectsWithCounts();
     return c.json({ projects }, 200);
   })
-  .get("/api/projects/:key", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), async (c) => {
+  .get("/api/projects/:key", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), async c => {
     const { key } = c.req.valid("param");
     const project = await ProjectService.getProjectByKey(c.get("role"), key);
 
@@ -72,7 +72,7 @@ export const projects = new Hono()
     zValidator("json", patchProjectSchema, validationHook),
     zValidator("param", projectKeyParamSchema, validationHook),
     requireProjectAccess("member"),
-    async (c) => {
+    async c => {
       const data = c.req.valid("json");
       const { id } = c.get("project");
       const project = await ProjectService.patchProject(id, data);
@@ -80,13 +80,13 @@ export const projects = new Hono()
       return c.json({ project }, 200);
     }
   )
-  .delete("/api/projects/:key", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("owner"), async (c) => {
+  .delete("/api/projects/:key", requireAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectAccess("owner"), async c => {
     const { id } = c.get("project");
     await ProjectService.deleteProject(id);
 
     return c.body(null, 204);
   })
-  .get("/api/projects/:key/stats", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectRead, async (c) => {
+  .get("/api/projects/:key/stats", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), requireProjectRead, async c => {
     const { id } = c.get("project");
     const stats = await ProjectService.getStats(id, c.get("role"));
     return c.json({ stats });

@@ -37,13 +37,7 @@
   {#each tabs as tab (tab.id)}
     {#if active === tab.id}
       {@const panel = panels[tab.id] as Snippet | undefined}
-      <div
-        role="tabpanel"
-        id={`panel-${tab.id}`}
-        aria-labelledby={`tab-${tab.id}`}
-        class="panel"
-        in:fly={{ y: 3, duration: 120, easing: quartOut }}
-      >
+      <div role="tabpanel" id={`panel-${tab.id}`} aria-labelledby={`tab-${tab.id}`} class="panel" in:fly={{ y: 3, duration: 120, easing: quartOut }}>
         {#if panel}{@render panel()}{/if}
       </div>
     {/if}

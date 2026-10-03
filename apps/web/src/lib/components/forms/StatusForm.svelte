@@ -23,16 +23,16 @@
   let baseline: Status[] = [...statuses];
   let saveScheduled = false;
 
-  const columns = $derived(Object.fromEntries(CATEGORIES.map((cat) => [cat, statusList.filter((s) => s.category === cat).sort((a, b) => a.position - b.position)])) as Record<Category, Status[]>);
+  const columns = $derived(Object.fromEntries(CATEGORIES.map(cat => [cat, statusList.filter(s => s.category === cat).sort((a, b) => a.position - b.position)])) as Record<Category, Status[]>);
 
   function handleStatusUpdate(next: Status) {
-    statusList = statusList.map((s) => (s.id === next.id ? next : s));
-    baseline = baseline.map((s) => (s.id === next.id ? next : s));
+    statusList = statusList.map(s => (s.id === next.id ? next : s));
+    baseline = baseline.map(s => (s.id === next.id ? next : s));
   }
 
   function handleStatusDelete(id: string) {
-    statusList = statusList.filter((s) => s.id !== id);
-    baseline = baseline.filter((s) => s.id !== id);
+    statusList = statusList.filter(s => s.id !== id);
+    baseline = baseline.filter(s => s.id !== id);
   }
 
   function handleStatusAdd(next: Status) {
@@ -43,8 +43,8 @@
   // Re-normalises positions to (idx+1)*10 so the column's position-sorted view matches the drag order.
   // Without this, `columns` would re-sort the dragged item back to its old slot.
   function handleConsider(category: Category, items: Status[]) {
-    const movedIDs = new Set(items.map((i) => i.id));
-    const others = statusList.filter((s) => s.category !== category && !movedIDs.has(s.id));
+    const movedIDs = new Set(items.map(i => i.id));
+    const others = statusList.filter(s => s.category !== category && !movedIDs.has(s.id));
     const reordered = items.map((s, idx) => ({ ...s, category, position: (idx + 1) * 10 }));
     statusList = [...others, ...reordered];
   }
@@ -65,11 +65,11 @@
   async function persistOrder() {
     const snapshot = baseline;
     const order = statusList
-      .filter((next) => {
-        const prev = snapshot.find((s) => s.id === next.id);
+      .filter(next => {
+        const prev = snapshot.find(s => s.id === next.id);
         return !prev || prev.position !== next.position || prev.category !== next.category;
       })
-      .map((s) => ({ id: s.id, position: s.position, category: s.category }));
+      .map(s => ({ id: s.id, position: s.position, category: s.category }));
 
     if (order.length === 0) return;
 
@@ -104,8 +104,8 @@
         statuses={columns[category]}
         allStatuses={statusList}
         {projectKey}
-        onConsider={(items) => handleConsider(category, items)}
-        onFinalize={(items) => handleFinalize(category, items)}
+        onConsider={items => handleConsider(category, items)}
+        onFinalize={items => handleFinalize(category, items)}
         onUpdate={handleStatusUpdate}
         onDelete={handleStatusDelete}
         onAdd={handleStatusAdd}

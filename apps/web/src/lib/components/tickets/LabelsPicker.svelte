@@ -34,14 +34,14 @@
   let snapshot: string[] = [];
   let prevOpen = false;
 
-  const labelByID = $derived(new Map(labels.map((label) => [label.id, label])));
+  const labelByID = $derived(new Map(labels.map(label => [label.id, label])));
   const selectedSet = $derived(new Set(value));
-  const selectedLabels = $derived(value.map((id) => labelByID.get(id)).filter((label): label is Label => Boolean(label)));
+  const selectedLabels = $derived(value.map(id => labelByID.get(id)).filter((label): label is Label => Boolean(label)));
 
   const filtered = $derived.by(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return labels;
-    return labels.filter((label) => label.name.toLowerCase().includes(needle));
+    return labels.filter(label => label.name.toLowerCase().includes(needle));
   });
 
   $effect(() => {
@@ -68,12 +68,12 @@
   function arraysEqual(a: string[], b: string[]) {
     if (a.length !== b.length) return false;
     const setB = new Set(b);
-    return a.every((id) => setB.has(id));
+    return a.every(id => setB.has(id));
   }
 
   function toggle(labelID: string) {
     if (disabled) return;
-    const next = selectedSet.has(labelID) ? value.filter((id) => id !== labelID) : [...value, labelID];
+    const next = selectedSet.has(labelID) ? value.filter(id => id !== labelID) : [...value, labelID];
     if (onChange) {
       onChange(next);
     } else {

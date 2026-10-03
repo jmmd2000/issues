@@ -24,7 +24,7 @@
   let error = $state<string | null>(null);
   let deletingID = $state<string | null>(null);
 
-  const selectedOption = $derived(LINK_OPTIONS.find((option) => option.key === optionKey) ?? LINK_OPTIONS[0]);
+  const selectedOption = $derived(LINK_OPTIONS.find(option => option.key === optionKey) ?? LINK_OPTIONS[0]);
 
   // Group links by their rendered label so the sidebar reads like:
   //   blocks
@@ -109,7 +109,7 @@
   {#if adding && !readonly}
     <form
       class="add-form"
-      onsubmit={(event) => {
+      onsubmit={event => {
         event.preventDefault();
         void addLink();
       }}
@@ -126,8 +126,8 @@
         includeClosed
         placeholder="Search tickets..."
         disabled={saving}
-        selected={selected}
-        onpicked={(ticket) => (selected = ticket)}
+        {selected}
+        onpicked={ticket => (selected = ticket)}
         oncleared={() => (selected = null)}
       />
 

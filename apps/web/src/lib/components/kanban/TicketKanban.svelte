@@ -45,7 +45,7 @@
   let localTickets: Ticket[] = $derived(sortByPosition(allIncomingTickets));
 
   const backlogStatusSet = $derived(new Set(backlogStatusIDs));
-  const backlogList = $derived(localTickets.filter((t) => backlogStatusSet.has(t.statusID)));
+  const backlogList = $derived(localTickets.filter(t => backlogStatusSet.has(t.statusID)));
 
   let ticketsByStatus = $derived.by(() => {
     const map = new SvelteMap<string, Ticket[]>();
@@ -58,18 +58,18 @@
   });
 
   function handleConsider(statusID: string, items: Ticket[]) {
-    const incomingIDs = new Set(items.map((i) => i.id));
-    const untouched = localTickets.filter((t) => t.statusID !== statusID && !incomingIDs.has(t.id));
-    const rewritten = items.map((t) => (t.statusID === statusID ? t : { ...t, statusID }));
+    const incomingIDs = new Set(items.map(i => i.id));
+    const untouched = localTickets.filter(t => t.statusID !== statusID && !incomingIDs.has(t.id));
+    const rewritten = items.map(t => (t.statusID === statusID ? t : { ...t, statusID }));
     localTickets = [...untouched, ...rewritten];
   }
 
   function handleBacklogConsider(items: Ticket[]) {
     const backlogStatusID = primaryBacklogStatusID;
     if (!backlogStatusID) return;
-    const incomingIDs = new Set(items.map((i) => i.id));
-    const untouched = localTickets.filter((t) => !backlogStatusSet.has(t.statusID) && !incomingIDs.has(t.id));
-    const rewritten = items.map((t) => (backlogStatusSet.has(t.statusID) ? t : { ...t, statusID: backlogStatusID }));
+    const incomingIDs = new Set(items.map(i => i.id));
+    const untouched = localTickets.filter(t => !backlogStatusSet.has(t.statusID) && !incomingIDs.has(t.id));
+    const rewritten = items.map(t => (backlogStatusSet.has(t.statusID) ? t : { ...t, statusID: backlogStatusID }));
     localTickets = [...untouched, ...rewritten];
   }
 
@@ -81,7 +81,7 @@
   });
 
   async function persistMove(targetStatusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) {
-    const movedIndex = items.findIndex((t) => t.id === info.id);
+    const movedIndex = items.findIndex(t => t.id === info.id);
     if (movedIndex === -1) return;
     const moved = items[movedIndex];
     const beforeID = items[movedIndex - 1]?.id ?? null;
@@ -103,7 +103,7 @@
       pendingMoves.delete(moved.id);
       if (!res.ok) throw new Error("move failed");
       const data = (await res.json()) as { ticket: Ticket };
-      localTickets = localTickets.map((t) => (t.id === data.ticket.id ? data.ticket : t));
+      localTickets = localTickets.map(t => (t.id === data.ticket.id ? data.ticket : t));
     } catch {
       if (controller.signal.aborted) return;
       pendingMoves.delete(moved.id);
@@ -119,7 +119,7 @@
   async function handleBacklogFinalize(items: Ticket[], info: DndEvent<Ticket>["info"]) {
     if (!primaryBacklogStatusID) return;
     handleBacklogConsider(items);
-    const moved = items.find((t) => t.id === info.id);
+    const moved = items.find(t => t.id === info.id);
     if (!moved) return;
     const targetStatusID = backlogStatusSet.has(moved.statusID) ? moved.statusID : primaryBacklogStatusID;
     await persistMove(targetStatusID, items, info);

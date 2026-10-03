@@ -204,8 +204,8 @@ function buildVolumeSeeds(project: ProjectSeed): TicketSeed[] {
   push("todo", VOLUME_DISTRIBUTION.todoActive);
   push("in-progress", VOLUME_DISTRIBUTION.inProgressActive);
   push("in-review", VOLUME_DISTRIBUTION.inReviewActive);
-  push("done", VOLUME_DISTRIBUTION.doneRecent, (i) => ({ completedDaysAgo: (i % 13) + 1 }));
-  push("done", VOLUME_DISTRIBUTION.doneOld, (i) => ({ completedDaysAgo: 18 + (i % 90) }));
+  push("done", VOLUME_DISTRIBUTION.doneRecent, i => ({ completedDaysAgo: (i % 13) + 1 }));
+  push("done", VOLUME_DISTRIBUTION.doneOld, i => ({ completedDaysAgo: 18 + (i % 90) }));
 
   return seeds;
 }
@@ -250,8 +250,8 @@ type SeededTicket = { id: string; number: number; title: string };
 async function seedTicketsForProject(projectID: string, projectKey: string, ownerID: string, memberIDs: string[], seeds: TicketSeed[]): Promise<SeededTicket[]> {
   const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
   const projectLabels = await db.select({ id: labels.id, name: labels.name }).from(labels).where(eq(labels.projectID, projectID));
-  const statusBySlug = new Map(projectStatuses.map((s) => [s.slug, s.id]));
-  const labelBySlug = new Map(projectLabels.map((l) => [l.name.toLowerCase(), l.id]));
+  const statusBySlug = new Map(projectStatuses.map(s => [s.slug, s.id]));
+  const labelBySlug = new Map(projectLabels.map(l => [l.name.toLowerCase(), l.id]));
 
   const backdates = new Map<number, string[]>();
   const created: SeededTicket[] = [];
@@ -260,7 +260,7 @@ async function seedTicketsForProject(projectID: string, projectKey: string, owne
   for (const seed of seeds) {
     const statusID = statusBySlug.get(seed.statusSlug);
     if (!statusID) throw new Error(`Missing status '${seed.statusSlug}' for project ${projectID}`);
-    const labelIDs = seed.labelSlugs.map((slug) => {
+    const labelIDs = seed.labelSlugs.map(slug => {
       const labelID = labelBySlug.get(slug);
       if (!labelID) throw new Error(`Missing label '${slug}' for project ${projectID}`);
       return labelID;
@@ -345,8 +345,8 @@ async function seed() {
   const [{ id: ownerID }] = await db.select({ id: users.id }).from(users).limit(1);
 
   const passwordHash = await argon2.hash(SHARED_PASSWORD);
-  const extraInsertRows = EXTRA_USERS.map((user) => ({ name: user.name, email: user.email, passwordHash }));
-  const extraUserIDs = (await db.insert(users).values(extraInsertRows).returning({ id: users.id })).map((row) => row.id);
+  const extraInsertRows = EXTRA_USERS.map(user => ({ name: user.name, email: user.email, passwordHash }));
+  const extraUserIDs = (await db.insert(users).values(extraInsertRows).returning({ id: users.id })).map(row => row.id);
 
   const servicePasswordHash = await argon2.hash(randomBytes(48).toString("hex"));
   const [{ id: serviceUserID }] = await db
@@ -368,7 +368,7 @@ async function seed() {
 
     const projectExtraIDs = pickExtraMembers(project.key, extraUserIDs);
     if (projectExtraIDs.length) {
-      await db.insert(projectMembers).values(projectExtraIDs.map((userID) => ({ projectID: created.id, userID, role: "member" as const })));
+      await db.insert(projectMembers).values(projectExtraIDs.map(userID => ({ projectID: created.id, userID, role: "member" as const })));
     }
     const memberIDs = [ownerID, ...projectExtraIDs];
 
@@ -386,7 +386,7 @@ async function seed() {
 
 seed()
   .then(() => process.exit(0))
-  .catch((err) => {
+  .catch(err => {
     console.error(err);
     process.exit(1);
   });
