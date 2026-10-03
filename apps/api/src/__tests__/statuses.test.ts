@@ -8,6 +8,12 @@ import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase 
 let cookies: string;
 let projectID: string;
 
+interface StatusResponse {
+  id: string;
+  category: string;
+  position: number;
+}
+
 describe("POST /api/projects/:key/statuses", () => {
   beforeEach(async () => {
     await resetDatabase();
@@ -147,7 +153,7 @@ describe("PATCH /api/projects/:key/statuses/reorder", () => {
   it("reorders statuses", async () => {
     const res1 = await app.request("/api/projects/TEST/statuses", { headers: { Cookie: cookies } });
     const body1 = await res1.json();
-    const activeStatuses = body1.statuses.filter((s: any) => s.category === "active");
+    const activeStatuses = body1.statuses.filter((status: StatusResponse) => status.category === "active");
 
     const reorderRes = await app.request("/api/projects/TEST/statuses/reorder", {
       method: "PATCH",
@@ -162,14 +168,14 @@ describe("PATCH /api/projects/:key/statuses/reorder", () => {
 
     expect(reorderRes.status).toBe(200);
     const reorderBody = await reorderRes.json();
-    const updated = reorderBody.statuses.filter((s: any) => s.category === "active");
+    const updated = reorderBody.statuses.filter((status: StatusResponse) => status.category === "active");
     expect(updated[0].position).toBeLessThan(updated[1].position);
   });
 
   it("updates category in reorder", async () => {
     const res1 = await app.request("/api/projects/TEST/statuses", { headers: { Cookie: cookies } });
     const body1 = await res1.json();
-    const backlogStatus = body1.statuses.find((s: any) => s.category === "backlog");
+    const backlogStatus = body1.statuses.find((status: StatusResponse) => status.category === "backlog");
 
     const reorderRes = await app.request("/api/projects/TEST/statuses/reorder", {
       method: "PATCH",
@@ -181,7 +187,7 @@ describe("PATCH /api/projects/:key/statuses/reorder", () => {
 
     expect(reorderRes.status).toBe(200);
     const body = await reorderRes.json();
-    const moved = body.statuses.find((s: any) => s.id === backlogStatus.id);
+    const moved = body.statuses.find((status: StatusResponse) => status.id === backlogStatus.id);
     expect(moved.category).toBe("active");
   });
 
