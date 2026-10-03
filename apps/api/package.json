@@ -17,7 +17,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:sweep": "tsx src/scripts/sweep-uploads.ts",
-    "test:integration": "NODE_ENV=test vitest run"
+    "test:unit": "vitest run --project unit",
+    "test:integration": "NODE_ENV=test vitest run --project integration"
   },
   "dependencies": {
     "@hono/node-server": "1.19.12",
