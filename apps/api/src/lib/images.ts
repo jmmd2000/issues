@@ -102,7 +102,7 @@ export async function processAvatar(input: Buffer): Promise<ProcessedImage> {
  * Stores a non-image file as-is after validating its extension. Hashes input
  * bytes for dedup. Throws 415 if the extension is not on the allow-list.
  */
-export function processFile(input: Buffer, originalFilename: string, _mimeType: string): ProcessedFile {
+export function processFile(input: Buffer, originalFilename: string): ProcessedFile {
   const ext = path.extname(originalFilename).toLowerCase();
   const mimeType = FILE_EXTENSION_MIME[ext];
   if (!mimeType) {

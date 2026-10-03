@@ -1,4 +1,4 @@
-import { and, asc, count, eq, sql } from "drizzle-orm";
+import { asc, count, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { attachments, tickets } from "../db/schema";
@@ -89,7 +89,7 @@ export class AttachmentService {
       if (bytes.length > limits.maxFileBytes) {
         throw new HTTPException(413, { message: `File exceeds limit of ${formatBytes(limits.maxFileBytes)}.` });
       }
-      processed = processFile(bytes, filename, mimeType);
+      processed = processFile(bytes, filename);
       isImage = false;
     }
 
@@ -137,9 +137,10 @@ export class AttachmentService {
         columns: { id: true, name: true, avatarURL: true },
       });
       // FK on attachments.uploader_id guarantees the user exists at this point.
+      if (!uploader) throw new HTTPException(500, { message: "Uploader not found." });
       await ActivityService.logAttachment(tx, { userID: uploaderID, ticketID, kind: "added", attachment: inserted });
 
-      return shape({ ...inserted, uploader: uploader! });
+      return shape({ ...inserted, uploader });
     });
   }
 

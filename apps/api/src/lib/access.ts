@@ -1,6 +1,7 @@
 import { and, eq, inArray, or, type SQL } from "drizzle-orm";
 import { db } from "../db";
 import { projectMembers, projects, tickets, users } from "../db/schema";
+import { requireCondition } from "./sql";
 
 /**
  * Access invariant for this module:
@@ -71,8 +72,8 @@ export function canView(
  */
 export function visibilityWhere(role: Role | undefined): SQL | undefined {
   if (role?.isService) return undefined;
-  const publicClause = and(eq(projects.visibility, "public"), eq(tickets.visibility, "public"))!;
+  const publicClause = requireCondition(and(eq(projects.visibility, "public"), eq(tickets.visibility, "public")));
   const memberIDs = role ? Array.from(role.memberships.keys()) : [];
   if (memberIDs.length === 0) return publicClause;
-  return or(publicClause, inArray(projects.id, memberIDs))!;
+  return requireCondition(or(publicClause, inArray(projects.id, memberIDs)));
 }

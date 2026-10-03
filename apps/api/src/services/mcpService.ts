@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { formatTicketRef, parseTicketRef, STATUS_CATEGORIES } from "@issues/shared";
 import type { LinkType } from "@issues/shared";
 import { db } from "../db";
-import { attachments, comments, labels, projectMembers, projects, statuses, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
+import { comments, labels, projectMembers, projects, statuses, ticketLabels, ticketLinks, tickets, users } from "../db/schema";
 import type { Role } from "../lib/access";
 import type {
   ActivityValue,

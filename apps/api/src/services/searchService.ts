@@ -3,6 +3,7 @@ import { db } from "../db";
 import { labels as labelsTable, projectMembers, projects, statuses, ticketLabels, tickets, users } from "../db/schema";
 import { visibilityWhere, type Role } from "../lib/access";
 import { STATUS_CATEGORIES } from "../lib/constants";
+import { requireCondition } from "../lib/sql";
 import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult, SearchSortColumn, SearchSortDirection } from "../lib/types";
 
 const HIGHLIGHT_START = "[[issues-highlight-start]]";
@@ -48,7 +49,7 @@ function projectVisibilityCondition(role: Role | undefined): SQL | undefined {
   if (role?.isService) return undefined;
   const memberIDs = role ? Array.from(role.memberships.keys()) : [];
   if (memberIDs.length === 0) return eq(projects.visibility, "public");
-  return or(eq(projects.visibility, "public"), inArray(projects.id, memberIDs))!;
+  return requireCondition(or(eq(projects.visibility, "public"), inArray(projects.id, memberIDs)));
 }
 
 function projectKeyCondition(projectKey?: string): SQL | undefined {

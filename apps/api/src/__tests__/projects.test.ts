@@ -7,6 +7,15 @@ import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase,
 
 let cookies: string;
 
+async function getStatusID(projectID: string, slug: string): Promise<string> {
+  const [row] = await db
+    .select({ id: statuses.id })
+    .from(statuses)
+    .where(and(eq(statuses.projectID, projectID), eq(statuses.slug, slug)))
+    .limit(1);
+  return row.id;
+}
+
 describe("POST /api/projects/create", () => {
   beforeEach(async () => {
     await resetDatabase();
@@ -271,11 +280,10 @@ describe("GET /api/projects/with-counts", () => {
 
   it("counts only tickets in backlog or active status categories", async () => {
     const project = await createProject(cookies, { key: "MIX" });
-    const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, project.id));
-    const backlog = projectStatuses.find((status) => status.slug === "backlog")!.id;
-    const inProgress = projectStatuses.find((status) => status.slug === "in-progress")!.id;
-    const done = projectStatuses.find((status) => status.slug === "done")!.id;
-    const cancelled = projectStatuses.find((status) => status.slug === "cancelled")!.id;
+    const backlog = await getStatusID(project.id, "backlog");
+    const inProgress = await getStatusID(project.id, "in-progress");
+    const done = await getStatusID(project.id, "done");
+    const cancelled = await getStatusID(project.id, "cancelled");
 
     await createTicket("MIX", backlog, "Backlog A");
     await createTicket("MIX", backlog, "Backlog B");
@@ -398,9 +406,8 @@ describe("GET /api/projects/public", () => {
 
   it("counts only open tickets and excludes soft-deleted", async () => {
     const project = await createProject(cookies, { key: "PUB", visibility: "public" });
-    const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, project.id));
-    const backlog = projectStatuses.find((status) => status.slug === "backlog")!.id;
-    const done = projectStatuses.find((status) => status.slug === "done")!.id;
+    const backlog = await getStatusID(project.id, "backlog");
+    const done = await getStatusID(project.id, "done");
     await createTicket("PUB", backlog, "Open");
     await createTicket("PUB", done, "Closed");
     const deleted = await createTicket("PUB", backlog, "Deleted");
@@ -794,9 +801,8 @@ describe("GET /api/projects/:key/stats", () => {
     ({ cookies } = await createAuthenticatedUser());
     const project = await createProject(cookies, { key: "STATS" });
     projectID = project.id;
-    const projectStatuses = await db.select({ id: statuses.id, slug: statuses.slug }).from(statuses).where(eq(statuses.projectID, projectID));
-    backlogStatusID = projectStatuses.find((status) => status.slug === "backlog")!.id;
-    doneStatusID = projectStatuses.find((status) => status.slug === "done")!.id;
+    backlogStatusID = await getStatusID(projectID, "backlog");
+    doneStatusID = await getStatusID(projectID, "done");
   });
 
   it("returns zero counts for a fresh project", async () => {
@@ -836,7 +842,7 @@ describe("GET /api/projects/:key/stats", () => {
     const res = await app.request("/api/projects/STATS/stats", { method: "GET", headers: { Cookie: cookies } });
     const body = await res.json();
 
-    const reporter = body.stats.byMember[Object.keys(body.stats.byMember).find((id) => id !== other.id)!];
+    const reporter = Object.entries(body.stats.byMember).find(([id]) => id !== other.id)?.[1];
     expect(reporter.reported).toBe(3);
     expect(reporter.assignedOpen).toBe(0);
 

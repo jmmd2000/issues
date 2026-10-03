@@ -14,6 +14,16 @@ type Env = { Variables: { userID: string; role: Role; project: ProjectContext } 
 type ReadEnv = { Variables: { userID?: string; role?: Role; project: ProjectContext } };
 
 /**
+ * Normalises the `:key` route param to the stored upper-case form.
+ * @param key The raw param, which is only missing if a route forgot to declare `:key`
+ * @throws HTTPException 400 if the param is missing
+ */
+function requireKeyParam(key: string | undefined): string {
+  if (!key) throw new HTTPException(400, { message: "Project key is required." });
+  return key.toUpperCase();
+}
+
+/**
  * Resolves a project by its `:key` param and allows the request when the
  * project is public _or_ the caller is a member _or_ the caller is a service
  * user. Must run after `optionalAuth` so anonymous callers can be identified.
@@ -25,7 +35,7 @@ type ReadEnv = { Variables: { userID?: string; role?: Role; project: ProjectCont
  * the caller cannot see it
  */
 export const requireProjectRead = createMiddleware<ReadEnv>(async (c, next) => {
-  const key = c.req.param("key")!.toUpperCase();
+  const key = requireKeyParam(c.req.param("key"));
 
   const project = await db.query.projects.findFirst({
     where: eq(projects.key, key),
@@ -51,7 +61,7 @@ export const requireProjectRead = createMiddleware<ReadEnv>(async (c, next) => {
  */
 export const requireProjectAccess = (level: "member" | "owner") =>
   createMiddleware<Env>(async (c, next) => {
-    const key = c.req.param("key")!.toUpperCase();
+    const key = requireKeyParam(c.req.param("key"));
     const role = c.get("role");
 
     const project = await db.query.projects.findFirst({

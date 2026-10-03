@@ -211,8 +211,9 @@ export class TicketLinkService {
         .where(inArray(tickets.id, [link.sourceTicketID, link.targetTicketID]));
 
       // FK cascade guarantees both sides exist while the link row exists.
-      const sourceSide = sides.find((side) => side.id === link.sourceTicketID)!;
-      const targetSide = sides.find((side) => side.id === link.targetTicketID)!;
+      const sourceSide = sides.find((side) => side.id === link.sourceTicketID);
+      const targetSide = sides.find((side) => side.id === link.targetTicketID);
+      if (!sourceSide || !targetSide) throw new HTTPException(500, { message: "Linked ticket not found." });
 
       await tx.delete(ticketLinks).where(eq(ticketLinks.id, linkID));
 

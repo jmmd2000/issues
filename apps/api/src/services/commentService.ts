@@ -60,7 +60,8 @@ export class CommentService {
         columns: { id: true, name: true, avatarURL: true },
       });
       // FK on comments.author_id guarantees the user exists at this point.
-      return shape({ ...row, author: author! });
+      if (!author) throw new HTTPException(500, { message: "Comment author not found." });
+      return shape({ ...row, author });
     });
   }
 
