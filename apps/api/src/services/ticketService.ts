@@ -555,6 +555,7 @@ export class TicketService {
    * @param projectID The ID of the project that the ticket belongs to
    * @param userID The ID of the user performing the move (attributed on activity rows)
    * @param data The target status (optional) and neighbour ticket IDs (beforeID, afterID)
+   * @throws HTTPException 400 if the status does not belong to the project, or a neighbour is not an active ticket in the target status
    * @throws HTTPException 404
    * @returns The updated ticket
    */
@@ -571,11 +572,14 @@ export class TicketService {
     return await db.transaction(async (tx) => {
       const before = await this.loadSnapshot(tx, { ticketID });
 
-      const [beforeNeighbour, afterNeighbour] = await Promise.all([
-        data.beforeID ? tx.query.tickets.findFirst({ where: eq(tickets.id, data.beforeID), columns: { position: true } }) : null,
-        data.afterID ? tx.query.tickets.findFirst({ where: eq(tickets.id, data.afterID), columns: { position: true } }) : null,
+      if (data.statusID) await this.assertStatusInProject(tx, projectID, data.statusID);
+
+      const targetStatusID = data.statusID ?? before.status.id;
+      const [beforePosition, afterPosition] = await Promise.all([
+        this.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.beforeID }),
+        this.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.afterID }),
       ]);
-      const newPosition = positionBetween(beforeNeighbour?.position ?? null, afterNeighbour?.position ?? null);
+      const newPosition = positionBetween(beforePosition, afterPosition);
 
       const setData: Record<string, unknown> = { position: newPosition };
       if (data.statusID) {
@@ -764,6 +768,32 @@ export class TicketService {
       .where(and(eq(tickets.id, parentTicketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
       .limit(1);
     if (!parent) throw new HTTPException(400, { message: "Parent ticket not found in this project." });
+  }
+
+  /**
+   * Loads the position of a move neighbour. The neighbour must be an active
+   * ticket in the project and in the status the ticket is moving to, and it
+   * cannot be the ticket being moved.
+   * @param tx The active transaction
+   * @param locator The project, the target status, the ticket being moved and the neighbour ID from the request
+   * @throws HTTPException 400
+   * @returns The neighbour's position, or `null` when no neighbour was given
+   */
+  private static async loadNeighbourPosition(tx: Transaction, locator: { projectID: string; statusID: string; ticketID: string; neighbourID?: string | null }) {
+    const { projectID, statusID, ticketID, neighbourID } = locator;
+    if (!neighbourID) return null;
+    if (neighbourID === ticketID) {
+      throw new HTTPException(400, { message: "A ticket cannot be moved relative to itself." });
+    }
+
+    const [neighbour] = await tx
+      .select({ position: tickets.position })
+      .from(tickets)
+      .where(and(eq(tickets.id, neighbourID), eq(tickets.projectID, projectID), eq(tickets.statusID, statusID), isNull(tickets.deletedAt)))
+      .limit(1);
+    if (!neighbour) throw new HTTPException(400, { message: "Neighbour ticket not found in the target status." });
+
+    return neighbour.position;
   }
 
   /**
