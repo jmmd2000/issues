@@ -1477,3 +1477,109 @@ describe("POST /api/projects/:key/tickets/:num/clone cross-project references", 
     expect(rows).toHaveLength(1);
   });
 });
+
+describe("PATCH /api/projects/:key/tickets/:num/move cross-project references", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function moveTicket(num: number, body: object) {
+    return app.request(`/api/projects/TEST/tickets/${num}/move`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function createOtherProjectTicket() {
+    const { otherTicketID } = await createOtherProjectReferences();
+    return otherTicketID;
+  }
+
+  it("rejects a status from another project and leaves the ticket unchanged", async () => {
+    const ticket = await createTicket();
+    const { otherStatusID } = await createOtherProjectReferences();
+
+    const res = await moveTicket(ticket.number, { statusID: otherStatusID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Status not found in this project.");
+    const [row] = await db.select({ statusID: tickets.statusID, position: tickets.position }).from(tickets).where(eq(tickets.id, ticket.id));
+    expect(row).toEqual({ statusID, position: ticket.position });
+  });
+
+  it("rejects a beforeID from another project", async () => {
+    const ticket = await createTicket();
+    const otherTicketID = await createOtherProjectTicket();
+
+    const res = await moveTicket(ticket.number, { beforeID: otherTicketID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Neighbour ticket not found in the target status.");
+  });
+
+  it("rejects an afterID from another project", async () => {
+    const ticket = await createTicket();
+    const otherTicketID = await createOtherProjectTicket();
+
+    const res = await moveTicket(ticket.number, { afterID: otherTicketID });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a neighbour in a different status when the status is unchanged", async () => {
+    const doneStatusID = await getStatusIDBySlug("done");
+    const ticket = await createTicket();
+    const doneTicket = await createTicket({ statusID: doneStatusID });
+
+    const res = await moveTicket(ticket.number, { beforeID: doneTicket.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a neighbour from the old column when moving to another status", async () => {
+    const doneStatusID = await getStatusIDBySlug("done");
+    const ticket = await createTicket();
+    const sameColumnTicket = await createTicket();
+
+    const res = await moveTicket(ticket.number, { statusID: doneStatusID, beforeID: sameColumnTicket.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts a neighbour from the target column when moving to another status", async () => {
+    const doneStatusID = await getStatusIDBySlug("done");
+    const ticket = await createTicket();
+    const doneTicket = await createTicket({ statusID: doneStatusID });
+
+    const res = await moveTicket(ticket.number, { statusID: doneStatusID, beforeID: doneTicket.id });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ticket.statusID).toBe(doneStatusID);
+    expect(body.ticket.position > doneTicket.position).toBe(true);
+  });
+
+  it("rejects a soft-deleted neighbour", async () => {
+    const ticket = await createTicket();
+    const deleted = await createTicket();
+    await app.request(`/api/projects/TEST/tickets/${deleted.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await moveTicket(ticket.number, { beforeID: deleted.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects the ticket as its own neighbour", async () => {
+    const ticket = await createTicket();
+
+    const res = await moveTicket(ticket.number, { afterID: ticket.id });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("A ticket cannot be moved relative to itself.");
+  });
+});
