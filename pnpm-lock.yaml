@@ -189,7 +189,11 @@ importers:
         specifier: 2.1.0
         version: 2.1.0(svelte@5.55.1)(vitest@4.1.2)
 
-  packages/shared: {}
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
 
 packages:
 

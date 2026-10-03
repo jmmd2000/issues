@@ -22,7 +22,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.30.2",
+  "packageManager": "pnpm@11.14.0",
   "engines": {
     "node": "22.x"
   },
