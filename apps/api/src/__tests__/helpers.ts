@@ -4,6 +4,8 @@ import app from "../index";
 import argon2 from "argon2";
 import { eq, sql } from "drizzle-orm";
 import { apiTokens, sessions, users } from "../db/schema";
+import { getEnv } from "../lib/env";
+import { assertTestDatabase } from "./setup/assertTestDatabase";
 
 /**
  * Test helper to create and login with a dummy user
@@ -96,9 +98,10 @@ export async function createExtraUser(name: string, email: string, password = "p
 }
 
 /**
- * Test helper to wipe the database
+ * Test helper to wipe the database. Throws unless the connection is a local `_test` database.
  */
 export async function resetDatabase() {
+  assertTestDatabase(getEnv().DATABASE_URL, process.env.NODE_ENV);
   await db.execute(sql`TRUNCATE TABLE labels, statuses, project_members, projects, sessions, users CASCADE`);
 }
 
