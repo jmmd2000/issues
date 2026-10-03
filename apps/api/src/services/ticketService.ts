@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { attachments, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
+import { attachments, labels, projectMembers, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels, users } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
 import type { Priority, StatusCategory, TicketSnapshot, Transaction } from "../lib/types";
 import type { Role } from "../lib/access";
@@ -99,6 +99,7 @@ export class TicketService {
    * attaches any labels, and writes a `created` activity row. All work runs in
    * a single transaction.
    * @param data The ticket fields plus `projectID` and `reporterID` from the route.
+   * @throws HTTPException 400 if the status, assignee, labels or parent do not belong to the project
    * @throws HTTPException 500
    * @returns The created ticket
    */
@@ -113,6 +114,11 @@ export class TicketService {
    * link + activity rows on the same transaction so a clone is atomic.
    */
   private static async insertTicket(tx: Transaction, data: TicketCreateInput) {
+    await this.assertStatusInProject(tx, data.projectID, data.statusID);
+    if (data.assigneeID) await this.assertAssigneeIsMember(tx, data.projectID, data.assigneeID);
+    if (data.labelIDs) await this.assertLabelsInProject(tx, data.projectID, data.labelIDs);
+    if (data.parentTicketID) await this.assertParentInProject(tx, data.projectID, data.parentTicketID);
+
     const [counter] = await tx
       .update(ticketCounters)
       .set({ lastNumber: sql`${ticketCounters.lastNumber} + 1` })
@@ -472,6 +478,7 @@ export class TicketService {
    * @param projectID The ID of the project that the ticket belongs to
    * @param userID The ID of the user performing the update
    * @param data The fields to update
+   * @throws HTTPException 400 if the status, assignee, labels or parent do not belong to the project
    * @throws HTTPException 404
    * @returns The updated ticket
    */
@@ -496,18 +503,15 @@ export class TicketService {
       const { labelIDs, ...fields } = data;
       let ticket: typeof tickets.$inferSelect | undefined;
 
+      if (fields.statusID) await this.assertStatusInProject(tx, projectID, fields.statusID);
+      if (fields.assigneeID) await this.assertAssigneeIsMember(tx, projectID, fields.assigneeID);
+      if (labelIDs) await this.assertLabelsInProject(tx, projectID, labelIDs);
+
       if (fields.parentTicketID !== undefined && fields.parentTicketID !== null) {
         if (fields.parentTicketID === ticketID) {
           throw new HTTPException(400, { message: "A ticket cannot be its own parent." });
         }
-        const [proposedParent] = await tx
-          .select({ id: tickets.id })
-          .from(tickets)
-          .where(and(eq(tickets.id, fields.parentTicketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
-          .limit(1);
-        if (!proposedParent) {
-          throw new HTTPException(400, { message: "Parent ticket not found in this project." });
-        }
+        await this.assertParentInProject(tx, projectID, fields.parentTicketID);
         await this.assertNoParentCycle(tx, ticketID, fields.parentTicketID);
       }
 
@@ -551,6 +555,7 @@ export class TicketService {
    * @param projectID The ID of the project that the ticket belongs to
    * @param userID The ID of the user performing the move (attributed on activity rows)
    * @param data The target status (optional) and neighbour ticket IDs (beforeID, afterID)
+   * @throws HTTPException 400 if the status does not belong to the project, or a neighbour is not an active ticket in the target status
    * @throws HTTPException 404
    * @returns The updated ticket
    */
@@ -567,11 +572,14 @@ export class TicketService {
     return await db.transaction(async (tx) => {
       const before = await this.loadSnapshot(tx, { ticketID });
 
-      const [beforeNeighbour, afterNeighbour] = await Promise.all([
-        data.beforeID ? tx.query.tickets.findFirst({ where: eq(tickets.id, data.beforeID), columns: { position: true } }) : null,
-        data.afterID ? tx.query.tickets.findFirst({ where: eq(tickets.id, data.afterID), columns: { position: true } }) : null,
+      if (data.statusID) await this.assertStatusInProject(tx, projectID, data.statusID);
+
+      const targetStatusID = data.statusID ?? before.status.id;
+      const [beforePosition, afterPosition] = await Promise.all([
+        this.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.beforeID }),
+        this.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.afterID }),
       ]);
-      const newPosition = positionBetween(beforeNeighbour?.position ?? null, afterNeighbour?.position ?? null);
+      const newPosition = positionBetween(beforePosition, afterPosition);
 
       const setData: Record<string, unknown> = { position: newPosition };
       if (data.statusID) {
@@ -690,6 +698,102 @@ export class TicketService {
       if (!row) return;
       cursor = row.parentTicketID;
     }
+  }
+
+  /**
+   * Checks that a status belongs to the project.
+   * @param tx The active transaction
+   * @param projectID The project the ticket belongs to
+   * @param statusID The status ID from the request
+   * @throws HTTPException 400
+   */
+  private static async assertStatusInProject(tx: Transaction, projectID: string, statusID: string) {
+    const [status] = await tx
+      .select({ id: statuses.id })
+      .from(statuses)
+      .where(and(eq(statuses.id, statusID), eq(statuses.projectID, projectID)))
+      .limit(1);
+    if (!status) throw new HTTPException(400, { message: "Status not found in this project." });
+  }
+
+  /**
+   * Checks that every label belongs to the project and that no label ID is
+   * repeated. An empty list is valid.
+   * @param tx The active transaction
+   * @param projectID The project the ticket belongs to
+   * @param labelIDs The label IDs from the request
+   * @throws HTTPException 400
+   */
+  private static async assertLabelsInProject(tx: Transaction, projectID: string, labelIDs: string[]) {
+    if (!labelIDs.length) return;
+    if (new Set(labelIDs).size !== labelIDs.length) {
+      throw new HTTPException(400, { message: "Label IDs must be unique." });
+    }
+    const found = await tx
+      .select({ id: labels.id })
+      .from(labels)
+      .where(and(inArray(labels.id, labelIDs), eq(labels.projectID, projectID)));
+    if (found.length !== labelIDs.length) {
+      throw new HTTPException(400, { message: "One or more labels not found in this project." });
+    }
+  }
+
+  /**
+   * Checks that the assignee is a member of the project.
+   * @param tx The active transaction
+   * @param projectID The project the ticket belongs to
+   * @param assigneeID The user ID from the request
+   * @throws HTTPException 400
+   */
+  private static async assertAssigneeIsMember(tx: Transaction, projectID: string, assigneeID: string) {
+    const [member] = await tx
+      .select({ userID: projectMembers.userID })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectID, projectID), eq(projectMembers.userID, assigneeID)))
+      .limit(1);
+    if (!member) throw new HTTPException(400, { message: "Assignee is not a member of this project." });
+  }
+
+  /**
+   * Checks that the parent ticket exists in the project and is not deleted.
+   * @param tx The active transaction
+   * @param projectID The project the ticket belongs to
+   * @param parentTicketID The parent ticket ID from the request
+   * @throws HTTPException 400
+   */
+  private static async assertParentInProject(tx: Transaction, projectID: string, parentTicketID: string) {
+    const [parent] = await tx
+      .select({ id: tickets.id })
+      .from(tickets)
+      .where(and(eq(tickets.id, parentTicketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
+      .limit(1);
+    if (!parent) throw new HTTPException(400, { message: "Parent ticket not found in this project." });
+  }
+
+  /**
+   * Loads the position of a move neighbour. The neighbour must be an active
+   * ticket in the project and in the status the ticket is moving to, and it
+   * cannot be the ticket being moved.
+   * @param tx The active transaction
+   * @param locator The project, the target status, the ticket being moved and the neighbour ID from the request
+   * @throws HTTPException 400
+   * @returns The neighbour's position, or `null` when no neighbour was given
+   */
+  private static async loadNeighbourPosition(tx: Transaction, locator: { projectID: string; statusID: string; ticketID: string; neighbourID?: string | null }) {
+    const { projectID, statusID, ticketID, neighbourID } = locator;
+    if (!neighbourID) return null;
+    if (neighbourID === ticketID) {
+      throw new HTTPException(400, { message: "A ticket cannot be moved relative to itself." });
+    }
+
+    const [neighbour] = await tx
+      .select({ position: tickets.position })
+      .from(tickets)
+      .where(and(eq(tickets.id, neighbourID), eq(tickets.projectID, projectID), eq(tickets.statusID, statusID), isNull(tickets.deletedAt)))
+      .limit(1);
+    if (!neighbour) throw new HTTPException(400, { message: "Neighbour ticket not found in the target status." });
+
+    return neighbour.position;
   }
 
   /**

@@ -1258,3 +1258,328 @@ describe("DELETE /api/projects/:key/tickets/:num/permanent", () => {
     expect(res.status).toBe(403);
   });
 });
+
+async function createOtherProjectReferences() {
+  const otherProject = await createProject(cookies, { key: "OTHER", name: "Other Project" });
+  const [otherStatus] = await db.select({ id: statuses.id }).from(statuses).where(eq(statuses.projectID, otherProject.id)).limit(1);
+  const [otherLabel] = await db.select({ id: labels.id }).from(labels).where(eq(labels.projectID, otherProject.id)).limit(1);
+  const { user: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+
+  const res = await app.request("/api/projects/OTHER/tickets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookies },
+    body: JSON.stringify({ title: "Other project ticket", statusID: otherStatus.id }),
+  });
+  const { ticket: otherTicket } = await res.json();
+
+  return { otherStatusID: otherStatus.id, otherLabelID: otherLabel.id, outsider, otherTicketID: otherTicket.id as string };
+}
+
+describe("POST /api/projects/:key/tickets cross-project references", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function postTicket(body: object) {
+    return app.request("/api/projects/TEST/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ title: "Cross-project", statusID, ...body }),
+    });
+  }
+
+  it("rejects a status from another project", async () => {
+    const { otherStatusID } = await createOtherProjectReferences();
+
+    const res = await postTicket({ statusID: otherStatusID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Status not found in this project.");
+  });
+
+  it("rejects a label from another project", async () => {
+    const { otherLabelID } = await createOtherProjectReferences();
+
+    const res = await postTicket({ labelIDs: [otherLabelID] });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("One or more labels not found in this project.");
+  });
+
+  it("rejects a valid label sent together with a label from another project", async () => {
+    const { otherLabelID } = await createOtherProjectReferences();
+    const [label] = await db.select({ id: labels.id }).from(labels).where(eq(labels.projectID, projectID)).limit(1);
+
+    const res = await postTicket({ labelIDs: [label.id, otherLabelID] });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects duplicate label IDs", async () => {
+    const [label] = await db.select({ id: labels.id }).from(labels).where(eq(labels.projectID, projectID)).limit(1);
+
+    const res = await postTicket({ labelIDs: [label.id, label.id] });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Label IDs must be unique.");
+  });
+
+  it("rejects an assignee who is not a project member", async () => {
+    const { outsider } = await createOtherProjectReferences();
+
+    const res = await postTicket({ assigneeID: outsider.id });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Assignee is not a member of this project.");
+  });
+
+  it("accepts an assignee who is a project member", async () => {
+    const { user: member } = await createExtraUser("Member", "member@test.com");
+    await db.insert(projectMembers).values({ projectID, userID: member.id, role: "member" });
+
+    const res = await postTicket({ assigneeID: member.id });
+
+    expect(res.status).toBe(201);
+    expect((await res.json()).ticket.assigneeID).toBe(member.id);
+  });
+
+  it("rejects a parent ticket from another project", async () => {
+    const { otherTicketID } = await createOtherProjectReferences();
+
+    const res = await postTicket({ parentTicketID: otherTicketID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Parent ticket not found in this project.");
+  });
+
+  it("does not use up a ticket number when a reference is rejected", async () => {
+    const { otherStatusID } = await createOtherProjectReferences();
+
+    await postTicket({ statusID: otherStatusID });
+    const res = await postTicket({});
+
+    expect((await res.json()).ticket.number).toBe(1);
+  });
+});
+
+describe("PATCH /api/projects/:key/tickets/:num cross-project references", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function patchTicket(num: number, body: object) {
+    return app.request(`/api/projects/TEST/tickets/${num}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("rejects a status from another project and leaves the ticket unchanged", async () => {
+    const created = await createTicket();
+    const { otherStatusID } = await createOtherProjectReferences();
+
+    const res = await patchTicket(created.number, { statusID: otherStatusID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Status not found in this project.");
+    const [row] = await db.select({ statusID: tickets.statusID }).from(tickets).where(eq(tickets.id, created.id));
+    expect(row.statusID).toBe(statusID);
+  });
+
+  it("rejects a label from another project and keeps the existing labels", async () => {
+    const created = await createTicket();
+    const { otherLabelID } = await createOtherProjectReferences();
+    const [label] = await db.select({ id: labels.id }).from(labels).where(eq(labels.projectID, projectID)).limit(1);
+    await patchTicket(created.number, { labelIDs: [label.id] });
+
+    const res = await patchTicket(created.number, { labelIDs: [otherLabelID] });
+
+    expect(res.status).toBe(400);
+    const rows = await db.select().from(ticketLabels).where(eq(ticketLabels.ticketID, created.id));
+    expect(rows.map((row) => row.labelID)).toEqual([label.id]);
+  });
+
+  it("rejects duplicate label IDs", async () => {
+    const created = await createTicket();
+    const [label] = await db.select({ id: labels.id }).from(labels).where(eq(labels.projectID, projectID)).limit(1);
+
+    const res = await patchTicket(created.number, { labelIDs: [label.id, label.id] });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an assignee who is not a project member", async () => {
+    const created = await createTicket();
+    const { outsider } = await createOtherProjectReferences();
+
+    const res = await patchTicket(created.number, { assigneeID: outsider.id });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Assignee is not a member of this project.");
+  });
+
+  it("rejects a parent ticket from another project", async () => {
+    const created = await createTicket();
+    const { otherTicketID } = await createOtherProjectReferences();
+
+    const res = await patchTicket(created.number, { parentTicketID: otherTicketID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Parent ticket not found in this project.");
+  });
+
+  it("allows clearing the labels and the assignee", async () => {
+    const { user: member } = await createExtraUser("Member", "member@test.com");
+    await db.insert(projectMembers).values({ projectID, userID: member.id, role: "member" });
+    const [label] = await db.select({ id: labels.id }).from(labels).where(eq(labels.projectID, projectID)).limit(1);
+    const created = await createTicket();
+    await patchTicket(created.number, { assigneeID: member.id, labelIDs: [label.id] });
+
+    const res = await patchTicket(created.number, { assigneeID: null, labelIDs: [] });
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).ticket.assigneeID).toBeNull();
+    const rows = await db.select().from(ticketLabels).where(eq(ticketLabels.ticketID, created.id));
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("POST /api/projects/:key/tickets/:num/clone cross-project references", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  it("rejects a status from another project and creates no clone", async () => {
+    const source = await createTicket({ title: "Source" });
+    const { otherStatusID } = await createOtherProjectReferences();
+
+    const res = await app.request(`/api/projects/TEST/tickets/${source.number}/clone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ ticket: { title: "Clone", statusID: otherStatusID } }),
+    });
+
+    expect(res.status).toBe(400);
+    const rows = await db.select({ id: tickets.id }).from(tickets).where(eq(tickets.projectID, projectID));
+    expect(rows).toHaveLength(1);
+  });
+});
+
+describe("PATCH /api/projects/:key/tickets/:num/move cross-project references", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function moveTicket(num: number, body: object) {
+    return app.request(`/api/projects/TEST/tickets/${num}/move`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function createOtherProjectTicket() {
+    const { otherTicketID } = await createOtherProjectReferences();
+    return otherTicketID;
+  }
+
+  it("rejects a status from another project and leaves the ticket unchanged", async () => {
+    const ticket = await createTicket();
+    const { otherStatusID } = await createOtherProjectReferences();
+
+    const res = await moveTicket(ticket.number, { statusID: otherStatusID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Status not found in this project.");
+    const [row] = await db.select({ statusID: tickets.statusID, position: tickets.position }).from(tickets).where(eq(tickets.id, ticket.id));
+    expect(row).toEqual({ statusID, position: ticket.position });
+  });
+
+  it("rejects a beforeID from another project", async () => {
+    const ticket = await createTicket();
+    const otherTicketID = await createOtherProjectTicket();
+
+    const res = await moveTicket(ticket.number, { beforeID: otherTicketID });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Neighbour ticket not found in the target status.");
+  });
+
+  it("rejects an afterID from another project", async () => {
+    const ticket = await createTicket();
+    const otherTicketID = await createOtherProjectTicket();
+
+    const res = await moveTicket(ticket.number, { afterID: otherTicketID });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a neighbour in a different status when the status is unchanged", async () => {
+    const doneStatusID = await getStatusIDBySlug("done");
+    const ticket = await createTicket();
+    const doneTicket = await createTicket({ statusID: doneStatusID });
+
+    const res = await moveTicket(ticket.number, { beforeID: doneTicket.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a neighbour from the old column when moving to another status", async () => {
+    const doneStatusID = await getStatusIDBySlug("done");
+    const ticket = await createTicket();
+    const sameColumnTicket = await createTicket();
+
+    const res = await moveTicket(ticket.number, { statusID: doneStatusID, beforeID: sameColumnTicket.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts a neighbour from the target column when moving to another status", async () => {
+    const doneStatusID = await getStatusIDBySlug("done");
+    const ticket = await createTicket();
+    const doneTicket = await createTicket({ statusID: doneStatusID });
+
+    const res = await moveTicket(ticket.number, { statusID: doneStatusID, beforeID: doneTicket.id });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ticket.statusID).toBe(doneStatusID);
+    expect(body.ticket.position > doneTicket.position).toBe(true);
+  });
+
+  it("rejects a soft-deleted neighbour", async () => {
+    const ticket = await createTicket();
+    const deleted = await createTicket();
+    await app.request(`/api/projects/TEST/tickets/${deleted.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await moveTicket(ticket.number, { beforeID: deleted.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects the ticket as its own neighbour", async () => {
+    const ticket = await createTicket();
+
+    const res = await moveTicket(ticket.number, { afterID: ticket.id });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("A ticket cannot be moved relative to itself.");
+  });
+});
