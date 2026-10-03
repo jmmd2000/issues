@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
+import { getEnv } from "./lib/env";
 import { auth } from "./routes/auth";
 import { tokens } from "./routes/tokens";
 import { mcp } from "./routes/mcp";
@@ -71,11 +72,11 @@ export type {
 
 const app = new Hono();
 
-if (process.env.NODE_ENV !== "test") {
+if (getEnv().NODE_ENV !== "test") {
   app.use("*", logger());
 }
 
-app.use("*", cors({ origin: process.env.WEB_ORIGIN ?? "http://localhost:5173", credentials: true }));
+app.use("*", cors({ origin: getEnv().WEB_ORIGIN, credentials: true }));
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
@@ -112,14 +113,14 @@ async function start() {
   await migrate(db, { migrationsFolder: "./drizzle" });
   console.log("Migrations complete...");
 
-  const port = Number(process.env.PORT) || 4000;
+  const { PORT: port } = getEnv();
 
   serve({ fetch: routes.fetch, port }, (info) => {
     console.log(`Server running at http://localhost:${info.port}`);
   });
 }
 
-if (process.env.NODE_ENV !== "test") {
+if (getEnv().NODE_ENV !== "test") {
   start().catch((error) => {
     console.error("Failed to start:", error);
     process.exit(1);

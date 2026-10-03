@@ -2,6 +2,7 @@ import { and, asc, count, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { attachments, tickets } from "../db/schema";
+import { getEnv } from "../lib/env";
 import { processFile, processImage, type ProcessedFile, type ProcessedImage } from "../lib/images";
 import { writeAttachment } from "../lib/storage";
 import type { Attachment, AttachmentRow } from "../lib/types";
@@ -9,26 +10,13 @@ import { ActivityService } from "./activityService";
 
 const MAX_ATTACHMENTS_PER_TICKET = 10;
 
-function envInt(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-const DEFAULTS = {
-  MAX_IMAGE_BYTES: 10_000_000,
-  MAX_FILE_BYTES: 10_000_000,
-  MAX_IMAGE_OUTPUT_BYTES: 1_000_000,
-  MAX_UPLOADS_BYTES: 20_000_000_000,
-} as const;
-
 function caps() {
+  const env = getEnv();
   return {
-    maxImageBytes: envInt("MAX_IMAGE_BYTES", DEFAULTS.MAX_IMAGE_BYTES),
-    maxFileBytes: envInt("MAX_FILE_BYTES", DEFAULTS.MAX_FILE_BYTES),
-    maxImageOutputBytes: envInt("MAX_IMAGE_OUTPUT_BYTES", DEFAULTS.MAX_IMAGE_OUTPUT_BYTES),
-    maxUploadsBytes: envInt("MAX_UPLOADS_BYTES", DEFAULTS.MAX_UPLOADS_BYTES),
+    maxImageBytes: env.MAX_IMAGE_BYTES,
+    maxFileBytes: env.MAX_FILE_BYTES,
+    maxImageOutputBytes: env.MAX_IMAGE_OUTPUT_BYTES,
+    maxUploadsBytes: env.MAX_UPLOADS_BYTES,
   };
 }
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AuthService } from "../services/authService";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
+import { getEnv } from "../lib/env";
 import { validationHook } from "../lib/validation";
 import { requireAuth } from "../middleware/auth";
 
@@ -15,7 +16,7 @@ const changePasswordSchema = z.object({ currentPassword: z.string(), newPassword
 
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: getEnv().NODE_ENV === "production",
   sameSite: "Lax",
   path: "/",
 } as const;

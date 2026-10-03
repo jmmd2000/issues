@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getEnv } from "./env";
 
 /** Matches `<sha256>.<2-5 char ext>`. Used as a path-traversal guard on the public route. */
 export const STORAGE_KEY_RE = /^[a-f0-9]{64}\.[a-z0-9]{2,5}$/;
@@ -8,15 +9,14 @@ let resolvedDir: string | null = null;
 
 /**
  * Returns the absolute path to the uploads directory, creating it if missing.
- * Resolves `process.env.UPLOADS_DIR` (default `./data/uploads`) once at first
+ * Resolves `UPLOADS_DIR` (default `./data/uploads`) once at first
  * call. Tests can switch directories per-run by setting UPLOADS_DIR before
  * importing this module - call `resetUploadsDir()` to clear the cache between
  * cases.
  */
 export function getUploadsDir(): string {
   if (resolvedDir) return resolvedDir;
-  const raw = process.env.UPLOADS_DIR ?? "./data/uploads";
-  const abs = path.resolve(raw);
+  const abs = path.resolve(getEnv().UPLOADS_DIR);
   fs.mkdirSync(abs, { recursive: true });
   resolvedDir = abs;
   return abs;

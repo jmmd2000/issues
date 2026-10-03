@@ -4,10 +4,10 @@ import fs from "node:fs";
 import { and, eq, lt, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { attachments, comments, projects, tickets } from "../db/schema";
+import { getEnv } from "../lib/env";
 import { deleteAttachment, getUploadsDir, listStoredKeys, STORAGE_KEY_RE } from "../lib/storage";
 
 const ORPHAN_AGE_HOURS = 24;
-const MAX_UPLOADS_BYTES_DEFAULT = 20_000_000_000;
 
 type Orphan = typeof attachments.$inferSelect & { ownerLabel: string };
 
@@ -94,7 +94,7 @@ function summariseQuota(): { fileCount: number; totalBytes: number; quotaBytes: 
   for (const name of entries) {
     totalBytes += fs.statSync(path.join(dir, name)).size;
   }
-  const quotaBytes = Number(process.env.MAX_UPLOADS_BYTES) || MAX_UPLOADS_BYTES_DEFAULT;
+  const quotaBytes = getEnv().MAX_UPLOADS_BYTES;
   const pct = ((totalBytes / quotaBytes) * 100).toFixed(1);
   return { fileCount: entries.length, totalBytes, quotaBytes, pct };
 }
