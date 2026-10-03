@@ -11,12 +11,13 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "check": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:sweep": "tsx src/scripts/sweep-uploads.ts",
-    "test": "NODE_ENV=test vitest run"
+    "test:integration": "NODE_ENV=test vitest run"
   },
   "dependencies": {
     "@hono/node-server": "1.19.12",
