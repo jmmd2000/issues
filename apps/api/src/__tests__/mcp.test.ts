@@ -138,6 +138,19 @@ describe("POST /api/mcp/tickets", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 for an assignee who is not a project member", async () => {
+    await createExtraUser("Outsider", "outsider@test.com");
+
+    const res = await app.request("/api/mcp/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ project: "TEST", title: "x", assignee: "Outsider" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Assignee is not a member of this project.");
+  });
+
   it("returns 404 for an unknown project key", async () => {
     const res = await app.request("/api/mcp/tickets", {
       method: "POST",
