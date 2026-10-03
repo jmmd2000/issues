@@ -2,3 +2,6 @@ node_modules
 dist
 drizzle
 .svelte-kit
+pnpm-lock.yaml
+.claude
+docs/*.html
