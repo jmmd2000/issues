@@ -128,6 +128,7 @@ describe("GET /api/search", () => {
 
   it("combines project, status, priority, label, and assignee filters", async () => {
     const { user: assignee } = await createExtraUser("Assignee", "assignee@test.com");
+    await db.insert(projectMembers).values({ projectID, userID: assignee.id, role: "member" });
     const doneStatusID = await getStatusID(projectID, "done");
     const bugLabelID = await getLabelID(projectID, "Bug");
 
