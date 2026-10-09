@@ -4,6 +4,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "../db";
 import { apiTokens, labels, projectMembers, statuses, tickets, users } from "../db/schema";
+import { loadRole } from "../lib/access";
 import { LINK_TYPES } from "../lib/constants";
 import type { LinkType, Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
@@ -306,6 +307,7 @@ async function seedLinksForProject(projectKey: string, ownerID: string, projectT
 
   const linkCount = Math.min(8, Math.floor(projectTickets.length / 12));
   const seen = new Set<string>();
+  const role = await loadRole(ownerID);
   let created = 0;
 
   for (let i = 0; i < linkCount; i++) {
@@ -325,6 +327,7 @@ async function seedLinksForProject(projectKey: string, ownerID: string, projectT
       viewingTicketID: source.id,
       viewingTicketRef: { number: source.number, title: source.title, projectKey },
       userID: ownerID,
+      role,
       targetRef: `${projectKey}-${target.number}`,
       linkType,
       direction: "outgoing",

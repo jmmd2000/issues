@@ -66,6 +66,7 @@ export const ticketLinks = new Hono()
         viewingTicketID: ticket.id,
         viewingTicketRef: { number: ticket.number, title: ticket.title, projectKey: key },
         userID,
+        role: c.get("role"),
         targetRef,
         linkType,
         direction,

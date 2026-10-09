@@ -535,6 +535,7 @@ export class McpService {
       viewingTicketID: context.ticketID,
       viewingTicketRef: { number: source.number, title: source.title, projectKey: context.project.key },
       userID,
+      role,
       targetRef: input.target,
       linkType: input.linkType,
       direction: "outgoing",
@@ -558,7 +559,7 @@ export class McpService {
    */
   static async removeLink(role: Role, userID: string, ref: string, input: McpLinkInput): Promise<void> {
     const context = await McpService.resolveTicketRef(role, ref);
-    const partner = await TicketLinkService.resolveTargetRef(input.target);
+    const partner = await TicketLinkService.resolveTargetRef(role, input.target);
 
     const [row] = await db
       .select({ id: ticketLinks.id })
