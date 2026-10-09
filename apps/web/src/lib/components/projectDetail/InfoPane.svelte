@@ -1,10 +1,8 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
   import { quartOut } from "svelte/easing";
-  import { resolve } from "$app/paths";
   import type { ProjectActivity, ProjectDetail, ProjectStats } from "@issues/api";
-  import { ExternalLink, PanelRightClose, PanelRightOpen, Settings } from "@lucide/svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import { ExternalLink, PanelRightClose, PanelRightOpen } from "@lucide/svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import ProjectActivityCard from "$lib/components/projectDetail/ProjectActivityCard.svelte";
   import SectionToggle from "$lib/components/projectDetail/SectionToggle.svelte";
@@ -43,13 +41,7 @@
     >
       {#if collapsed}<PanelRightOpen size={14} />{:else}<PanelRightClose size={14} />{/if}
     </button>
-    {#if !collapsed}
-      <h2>Project</h2>
-      <Button variant="secondary" size="sm" href={resolve("/projects/[key]/settings", { key: project.key })} aria-label="Project settings">
-        <Settings size={13} />
-        Settings
-      </Button>
-    {/if}
+    {#if !collapsed}<h2>Project</h2>{/if}
   </header>
 
   {#if !collapsed}

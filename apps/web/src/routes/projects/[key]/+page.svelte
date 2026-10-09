@@ -5,7 +5,9 @@
   import { page } from "$app/state";
   import type { PageProps } from "./$types";
   import type { Priority, Ticket } from "@issues/api";
-  import FiltersPane from "$lib/components/projectDetail/FiltersPane.svelte";
+  import { PRIORITIES } from "@issues/shared";
+  import ActiveFilterChips, { type ActiveFilter } from "$lib/components/projectDetail/ActiveFilterChips.svelte";
+  import FilterPanel from "$lib/components/projectDetail/FilterPanel.svelte";
   import WorkHeader from "$lib/components/projectDetail/WorkHeader.svelte";
   import InfoPane from "$lib/components/projectDetail/InfoPane.svelte";
   import TicketKanban from "$lib/components/kanban/TicketKanban.svelte";
@@ -72,6 +74,12 @@
   function toggleLabelFilter(id: string) {
     const next = toggleEntry(selectedLabelIDs, id);
     updateParams({ label: next.length ? next.join(",") : null, page: null });
+  }
+  function clearAllFilters() {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = null;
+    searchInput = "";
+    updateParams({ q: null, status: null, priority: null, assignee: null, label: null, showClosed: null, includeBacklog: null, page: null });
   }
   function handleSortChange(column: TicketListColumnID | null, direction: TicketListSortDirection | null) {
     updateParams({ sortBy: column, sortDir: direction });
@@ -151,9 +159,20 @@
     writeVisibleSet(listColumnsKey, next as Set<string>);
   }
 
+  const INFO_COLLAPSED_KEY = "project-info-collapsed";
+
+  function readInfoCollapsed(): boolean {
+    if (typeof localStorage === "undefined") return true;
+    return localStorage.getItem(INFO_COLLAPSED_KEY) !== "false";
+  }
+  function toggleInfoCollapsed() {
+    infoCollapsed = !infoCollapsed;
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(INFO_COLLAPSED_KEY, String(infoCollapsed));
+  }
+
   let createOpen = $state(false);
-  let filtersCollapsed = $state(false);
-  let infoCollapsed = $state(false);
+  let infoCollapsed = $state(readInfoCollapsed());
 
   // Server-side filters already applied, the only client filter left is the
   // "Include backlog" toggle hiding tickets in the dedicated Backlog status.
@@ -175,6 +194,36 @@
     })
   );
 
+  function buildActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
+    for (const status of project.statuses) {
+      if (!selectedStatusIDs.includes(status.id)) continue;
+      filters.push({ id: `status:${status.id}`, group: "Status", label: status.name, remove: () => toggleStatusFilter(status.id) });
+    }
+    for (const priority of PRIORITIES) {
+      if (!selectedPriorities.includes(priority)) continue;
+      const label = priority.charAt(0).toUpperCase() + priority.slice(1);
+      filters.push({ id: `priority:${priority}`, group: "Priority", label, remove: () => togglePriorityFilter(priority) });
+    }
+    for (const member of project.members) {
+      if (!selectedAssigneeIDs.includes(member.userID)) continue;
+      filters.push({ id: `assignee:${member.userID}`, group: "Assignee", label: member.user.name, remove: () => toggleAssigneeFilter(member.userID) });
+    }
+    for (const label of project.labels) {
+      if (!selectedLabelIDs.includes(label.id)) continue;
+      filters.push({ id: `label:${label.id}`, group: "Label", label: label.name, remove: () => toggleLabelFilter(label.id) });
+    }
+    if (showClosed) {
+      filters.push({ id: "option:closed", group: "Show", label: "Closed", remove: () => setShowClosed(false) });
+    }
+    if (!includeBacklog) {
+      filters.push({ id: "option:backlog", group: "Hide", label: "Backlog", remove: () => setIncludeBacklog(true) });
+    }
+    return filters;
+  }
+
+  const activeFilters = $derived(buildActiveFilters());
+
   const kanbanPickerStatuses = $derived(
     project.statuses.filter(s => (showClosed || s.category !== "cancelled") && (includeBacklog || s.id !== backlogStatusID)).map(s => ({ id: s.id, label: s.name }))
   );
@@ -184,42 +233,47 @@
   <title>{project.name} · Issues</title>
 </svelte:head>
 
-<section class="project-detail" style:--left-col={filtersCollapsed ? "3rem" : "clamp(260px, 18vw, 360px)"} style:--right-col={infoCollapsed ? "3rem" : "clamp(360px, 26vw, 480px)"}>
-  <FiltersPane
-    {searchInput}
-    {showClosed}
-    {includeBacklog}
-    {selectedStatusIDs}
-    {selectedPriorities}
-    {selectedAssigneeIDs}
-    {selectedLabelIDs}
-    statuses={project.statuses}
-    members={project.members}
-    labels={project.labels}
-    collapsed={filtersCollapsed}
-    onSearchInput={handleSearchInput}
-    onShowClosedChange={setShowClosed}
-    onIncludeBacklogChange={setIncludeBacklog}
-    onToggleStatus={toggleStatusFilter}
-    onTogglePriority={togglePriorityFilter}
-    onToggleAssignee={toggleAssigneeFilter}
-    onToggleLabel={toggleLabelFilter}
-    onToggleCollapsed={() => (filtersCollapsed = !filtersCollapsed)}
-  />
-
-  <main class="work">
+<section class="project-detail" style:--right-col={infoCollapsed ? "3rem" : "clamp(320px, 24vw, 440px)"}>
+  <div class="work">
     <WorkHeader
       {project}
       {view}
+      {searchInput}
+      activeFilterCount={activeFilters.length}
       {kanbanPickerStatuses}
       {visibleKanbanStatusIDs}
       {visibleListColumnIDs}
       {canEdit}
+      onSearchInput={handleSearchInput}
       onSetView={setView}
       onToggleKanbanColumn={toggleKanbanColumn}
       onToggleListColumn={toggleListColumn}
       onOpenCreate={() => (createOpen = true)}
-    />
+    >
+      {#snippet filterPanel()}
+        <FilterPanel
+          {showClosed}
+          {includeBacklog}
+          {selectedStatusIDs}
+          {selectedPriorities}
+          {selectedAssigneeIDs}
+          {selectedLabelIDs}
+          statuses={project.statuses}
+          members={project.members}
+          labels={project.labels}
+          onShowClosedChange={setShowClosed}
+          onIncludeBacklogChange={setIncludeBacklog}
+          onToggleStatus={toggleStatusFilter}
+          onTogglePriority={togglePriorityFilter}
+          onToggleAssignee={toggleAssigneeFilter}
+          onToggleLabel={toggleLabelFilter}
+        />
+      {/snippet}
+    </WorkHeader>
+
+    {#if activeFilters.length > 0}
+      <ActiveFilterChips filters={activeFilters} onClearAll={clearAllFilters} />
+    {/if}
 
     <div class="work-body">
       {#key view}
@@ -245,9 +299,11 @@
         </div>
       {/key}
     </div>
-  </main>
+  </div>
 
-  <InfoPane {project} stats={data.stats} activity={data.activity} collapsed={infoCollapsed} onToggleCollapsed={() => (infoCollapsed = !infoCollapsed)} />
+  <div class="info-rail">
+    <InfoPane {project} stats={data.stats} activity={data.activity} collapsed={infoCollapsed} onToggleCollapsed={toggleInfoCollapsed} />
+  </div>
 </section>
 
 {#if data.user}
@@ -266,7 +322,7 @@
 <style>
   .project-detail {
     display: grid;
-    grid-template-columns: var(--left-col) minmax(0, 1fr) var(--right-col);
+    grid-template-columns: minmax(0, 1fr) var(--right-col);
     gap: 0;
     margin: -2rem -2rem 0;
     transition: grid-template-columns var(--motion-base) var(--ease-out-expo);
@@ -288,18 +344,22 @@
     will-change: opacity;
   }
 
-  @media (max-width: 1100px) {
-    .project-detail {
-      grid-template-columns: var(--left-col) minmax(0, 1fr);
-    }
-    .project-detail :global(.pane[aria-label="Project info"]) {
-      display: none;
+  .info-rail {
+    display: flex;
+    min-width: 0;
+
+    & > :global(*) {
+      flex: 1;
     }
   }
 
-  @media (max-width: 720px) {
+  @media (max-width: 1100px) {
     .project-detail {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .info-rail {
+      display: none;
     }
   }
 </style>

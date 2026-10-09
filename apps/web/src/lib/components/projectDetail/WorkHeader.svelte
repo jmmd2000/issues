@@ -1,8 +1,11 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import { resolve } from "$app/paths";
   import type { ProjectDetail } from "@issues/api";
-  import { Columns3, List as ListIcon, Plus, Search } from "@lucide/svelte";
+  import { Columns3, List as ListIcon, ListFilter, Plus, Settings } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import Popover from "$lib/components/ui/Popover.svelte";
+  import SearchInput from "$lib/components/ui/SearchInput.svelte";
   import ColumnPicker from "$lib/components/kanban/ColumnPicker.svelte";
   import type { TicketListColumnID } from "$lib/components/tickets/TicketList.svelte";
   import { LIST_COLUMNS } from "$lib/components/tickets/TicketList.svelte";
@@ -10,19 +13,39 @@
   interface WorkHeaderProps {
     project: ProjectDetail;
     view: "kanban" | "list";
+    searchInput: string;
+    activeFilterCount: number;
     kanbanPickerStatuses: { id: string; label: string }[];
     visibleKanbanStatusIDs: Set<string>;
     visibleListColumnIDs: Set<TicketListColumnID>;
     canEdit: boolean;
+    /** Contents of the Filters popover. */
+    filterPanel: Snippet;
+    onSearchInput: (value: string) => void;
     onSetView: (next: "kanban" | "list") => void;
     onToggleKanbanColumn: (id: string) => void;
     onToggleListColumn: (id: string) => void;
     onOpenCreate: () => void;
   }
 
-  let { project, view, kanbanPickerStatuses, visibleKanbanStatusIDs, visibleListColumnIDs, canEdit, onSetView, onToggleKanbanColumn, onToggleListColumn, onOpenCreate }: WorkHeaderProps = $props();
+  let {
+    project,
+    view,
+    searchInput,
+    activeFilterCount,
+    kanbanPickerStatuses,
+    visibleKanbanStatusIDs,
+    visibleListColumnIDs,
+    canEdit,
+    filterPanel,
+    onSearchInput,
+    onSetView,
+    onToggleKanbanColumn,
+    onToggleListColumn,
+    onOpenCreate,
+  }: WorkHeaderProps = $props();
 
-  const projectSearchHref = $derived(resolve("/projects/[key]/search", { key: project.key }));
+  const settingsHref = $derived(resolve("/projects/[key]/settings", { key: project.key }));
 </script>
 
 <header class="pane-head">
@@ -30,8 +53,28 @@
     <code class="project-key">{project.key}</code>
     <h1>{project.name}</h1>
   </div>
+
   <div class="actions">
-    <div class="view-toggle">
+    <div class="search">
+      <SearchInput value={searchInput} placeholder="Search titles" onInput={onSearchInput} />
+    </div>
+
+    <div class="filters">
+      <Popover menuRole="dialog" menuLabel="Filters">
+        {#snippet trigger({ toggle, open })}
+          <Button variant="secondary" size="md" onclick={toggle} aria-expanded={open} aria-haspopup="dialog">
+            <ListFilter size={13} strokeWidth={2.5} />
+            Filters
+            {#if activeFilterCount > 0}<span class="count">{activeFilterCount}</span>{/if}
+          </Button>
+        {/snippet}
+        {#snippet menu()}
+          {@render filterPanel()}
+        {/snippet}
+      </Popover>
+    </div>
+
+    <div class="view-toggle" role="group" aria-label="View">
       <button type="button" class:active={view === "list"} onclick={() => onSetView("list")} aria-pressed={view === "list"}>
         <ListIcon size={13} />List
       </button>
@@ -46,9 +89,8 @@
       <ColumnPicker items={LIST_COLUMNS.map(c => ({ id: c.id, label: c.label }))} visible={visibleListColumnIDs as Set<string>} onToggle={onToggleListColumn} variant="secondary" />
     {/if}
 
-    <Button variant="secondary" size="md" href={projectSearchHref}>
-      <Search size={13} strokeWidth={3} />
-      Search
+    <Button variant="secondary" size="md" href={settingsHref} aria-label="Project settings" title="Project settings">
+      <Settings size={14} />
     </Button>
 
     {#if canEdit}
@@ -64,24 +106,22 @@
   .pane-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5em;
-    padding: 0 1.3em;
+    flex-wrap: wrap;
+    gap: 0.5em 1em;
+    min-height: 3.5em;
+    padding: 0.5em 1.25em;
     border-bottom: var(--border);
     background: var(--colour-bg-lighter);
-    flex-shrink: 0;
-    height: 3.5em;
     box-sizing: border-box;
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 3;
   }
 
   .title {
     display: flex;
     align-items: baseline;
     gap: 0.6em;
-    flex-wrap: wrap;
     min-width: 0;
     flex: 1;
 
@@ -97,64 +137,96 @@
       font-size: 1.1em;
       font-weight: 600;
       color: var(--colour-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 
   .actions {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.5em;
+  }
+
+  .search {
+    width: 14rem;
+  }
+
+  .count {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    font-weight: 700;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    background: var(--accent-tint-800);
+    color: var(--accent-shade-200);
+  }
+
+  /* The trigger sits near the right edge, so the popover opens leftwards. */
+  .filters :global(.popover-menu) {
+    left: auto;
+    right: 0;
+    width: 32rem;
+    max-width: calc(100vw - 2rem);
+    max-height: 70vh;
+    overflow-y: auto;
   }
 
   .view-toggle {
     display: inline-flex;
-    background: var(--colour-bg-lighter);
+    gap: 0.15em;
+    padding: 0.15em;
+    background: var(--colour-bg);
     border: var(--border);
     border-radius: var(--border-radius-inner);
-    overflow: hidden;
-    box-shadow:
-      0 1px 2px rgb(from var(--colour-text) r g b / 0.07),
-      inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
-    transition:
-      background var(--motion-fast) var(--ease-out-quart),
-      box-shadow var(--motion-fast) var(--ease-out-quart);
 
     button {
       display: inline-flex;
       align-items: center;
       gap: 0.35em;
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
+      border-radius: var(--border-radius-inner);
       cursor: pointer;
       font-size: 0.8em;
       font-weight: 600;
-      padding: 0.45em 0.75em;
-      color: var(--colour-text-secondary);
+      padding: 0.35em 0.7em;
+      color: var(--colour-muted);
       transition:
         background var(--motion-fast) var(--ease-out-quart),
-        color var(--motion-fast) var(--ease-out-quart),
-        transform 60ms var(--ease-out-quart);
+        color var(--motion-fast) var(--ease-out-quart);
 
       &:hover {
         color: var(--colour-text);
-        background: var(--colour-bg-hover);
       }
 
       &.active {
-        color: var(--colour-bg-lighter);
-        background: linear-gradient(180deg, var(--accent-tint-200), var(--accent-base));
-        border: 1px solid var(--accent-shade-100);
-        box-shadow:
-          rgb(from var(--colour-text) r g b / 0.2) 0 1px 3px,
-          rgb(from var(--colour-bg-lighter) r g b / 0.14) 0 1px 0 inset;
-
-        &:active {
-          transform: translateY(1px);
-          box-shadow:
-            rgb(from var(--colour-text) r g b / 0.25) 0 0 1px,
-            rgb(from var(--colour-bg-lighter) r g b / 0.08) 0 1px 0 inset;
-        }
+        color: var(--colour-text);
+        background: var(--colour-bg-lighter);
+        border-color: var(--colour-border);
+        box-shadow: var(--box-shadow);
       }
+    }
+  }
+
+  @media (max-width: 720px) {
+    .title {
+      flex-basis: 100%;
+    }
+
+    .actions {
+      width: 100%;
+    }
+
+    .search {
+      width: 100%;
+    }
+
+    .filters :global(.popover-menu) {
+      right: auto;
+      left: 0;
     }
   }
 </style>
