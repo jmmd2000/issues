@@ -229,6 +229,61 @@ describe("Ticket links", () => {
     });
   });
 
+  describe("GET /api/projects/:key/tickets/:num/links hidden targets", () => {
+    let viewerCookies: string;
+    let sourceNumber: number;
+
+    beforeEach(async () => {
+      ({ viewerCookies } = await createLinkTargets(cookies, projectID));
+      sourceNumber = (await createTicket(cookies, "TEST", "Source")).number;
+      await createLink("PRIV-1", "relates_to", sourceNumber, cookies);
+      await createLink("PUB-1", "relates_to", sourceNumber, cookies);
+      await createLink("PUB-2", "relates_to", sourceNumber, cookies);
+      await createLink("PRIV-1", "blocks", sourceNumber, cookies, "incoming");
+    });
+
+    async function listLinkRefs(headers: Record<string, string>) {
+      const res = await app.request(`/api/projects/TEST/tickets/${sourceNumber}/links`, { headers });
+      const body = await res.json();
+      return { text: JSON.stringify(body), refs: body.links.map((link: { ticket: { projectKey: string; number: number } }) => `${link.ticket.projectKey}-${link.ticket.number}`).sort() };
+    }
+
+    it("leaves out links to tickets the caller cannot see", async () => {
+      const { text, refs } = await listLinkRefs({ Cookie: viewerCookies });
+
+      expect(refs).toEqual(["PUB-1"]);
+      expect(text).not.toContain("Hidden in a private project");
+      expect(text).not.toContain("Hidden in a public project");
+    });
+
+    it("leaves out links to tickets an anonymous viewer cannot see", async () => {
+      const { refs } = await listLinkRefs({});
+
+      expect(refs).toEqual(["PUB-1"]);
+    });
+
+    it("lists every link for a member of the other projects", async () => {
+      const { refs } = await listLinkRefs({ Cookie: cookies });
+
+      expect(refs).toEqual(["PRIV-1", "PRIV-1", "PUB-1", "PUB-2"]);
+    });
+
+    it("hides a link when its ticket is made private and shows it again when made public", async () => {
+      const setVisibility = (visibility: "public" | "private") =>
+        app.request("/api/projects/PUB/tickets/1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Cookie: cookies },
+          body: JSON.stringify({ visibility }),
+        });
+
+      await setVisibility("private");
+      expect((await listLinkRefs({ Cookie: viewerCookies })).refs).toEqual([]);
+
+      await setVisibility("public");
+      expect((await listLinkRefs({ Cookie: viewerCookies })).refs).toEqual(["PUB-1"]);
+    });
+  });
+
   describe("GET /api/projects/:key/tickets/:num/links", () => {
     it("returns outgoing links from the source side", async () => {
       const a = await createTicket(cookies, "TEST", "A");
