@@ -510,7 +510,7 @@ export class McpService {
    */
   static async listLinks(role: Role, ref: string): Promise<{ links: CompactLink[] }> {
     const context = await McpService.resolveTicketRef(role, ref);
-    const rows = await TicketLinkService.listForTicket(context.ticketID);
+    const rows = await TicketLinkService.listForTicket(context.ticketID, role);
 
     return {
       links: rows.map(row => ({

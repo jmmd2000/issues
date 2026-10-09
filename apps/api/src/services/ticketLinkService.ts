@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { parseTicketRef } from "@issues/shared";
 import { db } from "../db";
 import { projects, statuses, ticketLinks, tickets, users } from "../db/schema";
-import { canView, type Role } from "../lib/access";
+import { canView, visibilityWhere, type Role } from "../lib/access";
 import type { LinkType, Priority, StatusCategory, TicketLink } from "../lib/types";
 import { ActivityService } from "./activityService";
 
@@ -40,11 +40,13 @@ export class TicketLinkService {
    * Lists every link involving a ticket, keyed by direction. Outgoing links
    * are stored with the ticket as source; incoming are stored with another
    * ticket as source (the inverse view is computed at render time using
-   * `direction`). Soft-deleted partner tickets are excluded.
+   * `direction`). Soft-deleted partner tickets are excluded, and so are
+   * partner tickets the caller cannot see.
    * @param ticketID The viewing ticket's ID
+   * @param role The caller's role, or `undefined` for an anonymous caller
    * @returns Outgoing + incoming links flattened into one ordered list
    */
-  static async listForTicket(ticketID: string): Promise<TicketLink[]> {
+  static async listForTicket(ticketID: string, role: Role | undefined): Promise<TicketLink[]> {
     const baseSelect = {
       id: ticketLinks.id,
       linkType: ticketLinks.linkType,
@@ -63,7 +65,7 @@ export class TicketLinkService {
         .innerJoin(projects, eq(tickets.projectID, projects.id))
         .innerJoin(statuses, eq(tickets.statusID, statuses.id))
         .leftJoin(users, eq(tickets.assigneeID, users.id))
-        .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt)))
+        .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt), visibilityWhere(role)))
         .orderBy(asc(ticketLinks.createdAt)),
       db
         .select(baseSelect)
@@ -72,7 +74,7 @@ export class TicketLinkService {
         .innerJoin(projects, eq(tickets.projectID, projects.id))
         .innerJoin(statuses, eq(tickets.statusID, statuses.id))
         .leftJoin(users, eq(tickets.assigneeID, users.id))
-        .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt)))
+        .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt), visibilityWhere(role)))
         .orderBy(asc(ticketLinks.createdAt)),
     ]);
 

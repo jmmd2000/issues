@@ -46,7 +46,7 @@ export const ticketLinks = new Hono()
     if (!canView(c.get("role"), project, ticket)) {
       throw new HTTPException(404, { message: `Ticket #${num} not found` });
     }
-    const links = await TicketLinkService.listForTicket(ticket.id);
+    const links = await TicketLinkService.listForTicket(ticket.id, c.get("role"));
     return c.json({ links });
   })
   .post(
