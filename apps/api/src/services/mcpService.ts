@@ -442,7 +442,7 @@ export class McpService {
    */
   static async getTicketActivity(role: Role, ref: string): Promise<{ activity: CompactActivity[] }> {
     const context = await McpService.resolveTicketRef(role, ref);
-    const rows = await ActivityService.listForTicket(context.ticketID);
+    const rows = await ActivityService.listForTicket(context.ticketID, role);
 
     return {
       activity: rows.map(row => ({
