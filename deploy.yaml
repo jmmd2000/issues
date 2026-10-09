@@ -1,0 +1,16 @@
+app: issues
+images:
+  - name: issues-api
+    dockerfile: apps/api/Dockerfile
+  - name: issues-web
+    dockerfile: apps/web/Dockerfile
+    buildArgs:
+      PUBLIC_API_URL: "https://{domain}"
+files: [docker-compose.yml, backup.sh]
+healthcheck: /api/health
+environments:
+  production:
+    dir: /home/james/issues/prod
+    domain: issues.jamesmddoyle.com
+    envCredential: issues-env-prod
+    backup: true
