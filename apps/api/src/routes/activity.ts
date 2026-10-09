@@ -31,7 +31,7 @@ export const activity = new Hono()
     if (!canView(c.get("role"), project, ticket)) {
       throw new HTTPException(404, { message: `Ticket #${num} not found` });
     }
-    const rows = await ActivityService.listForTicket(ticket.id);
+    const rows = await ActivityService.listForTicket(ticket.id, c.get("role"));
     return c.json({ activity: rows });
   })
   .get(

@@ -3,7 +3,7 @@ import { db } from "../db";
 import app from "../index";
 import argon2 from "argon2";
 import { eq, sql } from "drizzle-orm";
-import { apiTokens, sessions, users } from "../db/schema";
+import { apiTokens, projectMembers, projects, sessions, statuses, users } from "../db/schema";
 import { getEnv } from "../lib/env";
 import { assertTestDatabase } from "./setup/assertTestDatabase";
 
@@ -54,6 +54,48 @@ export async function createProject(
 
   const body = await res.json();
   return body.project;
+}
+
+/**
+ * Test helper to create a ticket in any project through the API, using that
+ * project's first status.
+ * @returns the created ticket
+ */
+export async function createTicketInProject(cookies: string, projectKey: string, title: string, visibility: "public" | "private" = "public") {
+  const [status] = await db.select({ id: statuses.id }).from(statuses).innerJoin(projects, eq(statuses.projectID, projects.id)).where(eq(projects.key, projectKey)).limit(1);
+
+  const res = await app.request(`/api/projects/${projectKey}/tickets`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookies },
+    body: JSON.stringify({ title, statusID: status.id, visibility }),
+  });
+  const body = await res.json();
+  return body.ticket;
+}
+
+/**
+ * Test helper that builds the tickets a link can point at, and a viewer who
+ * can see only some of them. The viewer is a member of the source project and
+ * of nothing else. The owner is a member of every project.
+ *
+ * - `PRIV-1`: a ticket in a private project
+ * - `PUB-1`: a public ticket in a public project
+ * - `PUB-2`: a private ticket in a public project
+ * @param ownerCookies the cookies of the user who owns every project
+ * @param sourceProjectID the project the links start from
+ * @returns the viewer's cookies and the private project's ID
+ */
+export async function createLinkTargets(ownerCookies: string, sourceProjectID: string) {
+  const { user: viewer, cookies: viewerCookies } = await createExtraUser("Viewer", "viewer@test.com");
+  await db.insert(projectMembers).values({ projectID: sourceProjectID, userID: viewer.id, role: "member" });
+
+  const privateProject = await createProject(ownerCookies, { key: "PRIV", name: "Private project", visibility: "private" });
+  await createProject(ownerCookies, { key: "PUB", name: "Public project", visibility: "public" });
+  await createTicketInProject(ownerCookies, "PRIV", "Hidden in a private project");
+  await createTicketInProject(ownerCookies, "PUB", "Visible public ticket");
+  await createTicketInProject(ownerCookies, "PUB", "Hidden in a public project", "private");
+
+  return { viewerCookies, privateProjectID: privateProject.id };
 }
 
 /**

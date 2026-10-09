@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import app from "../index";
 import { db } from "../db";
 import { labels, projectMembers, statuses } from "../db/schema";
-import { createAuthenticatedUser, createExtraUser, createProject, createTokenForUser, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, createServiceUser, createTokenForUser, resetDatabase } from "./helpers";
 
 let cookies: string;
 let userID: string;
@@ -844,6 +844,122 @@ describe("ticket links", () => {
     await createTicketRow({ title: "Target" });
     const res = await app.request("/api/mcp/tickets/TEST-1/links?target=TEST-2&linkType=blocks", { method: "DELETE", headers: { Cookie: cookies } });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("ticket link visibility", () => {
+  let viewerCookies: string;
+
+  beforeEach(async () => {
+    await setupProject();
+    await createTicketRow({ title: "Source" });
+    ({ viewerCookies } = await createLinkTargets(cookies, projectID));
+  });
+
+  function addLink(target: string, authCookies: string) {
+    return app.request("/api/mcp/tickets/TEST-1/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: authCookies },
+      body: JSON.stringify({ target, linkType: "blocks" }),
+    });
+  }
+
+  it("refuses to add a link to a ticket in a private project", async () => {
+    const res = await addLink("PRIV-1", viewerCookies);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ message: "Ticket PRIV-1 not found." });
+  });
+
+  it("refuses to add a link to a private ticket in a public project", async () => {
+    const res = await addLink("PUB-2", viewerCookies);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ message: "Ticket PUB-2 not found." });
+  });
+
+  it("adds a link to a public ticket in a public project", async () => {
+    const res = await addLink("PUB-1", viewerCookies);
+
+    expect(res.status).toBe(201);
+  });
+
+  describe("listing links", () => {
+    beforeEach(async () => {
+      await addLink("PRIV-1", cookies);
+      await addLink("PUB-1", cookies);
+      await addLink("PUB-2", cookies);
+    });
+
+    async function listRefs(headers: Record<string, string>) {
+      const res = await app.request("/api/mcp/tickets/TEST-1/links", { method: "GET", headers });
+      const body = await res.json();
+      return { text: JSON.stringify(body), refs: body.links.map((link: { ref: string }) => link.ref).sort() };
+    }
+
+    it("leaves out links to tickets the caller cannot see", async () => {
+      const { text, refs } = await listRefs({ Cookie: viewerCookies });
+
+      expect(refs).toEqual(["PUB-1"]);
+      expect(text).not.toContain("Hidden in a private project");
+      expect(text).not.toContain("Hidden in a public project");
+    });
+
+    it("lists every link for a service user", async () => {
+      const { user } = await createServiceUser();
+      const { token } = await createTokenForUser(user.id);
+
+      const { refs } = await listRefs({ Authorization: `Bearer ${token}` });
+
+      expect(refs).toEqual(["PRIV-1", "PUB-1", "PUB-2"]);
+    });
+  });
+
+  describe("activity", () => {
+    const hiddenTitles = ["Hidden in a private project", "Hidden in a public project"];
+
+    beforeEach(async () => {
+      await addLink("PUB-1", cookies);
+      await addLink("PRIV-1", cookies);
+      await addLink("PUB-2", cookies);
+    });
+
+    async function fetchText(path: string, headers: Record<string, string>) {
+      const res = await app.request(path, { method: "GET", headers });
+      return JSON.stringify(await res.json());
+    }
+
+    it("leaves out ticket activity that names a ticket the caller cannot see", async () => {
+      const text = await fetchText("/api/mcp/tickets/TEST-1/activity", { Cookie: viewerCookies });
+
+      expect(text).toContain("Visible public ticket");
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+
+    it("leaves out project activity that names a ticket the caller cannot see", async () => {
+      const text = await fetchText("/api/mcp/activity?project=TEST", { Cookie: viewerCookies });
+
+      expect(text).toContain("Visible public ticket");
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+
+    it("shows every entry to a service user", async () => {
+      const { user } = await createServiceUser();
+      const { token } = await createTokenForUser(user.id);
+
+      const text = await fetchText("/api/mcp/tickets/TEST-1/activity", { Authorization: `Bearer ${token}` });
+
+      for (const title of hiddenTitles) expect(text).toContain(title);
+    });
+  });
+
+  it("refuses to remove a link to a ticket the caller cannot see", async () => {
+    await addLink("PRIV-1", cookies);
+
+    const res = await app.request("/api/mcp/tickets/TEST-1/links?target=PRIV-1&linkType=blocks", { method: "DELETE", headers: { Cookie: viewerCookies } });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ message: "Ticket PRIV-1 not found." });
   });
 });
 

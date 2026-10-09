@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, exists, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
 import { projects, ticketActivity, tickets } from "../db/schema";
 import { visibilityWhere, type Role } from "../lib/access";
@@ -8,6 +8,26 @@ const VALUE_FIELDS = ["title", "description", "priority", "visibility"] as const
 const REF_FIELDS = ["status", "assignee", "parent"] as const;
 
 const COMMENT_EXCERPT_LIMIT = 200;
+
+/**
+ * Builds a condition that leaves out link and "cloned from" entries when the
+ * other ticket is one the viewer cannot see. Every other entry passes, and
+ * service users see everything.
+ * @param activity The activity columns, as a relational query passes them to `where`
+ * @param role The viewer's role, or `undefined` for an anonymous viewer
+ */
+function partnerVisibleCondition(activity: Pick<typeof ticketActivity, "action" | "oldValue" | "newValue">, role: Role | undefined): SQL | undefined {
+  if (role?.isService) return undefined;
+
+  const partnerID = sql`(case when ${activity.action} = 'cloned_from' then ${activity.newValue}->>'id' else coalesce(${activity.newValue}, ${activity.oldValue})->>'ticketID' end)::uuid`;
+  const visiblePartner = db
+    .select({ id: tickets.id })
+    .from(tickets)
+    .innerJoin(projects, eq(tickets.projectID, projects.id))
+    .where(and(sql`${tickets.id} = ${partnerID}`, visibilityWhere(role)));
+
+  return or(notInArray(activity.action, ["link_added", "link_removed", "cloned_from"]), exists(visiblePartner));
+}
 
 /**
  * Plaintext preview of a comment body for activity rows. Collapses runs of
@@ -268,13 +288,15 @@ export class ActivityService {
   }
 
   /**
-   * Returns all activity entries for a given ticket
+   * Returns all activity entries for a given ticket, without link and
+   * "cloned from" entries that name a ticket the caller cannot see.
    * @param ticketID The ID of the ticket
+   * @param role The caller's role, or `undefined` for an anonymous caller
    * @returns The list of activity rows for the ticket
    */
-  static async listForTicket(ticketID: string) {
+  static async listForTicket(ticketID: string, role: Role | undefined) {
     return db.query.ticketActivity.findMany({
-      where: eq(ticketActivity.ticketID, ticketID),
+      where: activity => and(eq(activity.ticketID, ticketID), partnerVisibleCondition(activity, role)),
       orderBy: [desc(ticketActivity.createdAt)],
       with: {
         user: { columns: { id: true, name: true, avatarURL: true } },
@@ -293,12 +315,15 @@ export class ActivityService {
   static async listForProject(projectID: string, limit = 50, role: Role | undefined) {
     const memberOrService = role?.isService || !!role?.memberships.has(projectID);
     return db.query.ticketActivity.findMany({
-      where: (activity, { exists }) =>
-        exists(
-          db
-            .select({ id: tickets.id })
-            .from(tickets)
-            .where(and(eq(tickets.id, activity.ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt), memberOrService ? undefined : eq(tickets.visibility, "public")))
+      where: activity =>
+        and(
+          exists(
+            db
+              .select({ id: tickets.id })
+              .from(tickets)
+              .where(and(eq(tickets.id, activity.ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt), memberOrService ? undefined : eq(tickets.visibility, "public")))
+          ),
+          partnerVisibleCondition(activity, role)
         ),
       orderBy: [desc(ticketActivity.createdAt)],
       limit,
@@ -324,13 +349,16 @@ export class ActivityService {
     const visibilityClause = visibilityWhere(options.role);
 
     const rows = await db.query.ticketActivity.findMany({
-      where: (activity, { exists }) =>
-        exists(
-          db
-            .select({ id: tickets.id })
-            .from(tickets)
-            .innerJoin(projects, eq(tickets.projectID, projects.id))
-            .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt), visibilityClause))
+      where: activity =>
+        and(
+          exists(
+            db
+              .select({ id: tickets.id })
+              .from(tickets)
+              .innerJoin(projects, eq(tickets.projectID, projects.id))
+              .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt), visibilityClause))
+          ),
+          partnerVisibleCondition(activity, options.role)
         ),
       orderBy: [desc(ticketActivity.createdAt)],
       limit,

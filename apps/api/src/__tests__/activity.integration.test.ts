@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { comments, labels, statuses, ticketActivity, users } from "../db/schema";
+import { comments, labels, projects, statuses, ticketActivity, users } from "../db/schema";
 import { and, eq } from "drizzle-orm";
 import { ActivityService } from "../services/activityService";
 import { TicketService } from "../services/ticketService";
 import type { TicketSnapshot } from "../lib/types";
-import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, resetDatabase } from "./helpers";
 
 let cookies: string;
 let userID: string;
@@ -702,5 +702,140 @@ describe("GET /api/feed", () => {
     const body = await res.json();
     const titles = body.events.map((event: { ticket: { title: string } }) => event.ticket.title);
     expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
+  });
+});
+
+describe("link and clone activity visibility", () => {
+  let viewerCookies: string;
+
+  const hiddenTitles = ["Hidden in a private project", "Hidden in a public project"];
+
+  async function linkSourceTo(targetRef: string) {
+    await app.request("/api/projects/TEST/tickets/1/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ targetRef, linkType: "relates_to", direction: "outgoing" }),
+    });
+  }
+
+  async function fetchActivity(path: string, headers: Record<string, string> = {}) {
+    const res = await app.request(path, { headers });
+    const body = await res.json();
+    const rows: { action: string; newValue: { title?: string } | null }[] = body.activity ?? body.events;
+    return { text: JSON.stringify(body), rows };
+  }
+
+  function linkedTitles(rows: { action: string; newValue: { title?: string } | null }[]) {
+    return rows.filter(row => row.action === "link_added").map(row => row.newValue?.title);
+  }
+
+  beforeEach(async () => {
+    await setupFixture();
+    ({ viewerCookies } = await createLinkTargets(cookies, projectID));
+    await createTicket({ title: "Source" });
+    await linkSourceTo("PUB-1");
+    await linkSourceTo("PRIV-1");
+    await linkSourceTo("PUB-2");
+  });
+
+  describe("ticket activity", () => {
+    it("leaves out link entries that name a ticket the caller cannot see", async () => {
+      const { text, rows } = await fetchActivity("/api/projects/TEST/tickets/1/activity", { Cookie: viewerCookies });
+
+      expect(linkedTitles(rows)).toEqual(["Visible public ticket"]);
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+
+    it("leaves out link entries that name a ticket an anonymous viewer cannot see", async () => {
+      const { text, rows } = await fetchActivity("/api/projects/TEST/tickets/1/activity");
+
+      expect(linkedTitles(rows)).toEqual(["Visible public ticket"]);
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+
+    it("keeps entries that are not links", async () => {
+      const { rows } = await fetchActivity("/api/projects/TEST/tickets/1/activity", { Cookie: viewerCookies });
+
+      expect(rows.some(row => row.action === "created")).toBe(true);
+    });
+
+    it("shows every link entry to a member of the other projects", async () => {
+      const { rows } = await fetchActivity("/api/projects/TEST/tickets/1/activity", { Cookie: cookies });
+
+      expect(linkedTitles(rows).sort()).toEqual(["Hidden in a private project", "Hidden in a public project", "Visible public ticket"]);
+    });
+
+    it("hides an entry when its ticket is made private and shows it again when made public", async () => {
+      const setVisibility = (visibility: "public" | "private") =>
+        app.request("/api/projects/PUB/tickets/1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Cookie: cookies },
+          body: JSON.stringify({ visibility }),
+        });
+
+      await setVisibility("private");
+      expect(linkedTitles((await fetchActivity("/api/projects/TEST/tickets/1/activity", { Cookie: viewerCookies })).rows)).toEqual([]);
+
+      await setVisibility("public");
+      expect(linkedTitles((await fetchActivity("/api/projects/TEST/tickets/1/activity", { Cookie: viewerCookies })).rows)).toEqual(["Visible public ticket"]);
+    });
+  });
+
+  describe("project feed", () => {
+    it("leaves out link entries that name a ticket the caller cannot see", async () => {
+      const { text, rows } = await fetchActivity("/api/projects/TEST/activity", { Cookie: viewerCookies });
+
+      expect(linkedTitles(rows)).toEqual(["Visible public ticket"]);
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+
+    it("still returns a full page when the newest entries are hidden", async () => {
+      const { rows } = await fetchActivity("/api/projects/TEST/activity?limit=2", { Cookie: viewerCookies });
+
+      expect(rows.map(row => row.action)).toEqual(["link_added", "created"]);
+    });
+  });
+
+  describe("home feed", () => {
+    it("leaves out link entries that name a ticket the caller cannot see", async () => {
+      const { text } = await fetchActivity("/api/feed", { Cookie: viewerCookies });
+
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+
+    it("leaves out link entries that name a ticket an anonymous viewer cannot see", async () => {
+      const { text } = await fetchActivity("/api/feed");
+
+      for (const title of hiddenTitles) expect(text).not.toContain(title);
+    });
+  });
+
+  describe("cloned from entries", () => {
+    async function cloneHiddenTicket() {
+      const [publicProject] = await db.select({ id: projects.id }).from(projects).where(eq(projects.key, "PUB")).limit(1);
+      const [status] = await db.select({ id: statuses.id }).from(statuses).where(eq(statuses.projectID, publicProject.id)).limit(1);
+      await app.request("/api/projects/PUB/tickets/2/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookies },
+        body: JSON.stringify({ ticket: { title: "Public clone", statusID: status.id } }),
+      });
+    }
+
+    it("leaves out the clone entries when the caller cannot see the source ticket", async () => {
+      await cloneHiddenTicket();
+
+      const { text, rows } = await fetchActivity("/api/projects/PUB/tickets/3/activity", { Cookie: viewerCookies });
+
+      expect(rows.some(row => row.action === "cloned_from" || row.action === "link_added")).toBe(false);
+      expect(text).not.toContain("Hidden in a public project");
+    });
+
+    it("shows the clone entries to a member of the source ticket's project", async () => {
+      await cloneHiddenTicket();
+
+      const { rows } = await fetchActivity("/api/projects/PUB/tickets/3/activity", { Cookie: cookies });
+
+      expect(rows.some(row => row.action === "cloned_from")).toBe(true);
+    });
   });
 });

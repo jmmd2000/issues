@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { parseTicketRef } from "@issues/shared";
 import { db } from "../db";
 import { projects, statuses, ticketLinks, tickets, users } from "../db/schema";
+import { canView, visibilityWhere, type Role } from "../lib/access";
 import type { LinkType, Priority, StatusCategory, TicketLink } from "../lib/types";
 import { ActivityService } from "./activityService";
 
@@ -39,11 +40,13 @@ export class TicketLinkService {
    * Lists every link involving a ticket, keyed by direction. Outgoing links
    * are stored with the ticket as source; incoming are stored with another
    * ticket as source (the inverse view is computed at render time using
-   * `direction`). Soft-deleted partner tickets are excluded.
+   * `direction`). Soft-deleted partner tickets are excluded, and so are
+   * partner tickets the caller cannot see.
    * @param ticketID The viewing ticket's ID
+   * @param role The caller's role, or `undefined` for an anonymous caller
    * @returns Outgoing + incoming links flattened into one ordered list
    */
-  static async listForTicket(ticketID: string): Promise<TicketLink[]> {
+  static async listForTicket(ticketID: string, role: Role | undefined): Promise<TicketLink[]> {
     const baseSelect = {
       id: ticketLinks.id,
       linkType: ticketLinks.linkType,
@@ -62,7 +65,7 @@ export class TicketLinkService {
         .innerJoin(projects, eq(tickets.projectID, projects.id))
         .innerJoin(statuses, eq(tickets.statusID, statuses.id))
         .leftJoin(users, eq(tickets.assigneeID, users.id))
-        .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt)))
+        .where(and(eq(ticketLinks.sourceTicketID, ticketID), isNull(tickets.deletedAt), visibilityWhere(role)))
         .orderBy(asc(ticketLinks.createdAt)),
       db
         .select(baseSelect)
@@ -71,7 +74,7 @@ export class TicketLinkService {
         .innerJoin(projects, eq(tickets.projectID, projects.id))
         .innerJoin(statuses, eq(tickets.statusID, statuses.id))
         .leftJoin(users, eq(tickets.assigneeID, users.id))
-        .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt)))
+        .where(and(eq(ticketLinks.targetTicketID, ticketID), isNull(tickets.deletedAt), visibilityWhere(role)))
         .orderBy(asc(ticketLinks.createdAt)),
     ]);
 
@@ -79,10 +82,15 @@ export class TicketLinkService {
   }
 
   /**
-   * Resolves a `KEY-N` reference to a ticket row. Throws 400 if the format is
-   * invalid, 404 if the project or ticket cannot be found.
+   * Resolves a `KEY-N` reference to a ticket row. A ticket the caller cannot
+   * see gets the same 404 as a ticket that does not exist, so refs cannot be
+   * used to find private tickets.
+   * @param role The caller's role
+   * @param targetRef Project-prefixed ticket reference, e.g. "ISSUE-42"
+   * @throws HTTPException 400 if the format is invalid
+   * @throws HTTPException 404 if the ticket does not exist or the caller cannot see it
    */
-  static async resolveTargetRef(targetRef: string) {
+  static async resolveTargetRef(role: Role, targetRef: string) {
     const parsed = parseTicketRef(targetRef.toUpperCase().trim());
     if (!parsed) throw new HTTPException(400, { message: `Invalid ticket reference: ${targetRef}. Expected format: KEY-NUMBER.` });
     const { projectKey, number } = parsed;
@@ -93,8 +101,10 @@ export class TicketLinkService {
         number: tickets.number,
         title: tickets.title,
         priority: tickets.priority,
+        visibility: tickets.visibility,
         projectID: tickets.projectID,
         projectKey: projects.key,
+        projectVisibility: projects.visibility,
         status: { name: statuses.name, category: statuses.category },
         assignee: { id: users.id, name: users.name, avatarURL: users.avatarURL },
       })
@@ -105,8 +115,11 @@ export class TicketLinkService {
       .where(and(eq(projects.key, projectKey), eq(tickets.number, number), isNull(tickets.deletedAt)))
       .limit(1);
 
-    if (!row.length || !row[0]) throw new HTTPException(404, { message: `Ticket ${targetRef} not found.` });
-    return row[0];
+    const [target] = row;
+    if (!target || !canView(role, { id: target.projectID, visibility: target.projectVisibility }, { visibility: target.visibility })) {
+      throw new HTTPException(404, { message: `Ticket ${targetRef} not found.` });
+    }
+    return target;
   }
 
   /**
@@ -119,6 +132,7 @@ export class TicketLinkService {
    * @param input.viewingTicketID The ticket whose detail page the user is on
    * @param input.viewingTicketRef The viewing ticket's number + title (used for incoming activity rows)
    * @param input.userID The acting user (recorded as createdBy and on the activity row)
+   * @param input.role The acting user's role, used to check that they can see the target
    * @param input.targetRef Project-prefixed ticket reference, e.g. "ISSUE-42"
    * @param input.linkType One of the canonical link types
    * @param input.direction Whether the user is asserting an outgoing or inverse relationship
@@ -128,12 +142,13 @@ export class TicketLinkService {
     viewingTicketID: string;
     viewingTicketRef: { number: number; title: string; projectKey: string };
     userID: string;
+    role: Role;
     targetRef: string;
     linkType: LinkType;
     direction: "outgoing" | "incoming";
   }): Promise<TicketLink> {
-    const { viewingTicketID, viewingTicketRef, userID, targetRef, linkType, direction } = input;
-    const partner = await this.resolveTargetRef(targetRef);
+    const { viewingTicketID, viewingTicketRef, userID, role, targetRef, linkType, direction } = input;
+    const partner = await this.resolveTargetRef(role, targetRef);
     if (partner.id === viewingTicketID) throw new HTTPException(400, { message: "A ticket cannot link to itself." });
 
     const sourceTicketID = direction === "outgoing" ? viewingTicketID : partner.id;
