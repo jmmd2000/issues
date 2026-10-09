@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import app from "../index";
 import { db } from "../db";
 import { labels, projectMembers, statuses } from "../db/schema";
-import { createAuthenticatedUser, createExtraUser, createProject, createTokenForUser, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, createTokenForUser, resetDatabase } from "./helpers";
 
 let cookies: string;
 let userID: string;
@@ -844,6 +844,53 @@ describe("ticket links", () => {
     await createTicketRow({ title: "Target" });
     const res = await app.request("/api/mcp/tickets/TEST-1/links?target=TEST-2&linkType=blocks", { method: "DELETE", headers: { Cookie: cookies } });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("ticket link target visibility", () => {
+  let viewerCookies: string;
+
+  beforeEach(async () => {
+    await setupProject();
+    await createTicketRow({ title: "Source" });
+    ({ viewerCookies } = await createLinkTargets(cookies, projectID));
+  });
+
+  function addLink(target: string, authCookies: string) {
+    return app.request("/api/mcp/tickets/TEST-1/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: authCookies },
+      body: JSON.stringify({ target, linkType: "blocks" }),
+    });
+  }
+
+  it("refuses to add a link to a ticket in a private project", async () => {
+    const res = await addLink("PRIV-1", viewerCookies);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ message: "Ticket PRIV-1 not found." });
+  });
+
+  it("refuses to add a link to a private ticket in a public project", async () => {
+    const res = await addLink("PUB-2", viewerCookies);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ message: "Ticket PUB-2 not found." });
+  });
+
+  it("adds a link to a public ticket in a public project", async () => {
+    const res = await addLink("PUB-1", viewerCookies);
+
+    expect(res.status).toBe(201);
+  });
+
+  it("refuses to remove a link to a ticket the caller cannot see", async () => {
+    await addLink("PRIV-1", cookies);
+
+    const res = await app.request("/api/mcp/tickets/TEST-1/links?target=PRIV-1&linkType=blocks", { method: "DELETE", headers: { Cookie: viewerCookies } });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ message: "Ticket PRIV-1 not found." });
   });
 });
 

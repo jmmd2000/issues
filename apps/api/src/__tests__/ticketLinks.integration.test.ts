@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
-import { statuses, ticketActivity, ticketLinks } from "../db/schema";
+import { projectMembers, statuses, ticketActivity, ticketLinks } from "../db/schema";
 import { and, eq } from "drizzle-orm";
-import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, resetDatabase } from "./helpers";
 
 let cookies: string;
 let projectID: string;
@@ -152,6 +152,80 @@ describe("Ticket links", () => {
       const a = await createTicket(cookies, "TEST", "A");
       const res = await createLink(`TEST-${a.number}`, "blocks", a.number, cookies, "incoming");
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe("POST /api/projects/:key/tickets/:num/links target visibility", () => {
+    let viewerCookies: string;
+    let privateProjectID: string;
+    let sourceNumber: number;
+
+    beforeEach(async () => {
+      ({ viewerCookies, privateProjectID } = await createLinkTargets(cookies, projectID));
+      sourceNumber = (await createTicket(cookies, "TEST", "Source")).number;
+    });
+
+    async function expectNoLinkWritten() {
+      expect(await db.select().from(ticketLinks)).toHaveLength(0);
+      expect(await db.select().from(ticketActivity).where(eq(ticketActivity.action, "link_added"))).toHaveLength(0);
+    }
+
+    it("refuses a ticket in a private project the caller is not a member of", async () => {
+      const res = await createLink("PRIV-1", "relates_to", sourceNumber, viewerCookies);
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ message: "Ticket PRIV-1 not found." });
+      await expectNoLinkWritten();
+    });
+
+    it("refuses a private ticket in a public project the caller is not a member of", async () => {
+      const res = await createLink("PUB-2", "relates_to", sourceNumber, viewerCookies);
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ message: "Ticket PUB-2 not found." });
+      await expectNoLinkWritten();
+    });
+
+    it("refuses an incoming link from a ticket the caller cannot see", async () => {
+      const res = await createLink("PRIV-1", "blocks", sourceNumber, viewerCookies, "incoming");
+
+      expect(res.status).toBe(404);
+      await expectNoLinkWritten();
+    });
+
+    it("gives a hidden ticket and a missing ticket the same error", async () => {
+      const hidden = await createLink("PRIV-1", "relates_to", sourceNumber, viewerCookies);
+      const missing = await createLink("PRIV-99", "relates_to", sourceNumber, viewerCookies);
+
+      expect(hidden.status).toBe(missing.status);
+      expect(await hidden.json()).toEqual({ message: "Ticket PRIV-1 not found." });
+      expect(await missing.json()).toEqual({ message: "Ticket PRIV-99 not found." });
+    });
+
+    it("returns 404 and not 409 when a hidden ticket is already linked", async () => {
+      await createLink("PRIV-1", "relates_to", sourceNumber, cookies);
+
+      const res = await createLink("PRIV-1", "relates_to", sourceNumber, viewerCookies);
+
+      expect(res.status).toBe(404);
+    });
+
+    it("allows a public ticket in a public project", async () => {
+      const res = await createLink("PUB-1", "relates_to", sourceNumber, viewerCookies);
+
+      expect(res.status).toBe(201);
+    });
+
+    it("allows a private ticket when the caller is a member of its project", async () => {
+      const { user: member, cookies: memberCookies } = await createExtraUser("Member", "member@test.com");
+      await db.insert(projectMembers).values([
+        { projectID, userID: member.id, role: "member" },
+        { projectID: privateProjectID, userID: member.id, role: "member" },
+      ]);
+
+      const res = await createLink("PRIV-1", "relates_to", sourceNumber, memberCookies);
+
+      expect(res.status).toBe(201);
     });
   });
 
