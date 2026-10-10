@@ -98,7 +98,8 @@
         {:else}
           <ul class="rail-feed">
             {#each data.feed.events as event (event.id)}
-              <ProjectActivityCard row={event} projectKey={event.project.key} statuses={[]} labels={[]} members={[]} />
+              {@const lookup = data.feed.lookups[event.project.key]}
+              <ProjectActivityCard row={event} projectKey={event.project.key} statuses={lookup?.statuses ?? []} labels={lookup?.labels ?? []} members={lookup?.members ?? []} />
             {/each}
           </ul>
         {/if}

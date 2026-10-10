@@ -5,6 +5,7 @@ import { StatusService } from "./statusService";
 import { canView, type Role } from "../lib/access";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
+import type { ActivityLookup } from "../lib/types";
 
 export class ProjectService {
   /**
@@ -163,6 +164,34 @@ export class ProjectService {
     }
 
     return project;
+  }
+
+  /**
+   * Gets the statuses, labels and members that activity cards need for each
+   * project, keyed by project key. Only the fields used for colours and
+   * avatars are returned. The caller must only pass keys for projects the
+   * viewer can already see.
+   * @param keys The keys of the projects to look up
+   * @returns A lookup for each project found, keyed by project key
+   */
+  static async getActivityLookups(keys: string[]): Promise<Record<string, ActivityLookup>> {
+    if (keys.length === 0) return {};
+
+    const rows = await db.query.projects.findMany({
+      where: inArray(projects.key, keys),
+      columns: { key: true },
+      with: {
+        statuses: { columns: { id: true, category: true } },
+        labels: { columns: { id: true, colour: true } },
+        members: { columns: {}, with: { user: { columns: { id: true, avatarURL: true } } } },
+      },
+    });
+
+    const lookups: Record<string, ActivityLookup> = {};
+    for (const row of rows) {
+      lookups[row.key] = { statuses: row.statuses, labels: row.labels, members: row.members };
+    }
+    return lookups;
   }
 
   /**

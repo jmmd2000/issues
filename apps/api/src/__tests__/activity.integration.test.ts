@@ -703,6 +703,42 @@ describe("GET /api/feed", () => {
     const titles = body.events.map((event: { ticket: { title: string } }) => event.ticket.title);
     expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
   });
+
+  it("returns each feed project's status categories and label colours in lookups", async () => {
+    const project = await createProject(cookies, { key: "ONE", name: "One" });
+    const doneStatusID = await seedProjectStatusID(project.id, "done");
+    const [label] = await db.select({ id: labels.id, colour: labels.colour }).from(labels).where(eq(labels.projectID, project.id)).limit(1);
+    await createTicketIn("ONE", "Finished", doneStatusID);
+
+    const res = await app.request("/api/feed", { headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    expect(body.lookups.ONE.statuses).toContainEqual({ id: doneStatusID, category: "done" });
+    expect(body.lookups.ONE.labels).toContainEqual({ id: label.id, colour: label.colour });
+  });
+
+  it("returns lookup members without email addresses", async () => {
+    const project = await createProject(cookies, { key: "ONE", name: "One" });
+    await createTicketIn("ONE", "Finished", await seedProjectStatusID(project.id));
+
+    const res = await app.request("/api/feed");
+    const body = await res.json();
+
+    expect(body.lookups.ONE.members.length).toBeGreaterThan(0);
+    for (const member of body.lookups.ONE.members) {
+      expect(Object.keys(member.user).sort()).toEqual(["avatarURL", "id"]);
+    }
+  });
+
+  it("leaves private projects out of the lookups for anonymous viewers", async () => {
+    const privateProject = await createProject(cookies, { key: "PRIV", visibility: "private" });
+    await createTicketIn("PRIV", "Private hidden", await seedProjectStatusID(privateProject.id));
+
+    const res = await app.request("/api/feed");
+    const body = await res.json();
+
+    expect(body.lookups).not.toHaveProperty("PRIV");
+  });
 });
 
 describe("link and clone activity visibility", () => {

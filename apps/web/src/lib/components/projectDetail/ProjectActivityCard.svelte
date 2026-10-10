@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import type { Label, Priority, ProjectActivity, ProjectMember, Status } from "@issues/api";
+  import type { ActivityLookup, Priority, ProjectActivity, Status } from "@issues/api";
   import LabelChip from "$lib/components/tickets/LabelChip.svelte";
   import PriorityChip from "$lib/components/tickets/PriorityChip.svelte";
   import StatusChip from "$lib/components/tickets/StatusChip.svelte";
@@ -12,9 +12,9 @@
   interface ProjectActivityCardProps {
     row: ProjectActivity;
     projectKey: string;
-    statuses: Status[];
-    labels: Label[];
-    members: ProjectMember[];
+    statuses: ActivityLookup["statuses"];
+    labels: ActivityLookup["labels"];
+    members: ActivityLookup["members"];
   }
 
   let { row, projectKey, statuses, labels, members }: ProjectActivityCardProps = $props();

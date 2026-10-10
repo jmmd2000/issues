@@ -7,6 +7,7 @@ import { canView } from "../lib/access";
 import { optionalAuth } from "../middleware/auth";
 import { requireProjectRead } from "../middleware/projectAccess";
 import { ActivityService } from "../services/activityService";
+import { ProjectService } from "../services/projectService";
 import { TicketService } from "../services/ticketService";
 import { projectKeyParamSchema } from "./projects";
 
@@ -51,5 +52,9 @@ export const activity = new Hono()
   .get("/api/feed", optionalAuth, zValidator("query", feedQuerySchema, validationHook), async c => {
     const { limit } = c.req.valid("query");
     const events = await ActivityService.listGlobal(limit, { role: c.get("role") });
-    return c.json({ events });
+    // The feed spans projects, so each card needs its own project's statuses,
+    // labels and members to colour chips and show avatars.
+    const projectKeys = [...new Set(events.map(event => event.project.key))];
+    const lookups = await ProjectService.getActivityLookups(projectKeys);
+    return c.json({ events, lookups });
   });

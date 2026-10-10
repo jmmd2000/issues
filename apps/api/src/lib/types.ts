@@ -73,6 +73,13 @@ export type GlobalActivity = ProjectActivity & {
   project: { key: string };
 };
 
+/** The parts of a project an activity card needs to colour status and label chips and show member avatars. */
+export type ActivityLookup = {
+  statuses: Pick<Status, "id" | "category">[];
+  labels: Pick<Label, "id" | "colour">[];
+  members: { user: Pick<ProjectMemberUser, "id" | "avatarURL"> }[];
+};
+
 export type LinkedTicketRef = {
   id: string;
   number: number;

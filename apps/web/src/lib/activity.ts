@@ -1,5 +1,5 @@
 // Renders ticket_activity rows as humanised sentences
-import type { ActivityValue, Label, LinkType, Priority, ProjectMember, Status, TicketActivity } from "@issues/api";
+import type { ActivityLookup, ActivityValue, LinkType, Priority, Status, TicketActivity } from "@issues/api";
 import { LINK_TYPES, PRIORITIES } from "@issues/shared";
 
 export function isPriority(value: unknown): value is Priority {
@@ -10,15 +10,15 @@ export function asLinkType(value: string | null | undefined): LinkType | null {
   return value && (LINK_TYPES as readonly string[]).includes(value) ? (value as LinkType) : null;
 }
 
-export function statusCategory(statuses: Status[], id: string | null | undefined): Status["category"] {
+export function statusCategory(statuses: ActivityLookup["statuses"], id: string | null | undefined): Status["category"] {
   return (id && statuses.find(s => s.id === id)?.category) || "backlog";
 }
 
-export function labelColour(labels: Label[], id: string | null | undefined): string {
+export function labelColour(labels: ActivityLookup["labels"], id: string | null | undefined): string {
   return (id && labels.find(l => l.id === id)?.colour) || "var(--colour-muted)";
 }
 
-export function memberAvatar(members: ProjectMember[], id: string | null | undefined): string | null {
+export function memberAvatar(members: ActivityLookup["members"], id: string | null | undefined): string | null {
   if (!id) return null;
   return members.find(m => m.user.id === id)?.user.avatarURL ?? null;
 }

@@ -60,6 +60,7 @@ export type {
   ActivityValue,
   ProjectActivity,
   GlobalActivity,
+  ActivityLookup,
   ProjectStats,
   MemberStats,
   TicketLink,

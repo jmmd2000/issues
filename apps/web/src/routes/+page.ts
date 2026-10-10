@@ -1,10 +1,10 @@
 // Load function for "/"
 import { error } from "@sveltejs/kit";
-import type { GlobalActivity, ProjectWithCount, PublicProject } from "@issues/api";
+import type { ActivityLookup, GlobalActivity, ProjectWithCount, PublicProject } from "@issues/api";
 import { createClient } from "$lib/api/client";
 import type { PageLoad } from "./$types";
 
-export type HomeFeed = { events: GlobalActivity[]; error: false } | { events: null; error: true };
+export type HomeFeed = { events: GlobalActivity[]; lookups: Record<string, ActivityLookup>; error: false } | { events: null; error: true };
 
 export const load: PageLoad = async ({ fetch, parent }) => {
   const { user } = await parent();
@@ -18,7 +18,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
     const { projects }: { projects: ProjectWithCount[] } = await projectsRes.json();
 
     const feedRes = await feedPromise;
-    const feed: HomeFeed = feedRes && feedRes.ok ? { events: (await feedRes.json()).events, error: false } : { events: null, error: true };
+    const feed: HomeFeed = feedRes && feedRes.ok ? { ...(await feedRes.json()), error: false } : { events: null, error: true };
 
     return { projects, feed, registrationOpen: false };
   }
@@ -29,7 +29,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
   const { projects }: { projects: PublicProject[] } = await publicRes.json();
 
   const registrationOpen = regRes.ok ? (await regRes.json()).open : false;
-  const feed: HomeFeed = feedRes && feedRes.ok ? { events: (await feedRes.json()).events, error: false } : { events: null, error: true };
+  const feed: HomeFeed = feedRes && feedRes.ok ? { ...(await feedRes.json()), error: false } : { events: null, error: true };
 
   return { projects, feed, registrationOpen };
 };
