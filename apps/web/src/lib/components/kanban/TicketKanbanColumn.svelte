@@ -9,6 +9,7 @@
     tickets,
     members,
     canEdit = true,
+    justCompletedIDs,
     onConsider,
     onFinalize,
   }: {
@@ -17,6 +18,7 @@
     tickets: Ticket[];
     members: ProjectMember[];
     canEdit?: boolean;
+    justCompletedIDs: ReadonlySet<string>;
     onConsider: (statusID: string, items: Ticket[]) => void;
     onFinalize: (statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) => void;
   } = $props();
@@ -27,6 +29,17 @@
 
   function handleFinalize(e: CustomEvent<DndEvent<Ticket>>) {
     onFinalize(status.id, e.detail.items, e.detail.info);
+  }
+
+  // The library moves the dragged clone with `transform`, so the tilt uses the
+  // separate `rotate` property to avoid overwriting it.
+  function liftDraggedCard(element: HTMLElement | undefined) {
+    if (!element) return;
+    element.style.transition = "rotate 160ms var(--ease-out-quart), box-shadow 160ms var(--ease-out-quart)";
+    element.style.boxShadow = "rgb(from var(--colour-text) r g b / 0.14) 0 8px 24px -4px, rgb(from var(--colour-text) r g b / 0.08) 0 2px 6px";
+    requestAnimationFrame(() => {
+      element.style.rotate = "1.5deg";
+    });
   }
 </script>
 
@@ -45,12 +58,13 @@
         flipDurationMs: 120,
         dropTargetStyle: {},
         dragDisabled: !canEdit,
+        transformDraggedElement: liftDraggedCard,
       }}
       onconsider={handleConsider}
       onfinalize={handleFinalize}
     >
       {#each tickets as ticket (ticket.id)}
-        <TicketCard {projectKey} {ticket} {members} />
+        <TicketCard {projectKey} {ticket} {members} done={status.category === "done"} justCompleted={justCompletedIDs.has(ticket.id)} />
       {/each}
     </div>
     {#if tickets.length === 0}
@@ -108,6 +122,14 @@
     justify-content: start;
     gap: 0.4em;
     padding: 0.45em;
+    border-bottom-left-radius: var(--border-radius-inner);
+    border-bottom-right-radius: var(--border-radius-inner);
+    transition: background var(--motion-fast) var(--ease-out-quart);
+
+    /* Only the column holding the drop placeholder is the one under the card. */
+    &:has(> :global([data-is-dnd-shadow-item-internal="true"])) {
+      background: var(--accent-tint-900);
+    }
   }
 
   .cards[data-empty="true"] {

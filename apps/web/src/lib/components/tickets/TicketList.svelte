@@ -21,6 +21,7 @@
   import { ArrowDown, ArrowUp } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import CrossedOffText from "./CrossedOffText.svelte";
   import PriorityChip from "./PriorityChip.svelte";
   import StatusChip from "./StatusChip.svelte";
 
@@ -133,8 +134,9 @@
                   >{#if readonly}{projectKey}-{ticket.number}{:else}<a href={ticketHref}>{projectKey}-{ticket.number}</a>{/if}</td
                 >
               {:else if column.id === "title"}
+                {@const done = statusByID.get(ticket.statusID)?.category === "done"}
                 <td class="title"
-                  >{#if readonly}{ticket.title}{:else}<a href={ticketHref}>{ticket.title}</a>{/if}</td
+                  >{#if readonly}<CrossedOffText crossed={done}>{ticket.title}</CrossedOffText>{:else}<a href={ticketHref}><CrossedOffText crossed={done}>{ticket.title}</CrossedOffText></a>{/if}</td
                 >
               {:else if column.id === "status"}
                 {@const status = statusByID.get(ticket.statusID)}

@@ -3,10 +3,21 @@
   import type { ProjectMember, Ticket } from "@issues/api";
   import { UserRound } from "@lucide/svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import CrossedOffText from "../tickets/CrossedOffText.svelte";
   import PriorityChip from "../tickets/PriorityChip.svelte";
   import { formatAbsolute, timeAgo } from "$lib/time";
 
-  let { projectKey, ticket, members }: { projectKey: string; ticket: Ticket; members: ProjectMember[] } = $props();
+  interface TicketCardProps {
+    projectKey: string;
+    ticket: Ticket;
+    members: ProjectMember[];
+    /** True when the ticket sits in a done status. */
+    done?: boolean;
+    /** True right after the ticket was dropped into a done status, so the cross-off line draws in. */
+    justCompleted?: boolean;
+  }
+
+  let { projectKey, ticket, members, done = false, justCompleted = false }: TicketCardProps = $props();
 
   const assignee = $derived(ticket.assigneeID ? (members.find(member => member.userID === ticket.assigneeID) ?? null) : null);
 
@@ -40,7 +51,7 @@
   onclick={handleClick}
 >
   <span class="number">{projectKey}-{ticket.number}</span>
-  <h4 class="title">{ticket.title}</h4>
+  <h4 class="title"><CrossedOffText crossed={done} drawOnMount={justCompleted}>{ticket.title}</CrossedOffText></h4>
 
   <div class="footer">
     <div class="meta">

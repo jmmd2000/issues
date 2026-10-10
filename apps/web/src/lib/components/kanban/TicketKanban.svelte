@@ -2,7 +2,7 @@
   import type { ProjectMember, Status, Ticket } from "@issues/api";
   import type { DndEvent } from "svelte-dnd-action";
   import { onDestroy } from "svelte";
-  import { SvelteMap } from "svelte/reactivity";
+  import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import { client } from "$lib/api/client";
   import BacklogDrawer from "./BacklogDrawer.svelte";
   import TicketKanbanColumn from "./TicketKanbanColumn.svelte";
@@ -57,7 +57,24 @@
     return map;
   });
 
+  // Status each dragged ticket had before the drag, so a drop can tell
+  // whether it moved into a done status from somewhere else.
+  const statusBeforeDrag = new SvelteMap<string, string>();
+  const justCompletedIDs = new SvelteSet<string>();
+
+  function isDoneStatus(statusID: string): boolean {
+    return statuses.find(status => status.id === statusID)?.category === "done";
+  }
+
+  function markJustCompleted(ticketID: string) {
+    justCompletedIDs.add(ticketID);
+    setTimeout(() => justCompletedIDs.delete(ticketID), 600);
+  }
+
   function handleConsider(statusID: string, items: Ticket[]) {
+    for (const item of items) {
+      if (item.statusID !== statusID && !statusBeforeDrag.has(item.id)) statusBeforeDrag.set(item.id, item.statusID);
+    }
     const incomingIDs = new Set(items.map(i => i.id));
     const untouched = localTickets.filter(t => t.statusID !== statusID && !incomingIDs.has(t.id));
     const rewritten = items.map(t => (t.statusID === statusID ? t : { ...t, statusID }));
@@ -113,6 +130,9 @@
 
   async function handleFinalize(statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) {
     handleConsider(statusID, items);
+    const previousStatusID = statusBeforeDrag.get(info.id);
+    statusBeforeDrag.delete(info.id);
+    if (previousStatusID && isDoneStatus(statusID) && !isDoneStatus(previousStatusID)) markJustCompleted(info.id);
     await persistMove(statusID, items, info);
   }
 
@@ -129,7 +149,7 @@
 <div class="kanban" data-drawer-open={drawerOpen}>
   <div class="columns">
     {#each statuses as status (status.id)}
-      <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} {members} {canEdit} onConsider={handleConsider} onFinalize={handleFinalize} />
+      <TicketKanbanColumn {projectKey} {status} tickets={ticketsByStatus.get(status.id) ?? []} {members} {canEdit} {justCompletedIDs} onConsider={handleConsider} onFinalize={handleFinalize} />
     {/each}
     {#if statuses.length === 0}
       <div class="no-columns">No columns selected. Click "Columns" to choose.</div>
