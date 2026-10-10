@@ -102,7 +102,10 @@
         {removing ? "Removing..." : "Remove"}
       </Button>
     {/if}
-    <Button type="submit" disabled={submitting || !selectedFile}>
+    {#if !selectedFile && !submitting}
+      <span id="avatar-save-hint" class="hint">Choose an image to save.</span>
+    {/if}
+    <Button type="submit" disabled={submitting || !selectedFile} aria-describedby={selectedFile ? undefined : "avatar-save-hint"}>
       {submitting ? "Saving..." : "Save avatar"}
     </Button>
   </div>

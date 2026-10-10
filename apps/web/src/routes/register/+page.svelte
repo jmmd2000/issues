@@ -57,7 +57,7 @@
     </div>
   </aside>
 
-  <main class="form-panel">
+  <section class="form-panel">
     {#if !data.open}
       <div class="form-frame closed">
         <header class="frame-head">
@@ -110,7 +110,7 @@
         </p>
       </div>
     {/if}
-  </main>
+  </section>
 </section>
 
 <style>

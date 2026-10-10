@@ -6,6 +6,9 @@
   import { client } from "$lib/api/client";
   import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "$lib/components/forms/FormMessage.svelte";
+  import type { PageProps } from "./$types";
+
+  let { data }: PageProps = $props();
 
   let email = $state("");
   let password = $state("");
@@ -65,7 +68,7 @@
     </div>
   </aside>
 
-  <main class="form-panel">
+  <section class="form-panel">
     <div class="form-frame">
       <header class="frame-head">
         <h1>Sign in</h1>
@@ -98,11 +101,13 @@
         </Button>
       </form>
 
-      <p class="alt">
-        New? <a href={resolve("/register")}>Create an account</a>
-      </p>
+      {#if data.registrationOpen}
+        <p class="alt">
+          New? <a href={resolve("/register")}>Create an account</a>
+        </p>
+      {/if}
     </div>
-  </main>
+  </section>
 </section>
 
 <style>

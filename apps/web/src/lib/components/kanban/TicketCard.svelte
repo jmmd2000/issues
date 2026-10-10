@@ -44,7 +44,7 @@
 <a
   class="card"
   href={resolve("/projects/[key]/tickets/[num]", { key: projectKey, num: String(ticket.number) })}
-  aria-label={`Open ${projectKey}-${ticket.number}: ${ticket.title}`}
+  aria-label={`${projectKey}-${ticket.number}: ${ticket.title}${done ? ", done" : ""}`}
   draggable="false"
   onpointerdown={handlePointerdown}
   onpointermove={handlePointermove}
