@@ -54,7 +54,7 @@
     <h1>{project.name}</h1>
   </div>
 
-  <div class="actions">
+  <div class="controls">
     <div class="search">
       <SearchInput value={searchInput} placeholder="Search titles" onInput={onSearchInput} />
     </div>
@@ -64,7 +64,7 @@
         {#snippet trigger({ toggle, open })}
           <Button variant="secondary" size="md" onclick={toggle} aria-expanded={open} aria-haspopup="dialog">
             <ListFilter size={13} strokeWidth={2.5} />
-            Filters
+            <span class="label">Filters</span>
             {#if activeFilterCount > 0}<span class="count">{activeFilterCount}</span>{/if}
           </Button>
         {/snippet}
@@ -76,29 +76,33 @@
 
     <div class="view-toggle" role="group" aria-label="View">
       <button type="button" class:active={view === "list"} onclick={() => onSetView("list")} aria-pressed={view === "list"}>
-        <ListIcon size={13} />List
+        <ListIcon size={13} /><span class="label">List</span>
       </button>
       <button type="button" class:active={view === "kanban"} onclick={() => onSetView("kanban")} aria-pressed={view === "kanban"}>
-        <Columns3 size={13} />Kanban
+        <Columns3 size={13} /><span class="label">Kanban</span>
       </button>
     </div>
 
-    {#if view === "kanban"}
-      <ColumnPicker items={kanbanPickerStatuses} visible={visibleKanbanStatusIDs} onToggle={onToggleKanbanColumn} variant="secondary" />
-    {:else}
-      <ColumnPicker items={LIST_COLUMNS.map(c => ({ id: c.id, label: c.label }))} visible={visibleListColumnIDs as Set<string>} onToggle={onToggleListColumn} variant="secondary" />
-    {/if}
+    <div class="columns">
+      {#if view === "kanban"}
+        <ColumnPicker items={kanbanPickerStatuses} visible={visibleKanbanStatusIDs} onToggle={onToggleKanbanColumn} variant="secondary" />
+      {:else}
+        <ColumnPicker items={LIST_COLUMNS.map(c => ({ id: c.id, label: c.label }))} visible={visibleListColumnIDs as Set<string>} onToggle={onToggleListColumn} variant="secondary" />
+      {/if}
+    </div>
 
-    <Button variant="secondary" size="md" href={settingsHref} aria-label="Project settings" title="Project settings">
-      <Settings size={14} />
-    </Button>
-
-    {#if canEdit}
-      <Button variant="primary" size="md" onclick={onOpenCreate}>
-        <Plus size={13} strokeWidth={4} />
-        New ticket
+    <div class="project-actions">
+      <Button variant="secondary" size="md" href={settingsHref} aria-label="Project settings" title="Project settings">
+        <Settings size={14} />
       </Button>
-    {/if}
+
+      {#if canEdit}
+        <Button variant="primary" size="md" onclick={onOpenCreate}>
+          <Plus size={13} strokeWidth={4} />
+          New ticket
+        </Button>
+      {/if}
+    </div>
   </div>
 </header>
 
@@ -123,7 +127,8 @@
     align-items: baseline;
     gap: 0.6em;
     min-width: 0;
-    flex: 1;
+    /* Sized to the name, so the controls wrap to a new line before the name is cut off. */
+    flex: 1 1 auto;
 
     .project-key {
       font-family: var(--font-mono);
@@ -143,11 +148,15 @@
     }
   }
 
-  .actions {
+  .controls,
+  .project-actions {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 0.5em;
+  }
+
+  .controls {
+    flex-wrap: wrap;
   }
 
   .search {
@@ -211,22 +220,74 @@
     }
   }
 
+  /* Phones: two rows. The title and the project actions share the first, so
+     New ticket stays in view; search and the view controls fill the second. */
   @media (max-width: 720px) {
-    .title {
-      flex-basis: 100%;
+    .pane-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
+      grid-template-areas:
+        "title actions actions actions"
+        "search filters view columns";
+      gap: 0.5em;
+      padding: 0.6em 1em;
     }
 
-    .actions {
-      width: 100%;
+    /* Lets each control take its own grid cell. */
+    .controls {
+      display: contents;
+    }
+
+    .title {
+      grid-area: title;
+    }
+
+    .project-actions {
+      grid-area: actions;
+      justify-content: end;
     }
 
     .search {
-      width: 100%;
+      grid-area: search;
+      width: auto;
+      min-width: 0;
+    }
+
+    .filters {
+      grid-area: filters;
+    }
+
+    .view-toggle {
+      grid-area: view;
+    }
+
+    .columns {
+      grid-area: columns;
+    }
+
+    /* Icon-only controls. The words stay for screen readers. */
+    .label,
+    .columns :global(.trigger-label) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* The trigger sits mid-row, so the menu spans the header instead of
+       hanging off the button. */
+    .filters :global(.popover) {
+      position: static;
     }
 
     .filters :global(.popover-menu) {
-      right: auto;
-      left: 0;
+      top: calc(100% - 0.25em);
+      left: 1em;
+      right: 1em;
+      width: auto;
+      max-width: none;
     }
   }
 </style>

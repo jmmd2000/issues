@@ -39,7 +39,7 @@
 <div class="column-picker">
   <button type="button" class="trigger" data-variant={variant} onclick={() => (open = !open)} aria-expanded={open} aria-haspopup="menu">
     <Columns3 size={14} />
-    {triggerLabel}
+    <span class="trigger-label">{triggerLabel}</span>
   </button>
   {#if open}
     <div class="menu" role="menu">
