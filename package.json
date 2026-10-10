@@ -24,7 +24,7 @@
   "license": "ISC",
   "packageManager": "pnpm@11.14.0",
   "engines": {
-    "node": "22.x"
+    "node": "26.x"
   },
   "devDependencies": {
     "@eslint/compat": "2.1.1",
