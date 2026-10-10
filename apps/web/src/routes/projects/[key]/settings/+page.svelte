@@ -13,15 +13,14 @@
 </script>
 
 <svelte:head>
-  <title>{data.project.name} · Settings</title>
+  <title>{data.project.name} settings · Issues</title>
 </svelte:head>
 
 <div class="settings-page">
   <div class="heading-row">
     <a href={resolve("/projects/[key]", { key: data.project.key })} class="back-link"><span><MoveLeft size={16} strokeWidth={2} /> Back to project</span></a>
     <div class="heading-content">
-      <h1>Project Settings</h1>
-      <p>Manage your project settings, labels and statuses.</p>
+      <h1>Project settings</h1>
     </div>
   </div>
 
@@ -103,11 +102,6 @@
   .heading-content h1 {
     font-size: 1.5em;
     font-weight: 600;
-  }
-
-  .heading-content p {
-    color: var(--colour-text-secondary);
-    font-weight: 300;
   }
 
   .settings-card-container {

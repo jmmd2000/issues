@@ -33,15 +33,14 @@
 </script>
 
 <svelte:head>
-  <title>Settings</title>
+  <title>Account settings · Issues</title>
 </svelte:head>
 
 <div class="settings-page">
   <div class="heading-row">
-    <a href={resolve("/")} class="back-link"><span><MoveLeft size={16} strokeWidth={2} /> Back home</span></a>
+    <a href={resolve("/")} class="back-link"><span><MoveLeft size={16} strokeWidth={2} /> Back to projects</span></a>
     <div class="heading-content">
-      <h1>Account Settings</h1>
-      <p>Manage your account.</p>
+      <h1>Account settings</h1>
     </div>
   </div>
 
@@ -113,11 +112,6 @@
     & h1 {
       font-size: 1.5em;
       font-weight: 600;
-    }
-
-    & p {
-      color: var(--colour-text-secondary);
-      font-weight: 300;
     }
   }
 

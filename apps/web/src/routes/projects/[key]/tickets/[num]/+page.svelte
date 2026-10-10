@@ -290,7 +290,7 @@
 </script>
 
 <svelte:head>
-  <title>{project.key}-{ticket.number} {ticket.title}</title>
+  <title>{project.key}-{ticket.number} {ticket.title} · Issues</title>
 </svelte:head>
 
 <section class="ticket-page">

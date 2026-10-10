@@ -50,7 +50,7 @@
 </script>
 
 <svelte:head>
-  <title>New Project · Issues</title>
+  <title>New project · Issues</title>
 </svelte:head>
 
 <div class="project-form-container">

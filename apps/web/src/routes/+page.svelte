@@ -17,6 +17,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Issues</title>
+</svelte:head>
+
 <div class="home">
   <header class="title-row">
     <div class="title-block">

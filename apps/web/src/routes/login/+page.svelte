@@ -191,10 +191,9 @@
   }
 
   .field label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    font-size: 0.875em;
+    font-weight: 500;
+    letter-spacing: -0.02em;
     color: var(--colour-muted);
   }
 
