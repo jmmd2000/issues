@@ -6,6 +6,10 @@ images:
     dockerfile: apps/web/Dockerfile
     buildArgs:
       PUBLIC_API_URL: "https://{domain}"
+      GIT_SHA: "{tag}"
+      BUILT_AT: "{builtAt}"
+    buildSecrets:
+      glitchtip_token: glitchtip-token
 files: [docker-compose.yml, backup.sh]
 database: db
 healthcheck: /api/health

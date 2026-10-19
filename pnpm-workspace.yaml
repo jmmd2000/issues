@@ -4,6 +4,8 @@ packages:
 saveExact: true
 engineStrict: true
 allowBuilds:
+  # The Sentry CLI binary comes from a platform package, so its own install script is not needed.
+  "@sentry/cli": false
   argon2: true
   esbuild: true
   sharp: true

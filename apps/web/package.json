@@ -17,6 +17,7 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@jridgewell/remapping": "2.3.5",
     "@playwright/test": "1.63.0",
     "@sveltejs/adapter-node": "5.5.7",
     "@sveltejs/kit": "2.70.3",

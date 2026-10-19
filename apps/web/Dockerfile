@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.10
 
 FROM node:26-slim AS build
 
@@ -24,8 +24,32 @@ COPY apps/web apps/web
 ARG PUBLIC_API_URL=""
 ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 
+ARG GIT_SHA=dev
+ARG BUILT_AT=""
+ENV GIT_SHA=${GIT_SHA}
+ENV BUILT_AT=${BUILT_AT}
+
 WORKDIR /repo/apps/web
 RUN pnpm build
+
+# Source maps. The inject step stamps a debug ID into each bundle, and GlitchTip matches it to the uploaded map.
+# The upload needs the token, so a build without it skips the upload. A failed upload warns and the build goes on.
+# The step prints GIT_SHA and BUILT_AT so Docker runs it again for every build, and a failed upload is never cached.
+# The adapter bundles the server files again and its maps point to the first build's files, so the chain step joins them to the originals.
+# The maps are deleted afterwards, so the image never serves them.
+# The inject step changes the scripts, so the compressed copies the adapter made are made again.
+# Do not set SENTRY_LOG_LEVEL=debug here, because it can print the token.
+ENV SENTRY_URL=https://glitchtip.vps.jamesmddoyle.com SENTRY_ORG=james-org SENTRY_PROJECT=issues-web
+RUN --mount=type=secret,id=glitchtip_token,env=SENTRY_AUTH_TOKEN \
+    echo "Source maps for $GIT_SHA built at $BUILT_AT" \
+ && node scripts/chainSourceMaps.mjs build/server \
+ && pnpm exec sentry-cli sourcemaps inject build \
+ && if [ -n "$SENTRY_AUTH_TOKEN" ]; then \
+      pnpm exec sentry-cli sourcemaps upload --release "$GIT_SHA" build \
+        || echo "WARNING: source map upload failed"; \
+    else echo "No GlitchTip token, so the source maps are not uploaded"; fi \
+ && find build -name "*.map" -delete \
+ && node scripts/compressBuild.mjs build/client
 
 WORKDIR /repo
 RUN pnpm --filter web deploy --prod --legacy /deploy
