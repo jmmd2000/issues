@@ -38,6 +38,38 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ DATABASE_URL: "nope", PORT: "abc", NODE_ENV: "staging" })).toThrow(/DATABASE_URL[\s\S]*PORT[\s\S]*NODE_ENV|NODE_ENV[\s\S]*PORT/);
   });
 
+  it("leaves error reporting off when no DSN is set", () => {
+    const env = parseEnv(validEnv);
+
+    expect(env.GLITCHTIP_DSN).toBeUndefined();
+    expect(env.GIT_SHA).toBe("dev");
+  });
+
+  it("reads a DSN with its environment and the commit", () => {
+    const env = parseEnv({ ...validEnv, GLITCHTIP_DSN: "https://key@glitchtip.example.com/3", GLITCHTIP_ENVIRONMENT: "production", GIT_SHA: "abc1234" });
+
+    expect(env.GLITCHTIP_DSN).toBe("https://key@glitchtip.example.com/3");
+    expect(env.GLITCHTIP_ENVIRONMENT).toBe("production");
+    expect(env.GIT_SHA).toBe("abc1234");
+  });
+
+  it("treats blank error reporting values as unset", () => {
+    const env = parseEnv({ ...validEnv, GLITCHTIP_DSN: "", GLITCHTIP_ENVIRONMENT: "", GIT_SHA: "" });
+
+    expect(env.GLITCHTIP_DSN).toBeUndefined();
+    expect(env.GLITCHTIP_ENVIRONMENT).toBeUndefined();
+    expect(env.GIT_SHA).toBe("dev");
+  });
+
+  it("rejects a DSN that is not a DSN", () => {
+    expect(() => parseEnv({ ...validEnv, GLITCHTIP_DSN: "nonsense", GLITCHTIP_ENVIRONMENT: "production" })).toThrow(/GLITCHTIP_DSN/);
+    expect(() => parseEnv({ ...validEnv, GLITCHTIP_DSN: "https://glitchtip.example.com/3", GLITCHTIP_ENVIRONMENT: "production" })).toThrow(/GLITCHTIP_DSN/);
+  });
+
+  it("needs an environment whenever a DSN is set", () => {
+    expect(() => parseEnv({ ...validEnv, GLITCHTIP_DSN: "https://key@glitchtip.example.com/3" })).toThrow(/GLITCHTIP_ENVIRONMENT/);
+  });
+
   it("rejects zero and negative sizes", () => {
     expect(() => parseEnv({ ...validEnv, MAX_FILE_BYTES: "0" })).toThrow(/MAX_FILE_BYTES/);
     expect(() => parseEnv({ ...validEnv, MAX_UPLOADS_BYTES: "-5" })).toThrow(/MAX_UPLOADS_BYTES/);

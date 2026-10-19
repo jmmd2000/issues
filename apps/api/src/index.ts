@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
 import { getEnv } from "./lib/env";
+import { reportError, startErrorReporting } from "./lib/errorReporting";
 import { auth } from "./routes/auth";
 import { tokens } from "./routes/tokens";
 import { mcp } from "./routes/mcp";
@@ -83,7 +84,9 @@ app.onError((err, c) => {
   if (err instanceof HTTPException) {
     return c.json({ message: err.message }, err.status);
   }
-  console.error("Unhandled error:", err, { path: c.req.path, method: c.req.method });
+  const request = { path: c.req.path, method: c.req.method };
+  console.error("Unhandled error:", err, request);
+  reportError(err, request);
   return c.json({ message: "Internal server error" }, 500);
 });
 
@@ -110,6 +113,7 @@ const routes = app
 export type AppType = typeof routes;
 
 async function start() {
+  startErrorReporting();
   console.log("Running migrations...");
   await migrate(db, { migrationsFolder: "./drizzle" });
   console.log("Migrations complete...");

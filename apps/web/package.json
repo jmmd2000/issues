@@ -34,6 +34,8 @@
     "@issues/api": "workspace:*",
     "@issues/shared": "workspace:*",
     "@lucide/svelte": "1.50.0",
+    "@sentry/node": "11.8.0",
+    "@sentry/svelte": "11.8.0",
     "highlight.js": "11.12.0",
     "hono": "4.13.12",
     "isomorphic-dompurify": "4.4.0",
