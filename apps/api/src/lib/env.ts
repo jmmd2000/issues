@@ -6,17 +6,37 @@ function positiveInteger(defaultValue: number) {
   return z.preprocess(value => (value === "" ? undefined : value), z.coerce.number().int().positive().default(defaultValue));
 }
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  DATABASE_URL: z.url(),
-  PORT: positiveInteger(4000),
-  WEB_ORIGIN: z.url().default("http://localhost:5173"),
-  UPLOADS_DIR: z.string().min(1).default("./data/uploads"),
-  MAX_IMAGE_BYTES: positiveInteger(10_000_000),
-  MAX_FILE_BYTES: positiveInteger(10_000_000),
-  MAX_IMAGE_OUTPUT_BYTES: positiveInteger(1_000_000),
-  MAX_UPLOADS_BYTES: positiveInteger(20_000_000_000),
-});
+/** An empty string counts as unset, so a blank line in .env turns an option off. */
+const blankToUndefined = (value: unknown) => (value === "" ? undefined : value);
+
+/** A DSN is a URL with a key as its user name and a project number as its path, such as https://key@host/1. */
+const dsnSchema = z.string().refine(value => {
+  if (!URL.canParse(value)) return false;
+  const url = new URL(value);
+  return url.username !== "" && /^\/\d+$/.test(url.pathname);
+}, "must be a DSN, such as https://<key>@<host>/<project id>");
+
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    DATABASE_URL: z.url(),
+    PORT: positiveInteger(4000),
+    WEB_ORIGIN: z.url().default("http://localhost:5173"),
+    UPLOADS_DIR: z.string().min(1).default("./data/uploads"),
+    MAX_IMAGE_BYTES: positiveInteger(10_000_000),
+    MAX_FILE_BYTES: positiveInteger(10_000_000),
+    MAX_IMAGE_OUTPUT_BYTES: positiveInteger(1_000_000),
+    MAX_UPLOADS_BYTES: positiveInteger(20_000_000_000),
+    // Error reporting is off without a DSN. The environment names where events come from, such as production.
+    GLITCHTIP_DSN: z.preprocess(blankToUndefined, dsnSchema.optional()),
+    GLITCHTIP_ENVIRONMENT: z.preprocess(blankToUndefined, z.string().optional()),
+    // The commit the image was built from. The deploy sets it from the image tag.
+    GIT_SHA: z.preprocess(blankToUndefined, z.string().default("dev")),
+  })
+  .refine(env => !env.GLITCHTIP_DSN || env.GLITCHTIP_ENVIRONMENT, {
+    message: "is needed whenever GLITCHTIP_DSN is set, such as production",
+    path: ["GLITCHTIP_ENVIRONMENT"],
+  });
 
 export type Env = z.infer<typeof envSchema>;
 
