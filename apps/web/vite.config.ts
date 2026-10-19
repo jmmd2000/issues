@@ -4,6 +4,10 @@ import { sveltekit } from "@sveltejs/kit/vite";
 
 export default defineConfig({
   plugins: [sveltekit()],
+  build: {
+    // "hidden" writes the maps without linking them from the bundles. The Docker build uploads them, then deletes them.
+    sourcemap: "hidden",
+  },
   test: {
     expect: { requireAssertions: true },
     projects: [
