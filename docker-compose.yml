@@ -28,6 +28,9 @@ services:
       UPLOADS_DIR: /app/data/uploads
       NODE_ENV: production
       PORT: 4000
+      GLITCHTIP_DSN: ${GLITCHTIP_API_DSN:-}
+      GLITCHTIP_ENVIRONMENT: ${GLITCHTIP_ENVIRONMENT:-}
+      GIT_SHA: ${IMAGE_TAG}
     volumes:
       - ./data/uploads:/app/data/uploads
     depends_on:
@@ -53,6 +56,9 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
+      PUBLIC_GLITCHTIP_DSN: ${GLITCHTIP_WEB_DSN:-}
+      PUBLIC_GLITCHTIP_ENVIRONMENT: ${GLITCHTIP_ENVIRONMENT:-}
+      PUBLIC_GIT_SHA: ${IMAGE_TAG}
     depends_on:
       - api
     networks:
