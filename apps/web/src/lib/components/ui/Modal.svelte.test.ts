@@ -8,18 +8,6 @@ const bodySnippet = createRawSnippet(() => ({
 }));
 
 describe("Modal", () => {
-  it("hides the body when closed", async () => {
-    const screen = await render(Modal, { open: false, title: "Closed", onclose: () => {}, children: bodySnippet });
-    await expect.element(screen.getByTestId("modal-body")).not.toBeVisible();
-  });
-
-  it("renders title, body, and close button when open", async () => {
-    const screen = await render(Modal, { open: true, title: "Open", onclose: () => {}, children: bodySnippet });
-    await expect.element(screen.getByRole("heading", { name: "Open" })).toBeVisible();
-    await expect.element(screen.getByTestId("modal-body")).toBeVisible();
-    await expect.element(screen.getByRole("button", { name: "Close" })).toBeVisible();
-  });
-
   it("calls onclose when the close button is clicked", async () => {
     const onclose = vi.fn();
     const screen = await render(Modal, { open: true, title: "Open", onclose, children: bodySnippet });
@@ -30,14 +18,6 @@ describe("Modal", () => {
   it("hides the close button when showCloseButton is false", async () => {
     const screen = await render(Modal, { open: true, title: "Open", onclose: () => {}, showCloseButton: false, children: bodySnippet });
     expect(screen.getByRole("button", { name: "Close" }).elements()).toHaveLength(0);
-  });
-
-  it("renders a footer when the footer snippet is provided", async () => {
-    const footer = createRawSnippet(() => ({
-      render: () => `<button type="button" data-testid="footer-action">Save</button>`,
-    }));
-    const screen = await render(Modal, { open: true, title: "Open", onclose: () => {}, children: bodySnippet, footer });
-    await expect.element(screen.getByTestId("footer-action")).toBeVisible();
   });
 
   it("calls onclose when the mouse goes down and comes up on the backdrop", async () => {

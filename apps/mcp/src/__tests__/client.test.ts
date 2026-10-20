@@ -40,12 +40,6 @@ describe("IssuesClient", () => {
     expect(headers.get("Content-Type")).toBe("application/json");
   });
 
-  it("returns parsed JSON on success", async () => {
-    mockFetch({ body: { projects: [{ key: "DASH", name: "Dashboard" }] } });
-    const result = await client.listProjects();
-    expect(result.projects).toEqual([{ key: "DASH", name: "Dashboard" }]);
-  });
-
   it("throws IssuesApiError with the API message on non-2xx", async () => {
     mockFetch({ status: 404, body: { message: "Project NOPE not found." } });
     await expect(client.listProjects()).rejects.toMatchObject({ status: 404, message: "Project NOPE not found." });

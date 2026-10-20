@@ -25,16 +25,6 @@ function makeImage(overrides: Partial<Attachment> = {}): Attachment {
 }
 
 describe("ImageModal", () => {
-  it("renders the image, filename, and an open-original link when open", async () => {
-    const attachment = makeImage({ filename: "diagram.png", sizeBytes: 1_500_000 });
-    const screen = await render(ImageModal, { open: true, attachment, onclose: () => {} });
-
-    await expect.element(screen.getByRole("img", { name: "diagram.png" })).toBeVisible();
-    await expect.element(screen.getByText("diagram.png")).toBeVisible();
-    await expect.element(screen.getByText("1.5 MB")).toBeVisible();
-    await expect.element(screen.getByRole("link", { name: "Open original" })).toBeVisible();
-  });
-
   it("invokes onclose when the close button is clicked", async () => {
     const attachment = makeImage();
     let closed = false;

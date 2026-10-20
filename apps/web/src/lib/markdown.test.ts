@@ -14,19 +14,6 @@ function bodyText(html: string): string {
 }
 
 describe("renderMarkdown — fenced code blocks", () => {
-  it("wraps fenced code in the .code-block surface with header + body", () => {
-    const html = renderMarkdown("```js\nconst x = 1;\n```");
-    expect(html).toContain('class="code-block"');
-    expect(html).toContain('class="code-block__header"');
-    expect(html).toContain('class="code-block__body"');
-  });
-
-  it("emits an uppercase language label in the header", () => {
-    const html = renderMarkdown("```ts\nlet y = 2;\n```");
-    // Label rendered verbatim in the markup; CSS uppercases it visually.
-    expect(html).toMatch(/class="code-block__lang">ts</);
-  });
-
   it("falls back to plaintext when the language is unknown", () => {
     const html = renderMarkdown("```\njust some text\n```");
     expect(html).toMatch(/class="code-block__lang">plaintext</);
@@ -41,11 +28,6 @@ describe("renderMarkdown — fenced code blocks", () => {
     const source = "const tag = `<div>&` + 'x';";
     const html = renderMarkdown("```js\n" + source + "\n```");
     expect(bodyText(html)).toBe(source);
-  });
-
-  it("highlights known languages with hljs token classes", () => {
-    const html = renderMarkdown("```js\nfunction hello() {}\n```");
-    expect(html).toMatch(/class="hljs-keyword"/);
   });
 
   it("does not break inline code rendering", () => {

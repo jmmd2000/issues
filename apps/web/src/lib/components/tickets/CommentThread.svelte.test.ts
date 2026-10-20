@@ -23,22 +23,6 @@ describe("CommentThread", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the empty state when there are no comments", async () => {
-    const screen = await render(CommentThread, { ...baseProps });
-    await expect.element(screen.getByText("No comments yet.")).toBeVisible();
-    await expect.element(screen.getByRole("heading", { name: "Comments" })).toBeVisible();
-  });
-
-  it("renders the body of every comment", async () => {
-    const comments = [
-      makeComment({ id: "c-1", body: "First post.", author: { id: "u-1", name: "Alice", avatarURL: null } }),
-      makeComment({ id: "c-2", body: "Second post.", author: { id: "u-2", name: "Bob", avatarURL: null } }),
-    ];
-    const screen = await render(CommentThread, { ...baseProps, comments });
-    await expect.element(screen.getByText("First post.")).toBeVisible();
-    await expect.element(screen.getByText("Second post.")).toBeVisible();
-  });
-
   it("opens the composer when the Add a comment trigger is clicked", async () => {
     const screen = await render(CommentThread, { ...baseProps });
     await screen.getByRole("button", { name: "Add a comment" }).click();

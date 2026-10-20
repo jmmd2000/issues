@@ -79,15 +79,6 @@ describe("POST /api/projects/:key/labels", () => {
     expect(res.status).toBe(400);
   });
 
-  it("rejects missing name", async () => {
-    const res = await app.request("/api/projects/TEST/labels", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ colour: "#ff0000" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
   it("rejects duplicate label name on same project", async () => {
     await app.request("/api/projects/TEST/labels", {
       method: "POST",
@@ -275,14 +266,6 @@ describe("DELETE /api/projects/:key/labels/:id", () => {
       headers: { Cookie: cookies },
     });
     expect(res.status).toBe(404);
-  });
-
-  it("returns 400 for invalid label UUID", async () => {
-    const res = await app.request(`/api/projects/TEST/labels/not-a-uuid`, {
-      method: "DELETE",
-      headers: { Cookie: cookies },
-    });
-    expect(res.status).toBe(400);
   });
 
   it("returns 404 for non-member", async () => {

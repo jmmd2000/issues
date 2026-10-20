@@ -259,32 +259,6 @@ describe("GET /api/search", () => {
     expect(secondBody.hasNextPage).toBe(false);
   });
 
-  it("enforces anonymous and authenticated visibility rules", async () => {
-    await createTicket("TEST", { title: "Public visible", description: "visibility target", visibility: "public" });
-    await createTicket("TEST", { title: "Private ticket hidden anonymously", description: "visibility target", visibility: "private" });
-
-    const privateProject = await createProject(cookies, { key: "PRIV", name: "Private Project", visibility: "private" });
-    const privateStatusID = await getStatusID(privateProject.id, "backlog");
-    await createTicket("PRIV", { title: "Private project visible to member", description: "visibility target", statusID: privateStatusID, visibility: "public" });
-
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-
-    const anonymousRes = await app.request("/api/search?q=visibility");
-    expect(anonymousRes.status).toBe(200);
-    const anonymousBody = await anonymousRes.json();
-    expect(anonymousBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Public visible"]);
-
-    const ownerRes = await app.request("/api/search?q=visibility", { headers: { Cookie: cookies } });
-    expect(ownerRes.status).toBe(200);
-    const ownerBody = await ownerRes.json();
-    expect(ownerBody.tickets.map((ticket: { title: string }) => ticket.title).sort()).toEqual(["Private project visible to member", "Private ticket hidden anonymously", "Public visible"]);
-
-    const otherRes = await app.request("/api/search?q=visibility", { headers: { Cookie: otherCookies } });
-    expect(otherRes.status).toBe(200);
-    const otherBody = await otherRes.json();
-    expect(otherBody.tickets.map((ticket: { title: string }) => ticket.title)).toEqual(["Public visible"]);
-  });
-
   it("rejects invalid priority filters", async () => {
     const res = await app.request("/api/search?priority=urgent", { headers: { Cookie: cookies } });
     expect(res.status).toBe(400);

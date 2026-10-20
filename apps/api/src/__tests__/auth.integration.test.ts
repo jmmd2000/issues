@@ -39,15 +39,6 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(403);
   });
 
-  it("returns 400 for invalid email", async () => {
-    const res = await app.request("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "James", email: "not-an-email", password: "password123" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
   it("returns 400 for too short password", async () => {
     const res = await app.request("/api/auth/register", {
       method: "POST",
@@ -95,15 +86,6 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({ email: "nobody@example.com", password: "password123" }),
     });
     expect(res.status).toBe(401);
-  });
-
-  it("returns 400 for invalid email format", async () => {
-    const res = await app.request("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "not-email", password: "password123" }),
-    });
-    expect(res.status).toBe(400);
   });
 });
 

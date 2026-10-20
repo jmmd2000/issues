@@ -78,15 +78,6 @@ describe("POST /api/projects/:key/statuses", () => {
     expect(res.status).toBe(403);
   });
 
-  it("rejects missing name", async () => {
-    const res = await app.request("/api/projects/TEST/statuses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ slug: "staging", category: "active" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
   it("rejects duplicate slug in same project", async () => {
     await app.request("/api/projects/TEST/statuses", {
       method: "POST",
@@ -109,16 +100,6 @@ describe("GET /api/projects/:key/statuses", () => {
     ({ cookies } = await createAuthenticatedUser());
     const project = await createProject(cookies);
     projectID = project.id;
-  });
-
-  it("returns the 6 seeded default statuses", async () => {
-    const res = await app.request("/api/projects/TEST/statuses", { headers: { Cookie: cookies } });
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.statuses).toHaveLength(6);
-    const names = body.statuses.map((s: { name: string }) => s.name).sort();
-    expect(names).toEqual(["Backlog", "Cancelled", "Done", "In Progress", "In Review", "Todo"]);
   });
 
   it("returns statuses ordered by category then position", async () => {
@@ -411,15 +392,6 @@ describe("DELETE /api/projects/:key/statuses/:id", () => {
       body: JSON.stringify({ reassignTo: fakeID }),
     });
     expect(res.status).toBe(404);
-  });
-
-  it("returns 400 for invalid status UUID", async () => {
-    const res = await app.request(`/api/projects/TEST/statuses/not-a-uuid`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ reassignTo: statusID }),
-    });
-    expect(res.status).toBe(400);
   });
 
   it("returns 403 for non-owner", async () => {

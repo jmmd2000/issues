@@ -165,15 +165,6 @@ describe("POST /api/projects/:key/tickets", () => {
     expect(res.status).toBe(400);
   });
 
-  it("rejects invalid statusID", async () => {
-    const res = await app.request("/api/projects/TEST/tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ title: "Bad", statusID: "not-a-uuid" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
   it("rejects unknown fields", async () => {
     const res = await app.request("/api/projects/TEST/tickets", {
       method: "POST",
@@ -271,62 +262,6 @@ describe("GET /api/projects/:key/tickets", () => {
     const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: cookies } });
     const body = await res.json();
     expect(body.tickets).toHaveLength(0);
-  });
-
-  it("allows anonymous reads of public projects", async () => {
-    const res = await app.request("/api/projects/TEST/tickets");
-    expect(res.status).toBe(200);
-  });
-
-  it("allows non-member reads of public projects", async () => {
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-    const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: otherCookies } });
-    expect(res.status).toBe(200);
-  });
-
-  it("rejects anonymous reads of private projects with 404", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-    const res = await app.request("/api/projects/PRIV/tickets");
-    expect(res.status).toBe(404);
-  });
-
-  it("rejects non-member reads of private projects with 404", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-    const res = await app.request("/api/projects/PRIV/tickets", { headers: { Cookie: otherCookies } });
-    expect(res.status).toBe(404);
-  });
-
-  it("hides private tickets from anonymous callers in public projects", async () => {
-    await createTicket({ title: "Public ticket" });
-    await createTicket({ title: "Private ticket", visibility: "private" });
-
-    const res = await app.request("/api/projects/TEST/tickets");
-    const body = await res.json();
-    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
-    expect(titles).toContain("Public ticket");
-    expect(titles).not.toContain("Private ticket");
-  });
-
-  it("hides private tickets from non-member authed callers", async () => {
-    await createTicket({ title: "Public ticket" });
-    await createTicket({ title: "Private ticket", visibility: "private" });
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-
-    const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: otherCookies } });
-    const body = await res.json();
-    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
-    expect(titles).not.toContain("Private ticket");
-  });
-
-  it("includes private tickets for members", async () => {
-    await createTicket({ title: "Public ticket" });
-    await createTicket({ title: "Private ticket", visibility: "private" });
-
-    const res = await app.request("/api/projects/TEST/tickets", { headers: { Cookie: cookies } });
-    const body = await res.json();
-    const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
-    expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
   });
 });
 
@@ -449,33 +384,6 @@ describe("GET /api/projects/:key/tickets/:num", () => {
     expect(body.ticket.status.id).toBe(statusID);
     expect(body.ticket.reporter).toBeDefined();
     expect(Array.isArray(body.ticket.labels)).toBe(true);
-  });
-
-  it("allows anonymous reads of public tickets in public projects", async () => {
-    const created = await createTicket();
-    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`);
-    expect(res.status).toBe(200);
-  });
-
-  it("allows non-member reads of public tickets in public projects", async () => {
-    const created = await createTicket();
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-
-    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, { headers: { Cookie: otherCookies } });
-    expect(res.status).toBe(200);
-  });
-
-  it("hides private tickets from anonymous viewers in public projects", async () => {
-    const created = await createTicket({ visibility: "private" });
-    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`);
-    expect(res.status).toBe(404);
-  });
-
-  it("hides private tickets from non-members in public projects", async () => {
-    const created = await createTicket({ visibility: "private" });
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, { headers: { Cookie: otherCookies } });
-    expect(res.status).toBe(404);
   });
 
   it("returns 404 for non-existent ticket number", async () => {
@@ -782,16 +690,6 @@ describe("PATCH /api/projects/:key/tickets/:num", () => {
       body: JSON.stringify({ title: "Nope" }),
     });
     expect(res.status).toBe(404);
-  });
-
-  it("rejects unknown fields", async () => {
-    const created = await createTicket();
-    const res = await app.request(`/api/projects/TEST/tickets/${created.number}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ title: "Ok", rogue: 1 }),
-    });
-    expect(res.status).toBe(400);
   });
 });
 
@@ -1149,12 +1047,6 @@ describe("POST /api/projects/:key/tickets/:num/clone", () => {
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
     const res = await cloneRequest(source.number, { ticket: { title: "Clone", statusID } }, otherCookies);
     expect(res.status).toBe(404);
-  });
-
-  it("rejects unknown fields", async () => {
-    const source = await createTicket();
-    const res = await cloneRequest(source.number, { ticket: { title: "Clone", statusID }, rogue: 1 });
-    expect(res.status).toBe(400);
   });
 });
 

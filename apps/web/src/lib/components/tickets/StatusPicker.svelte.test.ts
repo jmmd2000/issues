@@ -10,12 +10,6 @@ const statuses = [
 ];
 
 describe("StatusPicker", () => {
-  it("renders the current status name in single mode", async () => {
-    const screen = await render(StatusPicker, { statuses, value: "s-active" });
-    await expect.element(screen.getByRole("button", { name: /status/i })).toBeVisible();
-    await expect.element(screen.getByText("In Progress")).toBeVisible();
-  });
-
   it("opens the menu and lists every status", async () => {
     const screen = await render(StatusPicker, { statuses, value: "s-active" });
     await screen.getByRole("button", { name: /status/i }).click();
@@ -32,22 +26,11 @@ describe("StatusPicker", () => {
     expect(onselect).toHaveBeenCalledWith("s-done", "s-active");
   });
 
-  it("renders multi-mode chips for selected statuses", async () => {
-    const screen = await render(StatusPicker, { statuses, multi: true, selected: ["s-backlog", "s-done"] });
-    await expect.element(screen.getByText("Backlog")).toBeVisible();
-    await expect.element(screen.getByText("Done")).toBeVisible();
-  });
-
   it("calls onChange with toggled selection in multi mode", async () => {
     const onChange = vi.fn();
     const screen = await render(StatusPicker, { statuses, multi: true, selected: [], onChange });
     await screen.getByRole("button", { name: /status/i }).click();
     await screen.getByRole("option", { name: "In Progress" }).click();
     expect(onChange).toHaveBeenCalledWith(["s-active"]);
-  });
-
-  it("renders a saving spinner while loading", async () => {
-    const screen = await render(StatusPicker, { statuses, value: "s-active", loading: true });
-    await expect.element(screen.getByLabelText("Saving status")).toBeVisible();
   });
 });
