@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { validationHook } from "../lib/validation";
 import { ProjectService } from "../services/projectService";
@@ -44,6 +45,10 @@ export const projects = new Hono()
   .post("/api/projects/create", requireAuth, zValidator("json", createProjectSchema, validationHook), async c => {
     const data = c.req.valid("json");
     const userID = c.get("userID");
+
+    const clash = await ProjectService.findKeyClash(data.key, c.get("role"));
+    if (clash) throw new HTTPException(409, { message: clash.name ? `${data.key} is already used by ${clash.name}.` : `${data.key} is already in use.` });
+
     const project = await ProjectService.createProject({ ...data, ownerID: userID });
 
     return c.json({ project }, 201);

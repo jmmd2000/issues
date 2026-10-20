@@ -3,7 +3,7 @@ import { and, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
 import { canView, listedPrivateWhere, type Role } from "../lib/access";
-import { requireCondition } from "../lib/sql";
+import { isUniqueViolation, requireCondition } from "../lib/sql";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 import type { ActivityLookup, ProjectWithCount, PublicProject } from "../lib/types";
@@ -32,13 +32,37 @@ export class ProjectService {
     stack: string[];
     ownerID: string;
   }) {
-    return await db.transaction(async tx => {
-      const [project] = await tx.insert(projects).values(data).returning();
-      await Promise.all([StatusService.seedDefaults(tx, project.id), LabelService.seedDefaults(tx, project.id)]);
-      await tx.insert(projectMembers).values({ projectID: project.id, userID: data.ownerID, role: "owner" });
-      await tx.insert(ticketCounters).values({ projectID: project.id, lastNumber: 0 });
-      return project;
-    });
+    try {
+      return await db.transaction(async tx => {
+        const [project] = await tx.insert(projects).values(data).returning();
+        await Promise.all([StatusService.seedDefaults(tx, project.id), LabelService.seedDefaults(tx, project.id)]);
+        await tx.insert(projectMembers).values({ projectID: project.id, userID: data.ownerID, role: "owner" });
+        await tx.insert(ticketCounters).values({ projectID: project.id, lastNumber: 0 });
+        return project;
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new HTTPException(409, { message: `${data.key} is already in use.` });
+      throw error;
+    }
+  }
+
+  /**
+   * Finds the project that already uses a key. The name is only returned when the
+   * viewer could already see it, so a hidden private project is not revealed.
+   * @param key The project key, in capitals
+   * @param role The caller's resolved role, if any
+   * @returns `null` when the key is free, otherwise the project's name or `null` when the name is hidden
+   */
+  static async findKeyClash(key: string, role: Role | undefined): Promise<{ name: string | null } | null> {
+    const [project] = await db
+      .select({ id: projects.id, name: projects.name, visibility: projects.visibility, showOnHomePage: projects.showOnHomePage })
+      .from(projects)
+      .where(eq(projects.key, key))
+      .limit(1);
+    if (!project) return null;
+
+    const nameIsVisible = canView(role, project) || project.showOnHomePage;
+    return { name: nameIsVisible ? project.name : null };
   }
 
   /**
