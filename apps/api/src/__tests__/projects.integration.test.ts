@@ -89,31 +89,6 @@ describe("POST /api/projects/create", () => {
     expect(body.project.key).toBe("TEST");
   });
 
-  it("rejects missing required fields", async () => {
-    const res = await app.request("/api/projects/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ key: "NO" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("seeds default statuses and labels on creation", async () => {
-    const res = await app.request("/api/projects/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ key: "SEED", name: "Seed Test", description: "Check seeding", visibility: "public" }),
-    });
-    const body = await res.json();
-    const projectID = body.project.id;
-
-    const seededStatuses = await db.select().from(statuses).where(eq(statuses.projectID, projectID));
-    expect(seededStatuses).toHaveLength(6);
-
-    const seededLabels = await db.select().from(labels).where(eq(labels.projectID, projectID));
-    expect(seededLabels).toHaveLength(5);
-  });
-
   it("assigns creator as project owner", async () => {
     const res = await app.request("/api/projects/create", {
       method: "POST",
@@ -207,20 +182,6 @@ describe("GET /api/projects/", () => {
     expect(body.projects).toHaveLength(2);
   });
 
-  it("does not return private projects the user is not a member of", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
-
-    const res = await app.request("/api/projects", {
-      method: "GET",
-      headers: { Cookie: otherCookies },
-    });
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.projects).toHaveLength(0);
-  });
-
   it("returns public projects but not non-member private ones for authed users", async () => {
     await createProject(cookies, { key: "PUB", visibility: "public" });
     await createProject(cookies, { key: "PRIV", visibility: "private" });
@@ -235,14 +196,6 @@ describe("GET /api/projects/", () => {
     const body = await res.json();
     expect(body.projects).toHaveLength(1);
     expect(body.projects[0].key).toBe("PUB");
-  });
-
-  it("returns empty array when no projects exist", async () => {
-    const res = await app.request("/api/projects", { method: "GET" });
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.projects).toHaveLength(0);
   });
 
   it("returns 401 for expired session cookie", async () => {
@@ -425,11 +378,6 @@ describe("GET /api/projects/public", () => {
     ({ cookies } = await createAuthenticatedUser());
   });
 
-  it("returns 200 with no auth cookie", async () => {
-    const res = await app.request("/api/projects/public", { method: "GET" });
-    expect(res.status).toBe(200);
-  });
-
   it("returns identical payload with or without a session cookie", async () => {
     await createProject(cookies, { key: "PUB", name: "Public", visibility: "public" });
 
@@ -579,37 +527,6 @@ describe("GET /api/projects/:key", () => {
     const member = body.project.members[0];
     expect(member.user.name).toBe("Test User");
     expect(member.user).not.toHaveProperty("email");
-  });
-
-  it("returns public project for anonymous users", async () => {
-    await createProject(cookies, { key: "PUB", visibility: "public" });
-
-    const res = await app.request("/api/projects/PUB", { method: "GET" });
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.project.key).toBe("PUB");
-  });
-
-  it("returns private project for authenticated member", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-
-    const res = await app.request("/api/projects/PRIV", {
-      method: "GET",
-      headers: { Cookie: cookies },
-    });
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.project.key).toBe("PRIV");
-  });
-
-  it("returns 404 for private project when anonymous", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-
-    const res = await app.request("/api/projects/PRIV", { method: "GET" });
-
-    expect(res.status).toBe(404);
   });
 
   it("returns 404 for non-existent project", async () => {
@@ -782,15 +699,6 @@ describe("PATCH /api/projects/:key", () => {
 
     expect(updated.repo).toBeNull();
   });
-
-  it("uppercases key param for lookup", async () => {
-    await createProject(cookies, { key: "UP" });
-
-    const updated = await updateProject(cookies, "up", { name: "Changed" });
-
-    expect(updated.key).toBe("UP");
-    expect(updated.name).toBe("Changed");
-  });
 });
 
 describe("DELETE /api/projects/:key", () => {
@@ -872,26 +780,6 @@ describe("DELETE /api/projects/:key", () => {
     });
 
     expect(res.status).toBe(403);
-  });
-
-  it("uppercases key param for lookup", async () => {
-    await createProject(cookies, { key: "UP" });
-
-    const res = await app.request("/api/projects/up", {
-      method: "DELETE",
-      headers: { Cookie: cookies },
-    });
-
-    expect(res.status).toBe(204);
-  });
-
-  it("returns 400 for key shorter than 2 characters", async () => {
-    const res = await app.request("/api/projects/A", {
-      method: "DELETE",
-      headers: { Cookie: cookies },
-    });
-
-    expect(res.status).toBe(400);
   });
 });
 

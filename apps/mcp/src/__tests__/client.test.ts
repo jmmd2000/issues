@@ -32,6 +32,14 @@ describe("IssuesClient", () => {
     expect(headers.get("Authorization")).toBe(`Bearer ${TOKEN}`);
   });
 
+  it("sets Content-Type for requests with a body", async () => {
+    const fetchMock = mockFetch({ status: 201, body: { ticket: {} } });
+    await client.createTicket({ project: "DASH", title: "x" });
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    const headers = request.headers as Headers;
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
   it("throws IssuesApiError with the API message on non-2xx", async () => {
     mockFetch({ status: 404, body: { message: "Project NOPE not found." } });
     await expect(client.listProjects()).rejects.toMatchObject({ status: 404, message: "Project NOPE not found." });

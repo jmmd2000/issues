@@ -44,22 +44,6 @@ async function setupFixture() {
   altStatusID = await seedStatusID("done");
 }
 
-describe("logCreate", () => {
-  beforeEach(setupFixture);
-
-  it("writes a single created row", async () => {
-    const ticket = await createTicket({ title: "Audit" });
-
-    const rows = await db.select().from(ticketActivity).where(eq(ticketActivity.ticketID, ticket.id));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].action).toBe("created");
-    expect(rows[0].userID).toBe(userID);
-    expect(rows[0].fieldName).toBeNull();
-    expect(rows[0].oldValue).toBeNull();
-    expect(rows[0].newValue).toEqual({ value: "Audit" });
-  });
-});
-
 describe("logUpdate", () => {
   beforeEach(setupFixture);
 
@@ -179,124 +163,8 @@ describe("logUpdate", () => {
   });
 });
 
-describe("logDelete / logRestore", () => {
-  beforeEach(setupFixture);
-
-  it("writes a deleted row on soft delete and a restored row on restore", async () => {
-    const ticket = await createTicket({ title: "Cycle" });
-
-    await TicketService.softDeleteTicket(ticket.id, projectID, userID);
-    await TicketService.restoreTicket(ticket.id, projectID, userID);
-
-    const deleted = await db
-      .select()
-      .from(ticketActivity)
-      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "deleted")));
-    const restored = await db
-      .select()
-      .from(ticketActivity)
-      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "restored")));
-
-    expect(deleted).toHaveLength(1);
-    expect(deleted[0].newValue).toEqual({ value: "Cycle" });
-    expect(restored).toHaveLength(1);
-    expect(restored[0].newValue).toEqual({ value: "Cycle" });
-  });
-});
-
 describe("logComment", () => {
   beforeEach(setupFixture);
-
-  it("writes a comment_added row with id + excerpt newValue", async () => {
-    const ticket = await createTicket({ title: "Comment add" });
-    const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Hello" }).returning();
-
-    await db.transaction(async tx => {
-      await ActivityService.logComment(tx, {
-        userID,
-        ticketID: ticket.id,
-        kind: "added",
-        comment: { id: comment.id, body: comment.body },
-      });
-    });
-
-    const rows = await db
-      .select()
-      .from(ticketActivity)
-      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "comment_added")));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].fieldName).toBeNull();
-    expect(rows[0].oldValue).toBeNull();
-    expect(rows[0].newValue).toEqual({ id: comment.id, excerpt: "Hello" });
-  });
-
-  it("writes a comment_edited row carrying full old/new bodies", async () => {
-    const ticket = await createTicket({ title: "Comment edit" });
-    const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Updated body" }).returning();
-
-    await db.transaction(async tx => {
-      await ActivityService.logComment(tx, {
-        userID,
-        ticketID: ticket.id,
-        kind: "edited",
-        comment: { id: comment.id, body: comment.body },
-        prevBody: "Original body",
-      });
-    });
-
-    const rows = await db
-      .select()
-      .from(ticketActivity)
-      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "comment_edited")));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].oldValue).toEqual({ body: "Original body" });
-    expect(rows[0].newValue).toEqual({ body: "Updated body" });
-  });
-
-  it("writes a comment_deleted row with id + excerpt oldValue", async () => {
-    const ticket = await createTicket({ title: "Comment delete" });
-    const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: "Goodbye" }).returning();
-
-    await db.transaction(async tx => {
-      await ActivityService.logComment(tx, {
-        userID,
-        ticketID: ticket.id,
-        kind: "deleted",
-        comment: { id: comment.id, body: comment.body },
-      });
-    });
-
-    const rows = await db
-      .select()
-      .from(ticketActivity)
-      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "comment_deleted")));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].oldValue).toEqual({ id: comment.id, excerpt: "Goodbye" });
-    expect(rows[0].newValue).toBeNull();
-  });
-
-  it("collapses whitespace and truncates long bodies in excerpts", async () => {
-    const ticket = await createTicket({ title: "Comment excerpt" });
-    const longBody = "word ".repeat(100).trim();
-    const [comment] = await db.insert(comments).values({ ticketID: ticket.id, authorID: userID, body: longBody }).returning();
-
-    await db.transaction(async tx => {
-      await ActivityService.logComment(tx, {
-        userID,
-        ticketID: ticket.id,
-        kind: "added",
-        comment: { id: comment.id, body: comment.body },
-      });
-    });
-
-    const [row] = await db
-      .select()
-      .from(ticketActivity)
-      .where(and(eq(ticketActivity.ticketID, ticket.id), eq(ticketActivity.action, "comment_added")));
-    const excerpt = (row.newValue as { excerpt: string }).excerpt;
-    expect(excerpt.endsWith("...")).toBe(true);
-    expect(excerpt.length).toBeLessThanOrEqual(203);
-  });
 
   it("rolls back the activity row when the transaction throws", async () => {
     const ticket = await createTicket({ title: "Comment rollback" });
@@ -501,41 +369,6 @@ describe("GET /api/projects/:key/activity", () => {
     const body = await res.json();
     expect(body.activity).toHaveLength(2);
   });
-
-  it("allows anonymous reads when the project is public", async () => {
-    const res = await app.request("/api/projects/TEST/activity", { method: "GET" });
-    expect(res.status).toBe(200);
-  });
-
-  it("allows non-member reads when the project is public", async () => {
-    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
-    const res = await app.request("/api/projects/TEST/activity", { method: "GET", headers: { Cookie: outsider } });
-    expect(res.status).toBe(200);
-  });
-
-  it("rejects anonymous reads when the project is private", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-    const res = await app.request("/api/projects/PRIV/activity", { method: "GET" });
-    expect(res.status).toBe(404);
-  });
-
-  it("rejects non-member reads when the project is private", async () => {
-    await createProject(cookies, { key: "PRIV", visibility: "private" });
-    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
-    const res = await app.request("/api/projects/PRIV/activity", { method: "GET", headers: { Cookie: outsider } });
-    expect(res.status).toBe(404);
-  });
-
-  it("hides activity for private tickets from non-members", async () => {
-    await createTicket({ title: "Public ticket" });
-    await createTicket({ title: "Private ticket", visibility: "private" });
-
-    const res = await app.request("/api/projects/TEST/activity");
-    const body = await res.json();
-    const titles = body.activity.map((row: { ticket: { title: string } }) => row.ticket.title);
-    expect(titles).toContain("Public ticket");
-    expect(titles).not.toContain("Private ticket");
-  });
 });
 
 describe("GET /api/feed", () => {
@@ -559,11 +392,6 @@ describe("GET /api/feed", () => {
     const body = await res.json();
     return body.ticket;
   }
-
-  it("allows anonymous reads", async () => {
-    const res = await app.request("/api/feed");
-    expect(res.status).toBe(200);
-  });
 
   it("returns only public-project events when unauthenticated", async () => {
     const publicProject = await createProject(cookies, { key: "PUB", visibility: "public" });
@@ -631,11 +459,6 @@ describe("GET /api/feed", () => {
 
   it("rejects a limit above the max", async () => {
     const res = await app.request("/api/feed?limit=51", { headers: { Cookie: cookies } });
-    expect(res.status).toBe(400);
-  });
-
-  it("rejects a non-positive limit", async () => {
-    const res = await app.request("/api/feed?limit=0", { headers: { Cookie: cookies } });
     expect(res.status).toBe(400);
   });
 

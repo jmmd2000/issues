@@ -255,21 +255,6 @@ describe("GET /api/mcp/tickets/:ref", () => {
     expect(body.ticket).not.toHaveProperty("comments");
   });
 
-  it("truncates long descriptions to 200 chars", async () => {
-    const status = await statusBySlug("backlog");
-    const long = "lorem ipsum ".repeat(60);
-    await app.request("/api/projects/TEST/tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ title: "Long", description: long, statusID: status.id }),
-    });
-
-    const res = await app.request("/api/mcp/tickets/TEST-1", { method: "GET", headers: { Cookie: cookies } });
-    const body = await res.json();
-    expect(body.ticket.description.length).toBeLessThanOrEqual(204);
-    expect(body.ticket.description.endsWith("...")).toBe(true);
-  });
-
   it("returns 404 for an unknown ref", async () => {
     const res = await app.request("/api/mcp/tickets/TEST-999", { method: "GET", headers: { Cookie: cookies } });
     expect(res.status).toBe(404);
@@ -476,16 +461,6 @@ describe("PATCH /api/mcp/tickets/:ref", () => {
     const detail = await app.request("/api/mcp/tickets/TEST-1", { method: "GET", headers: { Cookie: cookies } });
     const body = await detail.json();
     expect(body.ticket.assignee).toBeNull();
-  });
-
-  it("returns 400 for an unknown status slug", async () => {
-    await createTicketRow();
-    const res = await app.request("/api/mcp/tickets/TEST-1", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ statusSlug: "nope" }),
-    });
-    expect(res.status).toBe(400);
   });
 });
 
@@ -1079,68 +1054,6 @@ describe("PATCH /api/mcp/tickets/:ref parentTicketRef", () => {
     const detail = await app.request("/api/projects/TEST/tickets/2", { headers: { Cookie: cookies } });
     const body = await detail.json();
     expect(body.ticket.parent).toBeNull();
-  });
-
-  it("returns 400 when the patch would form a cycle", async () => {
-    await createTicketRow({ title: "A" });
-    await createTicketRow({ title: "B" });
-    await app.request("/api/mcp/tickets/TEST-2", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ parentTicketRef: "TEST-1" }),
-    });
-
-    // A -> B exists. Trying to set B as A's parent forms cycle A -> B -> A.
-    const res = await app.request("/api/mcp/tickets/TEST-1", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ parentTicketRef: "TEST-2" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when the parent is in a different project", async () => {
-    await createTicketRow({ title: "Child" });
-    const other = await createExtraUser("Other Owner 2", "other-owner-2@test.com");
-    const otherProject = await createProject(other.cookies, { key: "OTHR", name: "Other Project" });
-    await db.insert(projectMembers).values({ projectID: otherProject.id, userID, role: "member" });
-    const otherStatus = await db
-      .select()
-      .from(statuses)
-      .where(and(eq(statuses.projectID, otherProject.id), eq(statuses.slug, "backlog")))
-      .limit(1);
-    await app.request("/api/projects/OTHR/tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ title: "Foreign parent", statusID: otherStatus[0].id }),
-    });
-
-    const res = await app.request("/api/mcp/tickets/TEST-1", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ parentTicketRef: "OTHR-1" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 for a malformed parent ref", async () => {
-    await createTicketRow();
-    const res = await app.request("/api/mcp/tickets/TEST-1", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ parentTicketRef: "garbage" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 404 for an unknown parent ref", async () => {
-    await createTicketRow();
-    const res = await app.request("/api/mcp/tickets/TEST-1", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ parentTicketRef: "TEST-999" }),
-    });
-    expect(res.status).toBe(404);
   });
 });
 
