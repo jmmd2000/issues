@@ -39,4 +39,24 @@ describe("Modal", () => {
     const screen = await render(Modal, { open: true, title: "Open", onclose: () => {}, children: bodySnippet, footer });
     await expect.element(screen.getByTestId("footer-action")).toBeVisible();
   });
+
+  it("calls onclose when the mouse goes down and comes up on the backdrop", async () => {
+    const onclose = vi.fn();
+    await render(Modal, { open: true, title: "Open", onclose, children: bodySnippet });
+    const dialog = document.querySelector("dialog");
+    dialog?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    dialog?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onclose).toHaveBeenCalledOnce();
+  });
+
+  it("stays open when a press starts inside the dialog and ends on the backdrop", async () => {
+    const onclose = vi.fn();
+    const screen = await render(Modal, { open: true, title: "Open", onclose, children: bodySnippet });
+    screen
+      .getByTestId("modal-body")
+      .element()
+      .dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    document.querySelector("dialog")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onclose).not.toHaveBeenCalled();
+  });
 });
