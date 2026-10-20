@@ -2,6 +2,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { resolve } from "$app/paths";
+  import { errorAction, hasSignedInUser } from "$lib/errorActions";
   import Button from "$lib/components/ui/Button.svelte";
 
   interface ErrorCopy {
@@ -20,6 +21,7 @@
   }
 
   const copy = $derived(copyFor(page.status, page.error?.message));
+  const action = $derived(errorAction(page.status, hasSignedInUser(page.data)));
 </script>
 
 <svelte:head>
@@ -30,12 +32,15 @@
   <p class="status">{page.status}</p>
   <h1>{copy.heading}</h1>
   <p class="cause">{copy.cause}</p>
+  {#if action === "sign-in"}
+    <p class="hint">Private pages look like this until you sign in.</p>
+  {/if}
 
   <div class="actions">
-    {#if page.status === 401}
+    {#if action === "sign-in-again" || action === "sign-in"}
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- loginHref is built from resolve() plus a query string -->
-      <Button variant="primary" size="md" href={loginHref}>Sign in again</Button>
-    {:else if page.status >= 500}
+      <Button variant="primary" size="md" href={loginHref}>{action === "sign-in" ? "Sign in" : "Sign in again"}</Button>
+    {:else if action === "retry"}
       <Button variant="primary" size="md" onclick={() => window.location.reload()}>Try again</Button>
     {/if}
     <a class="home" href={resolve("/")}>Back to projects</a>
@@ -73,6 +78,11 @@
     color: var(--colour-text-secondary);
     max-width: 45ch;
     overflow-wrap: anywhere;
+  }
+
+  .hint {
+    color: var(--colour-muted);
+    font-size: 0.85rem;
   }
 
   .actions {
