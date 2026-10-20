@@ -16,9 +16,11 @@
     statuses: ActivityLookup["statuses"];
     labels: ActivityLookup["labels"];
     members: ActivityLookup["members"];
+    /** Shows the ticket title under the change. A locked project never shows it. */
+    showTitle?: boolean;
   }
 
-  let { row, projectKey, isLocked = false, statuses, labels, members }: ProjectActivityCardProps = $props();
+  let { row, projectKey, isLocked = false, statuses, labels, members, showTitle = false }: ProjectActivityCardProps = $props();
 
   type TicketRef = { projectKey: string; number: number; title?: string };
 
@@ -212,6 +214,9 @@
       {/if}
     {/each}
   </div>
+  {#if showTitle && !isLocked && row.ticket.title}
+    <p class="ticket-title">{row.ticket.title}</p>
+  {/if}
 </li>
 
 <style>
@@ -273,6 +278,16 @@
     .text {
       overflow-wrap: anywhere;
     }
+  }
+
+  .ticket-title {
+    grid-column: 1 / -1;
+    margin: 0;
+    overflow: hidden;
+    color: var(--colour-muted);
+    font-size: 0.8em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ticket-pill {

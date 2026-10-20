@@ -3,7 +3,7 @@
   import { Plus } from "@lucide/svelte";
   import type { PageProps } from "./$types";
   import Button from "$lib/components/ui/Button.svelte";
-  import ProjectActivityCard from "$lib/components/projectDetail/ProjectActivityCard.svelte";
+  import ActivityFeed from "$lib/components/projectDetail/ActivityFeed.svelte";
   import ProjectLedger from "$lib/components/ProjectLedger.svelte";
 
   let { data }: PageProps = $props();
@@ -71,19 +71,7 @@
         {:else if data.feed.events.length === 0}
           <p class="rail-empty">No activity yet.</p>
         {:else}
-          <ul class="rail-feed">
-            {#each data.feed.events as event (event.id)}
-              {@const lookup = data.feed.lookups[event.project.key]}
-              <ProjectActivityCard
-                row={event}
-                projectKey={event.project.key}
-                isLocked={event.project.isLocked}
-                statuses={lookup?.statuses ?? []}
-                labels={lookup?.labels ?? []}
-                members={lookup?.members ?? []}
-              />
-            {/each}
-          </ul>
+          <ActivityFeed events={data.feed.events} lookups={data.feed.lookups} />
         {/if}
       </aside>
     {/if}
@@ -180,14 +168,5 @@
   .rail-empty {
     color: var(--colour-muted);
     font-size: 0.85em;
-  }
-
-  .rail-feed {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.55em;
   }
 </style>
