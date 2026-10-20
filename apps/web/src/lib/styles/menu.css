@@ -15,6 +15,7 @@
   font: inherit;
   font-size: 0.8em;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition:
     background var(--motion-fast) var(--ease-out-quart),

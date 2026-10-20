@@ -39,9 +39,9 @@
     const last = options.length - 1;
     let target: number;
 
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+    if (event.key === "ArrowRight") {
       target = index === last ? 0 : index + 1;
-    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+    } else if (event.key === "ArrowLeft") {
       target = index === 0 ? last : index - 1;
     } else if (event.key === "Home") {
       target = 0;
