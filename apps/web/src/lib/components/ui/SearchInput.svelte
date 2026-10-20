@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
+  import ShortcutHint from "$lib/components/ui/ShortcutHint.svelte";
 
   let {
     value = $bindable(""),
@@ -30,7 +31,7 @@
     <Search size={14} strokeWidth={2} />
   </span>
   <input bind:this={inputElement} class="form-input search-input" type="search" {placeholder} {value} aria-label={ariaLabel ?? placeholder} oninput={handleInput} />
-  {#if shortcut}<kbd class="shortcut" aria-hidden="true">{shortcut}</kbd>{/if}
+  {#if shortcut}<span class="shortcut"><ShortcutHint label={shortcut} /></span>{/if}
 </div>
 
 <style>
@@ -52,13 +53,8 @@
   .shortcut {
     position: absolute;
     right: 0.6em;
-    padding: 0.05em 0.4em;
-    border: 1px solid var(--colour-border-control);
-    border-radius: var(--border-radius-inner);
+    display: inline-flex;
     color: var(--colour-muted);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    line-height: 1.4;
     pointer-events: none;
   }
 

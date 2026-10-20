@@ -24,9 +24,10 @@ describe("CommentThread", () => {
   });
 
   it("opens the composer when the Add a comment trigger is clicked", async () => {
-    const screen = await render(CommentThread, { ...baseProps });
+    const comments = [makeComment({ id: "c-1", body: "Hi", author: { id: "u-1", name: "Alice", avatarURL: null } })];
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await screen.getByRole("button", { name: "Add a comment" }).click();
-    await expect.element(screen.getByRole("heading", { name: "Add a comment" })).toBeVisible();
+    await expect.element(screen.getByPlaceholder("Add a comment")).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Comment" })).toBeDisabled();
   });
 
