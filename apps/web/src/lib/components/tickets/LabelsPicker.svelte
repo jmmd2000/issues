@@ -30,7 +30,6 @@
 
   let open = $state(false);
   let query = $state("");
-  let searchInput: HTMLInputElement | null = $state(null);
   let snapshot: string[] = [];
   let prevOpen = false;
 
@@ -49,7 +48,6 @@
 
     if (isOpen && !prevOpen) {
       snapshot = untrack(() => [...value]);
-      queueMicrotask(() => searchInput?.focus());
     } else if (!isOpen && prevOpen) {
       query = "";
       if (!onChange) {
@@ -104,7 +102,7 @@
   {/snippet}
 
   {#snippet menu()}
-    <input bind:this={searchInput} class="form-input compact search" type="text" placeholder="Search labels..." bind:value={query} {disabled} />
+    <input class="form-input compact search" type="text" placeholder="Search labels..." bind:value={query} {disabled} />
 
     {#if labels.length === 0}
       <p class="empty">This project has no labels yet.</p>
@@ -112,7 +110,7 @@
       <div class="option-list">
         {#each filtered as label (label.id)}
           {@const selected = selectedSet.has(label.id)}
-          <button type="button" class="option" role="option" aria-selected={selected} onclick={() => toggle(label.id)} {disabled}>
+          <button type="button" class="menu-item" role="option" aria-selected={selected} onclick={() => toggle(label.id)} {disabled}>
             <span class="check">
               {#if selected}<Check size={12} strokeWidth={3} />{/if}
             </span>
@@ -214,42 +212,12 @@
     margin-bottom: 0.2em;
   }
 
-  .search:disabled,
-  .option:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
-
   .option-list {
     display: flex;
     flex-direction: column;
     gap: 0.1em;
     max-height: 16em;
     overflow-y: auto;
-  }
-
-  .option {
-    display: flex;
-    align-items: center;
-    gap: 0.55em;
-    padding: 0.45em 0.5em;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    background: none;
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.8em;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--colour-bg-hover);
-    }
-
-    &[aria-selected="true"] {
-      color: var(--accent-base);
-      font-weight: 600;
-    }
   }
 
   .check {
