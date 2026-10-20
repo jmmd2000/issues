@@ -1,4 +1,4 @@
-import type { Comment, Label, ProjectActivity, ProjectDetail, ProjectMember, ProjectStats, Status, TicketActivity, TicketLink } from "@issues/api";
+import type { Comment, Label, ProjectActivity, ProjectDetail, ProjectMember, ProjectStats, ProjectWithCount, PublicProject, Status, TicketActivity, TicketLink } from "@issues/api";
 
 const baseDate = "2026-05-01T10:00:00.000Z";
 
@@ -140,4 +140,29 @@ export function makeTicketLink(overrides: Partial<TicketLink> = {}): TicketLink 
     createdAt: baseDate,
     ...overrides,
   };
+}
+
+export function makeHomeProject(overrides: Partial<ProjectWithCount> = {}): ProjectWithCount {
+  return {
+    id: "00000000-0000-0000-0000-0000000000p1",
+    key: "TEST",
+    name: "Test Project",
+    description: "A test project",
+    repo: null,
+    stack: [],
+    metadata: {},
+    visibility: "public",
+    showOnHomePage: false,
+    ownerID: "00000000-0000-0000-0000-0000000000u0",
+    createdAt: baseDate,
+    updatedAt: baseDate,
+    openCount: 0,
+    isLocked: false,
+    lastActivityAt: null,
+    ...overrides,
+  };
+}
+
+export function makeLockedProject(overrides: Partial<PublicProject> = {}): PublicProject {
+  return { id: "00000000-0000-0000-0000-0000000000p2", key: "LOCK", name: "Locked project", description: "A private project", openCount: 0, isLocked: true, ...overrides };
 }
