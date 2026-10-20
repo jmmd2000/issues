@@ -11,7 +11,6 @@
   import SettingsNav from "$lib/components/settings/SettingsNav.svelte";
   import SettingsRow from "$lib/components/settings/SettingsRow.svelte";
   import SettingsSection from "$lib/components/settings/SettingsSection.svelte";
-  import ThemeSwitcher from "$lib/components/ui/ThemeSwitcher.svelte";
 
   let { data }: PageProps = $props();
 
@@ -62,9 +61,6 @@
       </SettingsRow>
       <SettingsRow title="Email" help="You sign in with this.">
         <span>{data.user.email}</span>
-      </SettingsRow>
-      <SettingsRow title="Theme" help="System follows your device.">
-        <ThemeSwitcher />
       </SettingsRow>
     </SettingsSection>
 

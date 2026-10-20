@@ -30,6 +30,13 @@ export function storeTheme(choice: ThemeChoice, storage: Pick<Storage, "setItem"
   }
 }
 
+/** Tells whether the page shows the dark theme. A theme set on the page wins, otherwise the browser setting decides. */
+export function isShowingDark(root: Pick<HTMLElement, "dataset"> = document.documentElement, prefersDark: () => boolean = () => matchMedia("(prefers-color-scheme: dark)").matches): boolean {
+  const applied = root.dataset.theme;
+  if (applied === "light" || applied === "dark") return applied === "dark";
+  return prefersDark();
+}
+
 /** Sets the theme on the page. `system` removes the attribute, so the browser setting decides. */
 export function applyTheme(choice: ThemeChoice, root: HTMLElement = document.documentElement): void {
   if (choice === "system") {

@@ -8,6 +8,7 @@
   import type { LayoutProps } from "./$types";
   import favicon from "$lib/assets/favicon.svg";
   import UserMenu from "$lib/components/UserMenu.svelte";
+  import ThemeToggle from "$lib/components/ui/ThemeToggle.svelte";
   import Toaster from "$lib/components/ui/Toaster.svelte";
 
   let { data, children }: LayoutProps & { children: Snippet } = $props();
@@ -35,6 +36,7 @@
     </a>
 
     <div class="nav-actions">
+      <ThemeToggle />
       <UserMenu user={data.user} />
     </div>
   </nav>

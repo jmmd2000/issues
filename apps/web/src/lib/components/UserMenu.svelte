@@ -8,7 +8,6 @@
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Popover from "$lib/components/ui/Popover.svelte";
-  import ThemeSwitcher from "$lib/components/ui/ThemeSwitcher.svelte";
 
   let { user }: { user: CurrentUser | null } = $props();
 
@@ -49,13 +48,6 @@
         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- tokensHref is built from resolve() plus a hash -->
         <a class="menu-item" role="menuitem" href={tokensHref} onclick={() => (open = false)}><KeyRound size={14} strokeWidth={2} /> API tokens</a>
         <button type="button" class="menu-item" role="menuitem" onclick={handleLogout}><LogOut size={14} strokeWidth={2} /> Sign out</button>
-
-        <div class="menu-separator" role="separator"></div>
-
-        <div class="theme-row">
-          <span class="theme-label">Theme</span>
-          <ThemeSwitcher size="sm" />
-        </div>
 
         <div class="menu-separator" role="separator"></div>
 
@@ -125,20 +117,6 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-  }
-
-  .theme-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .theme-label {
-    color: var(--colour-text-secondary);
-    font-size: 0.8rem;
-    font-weight: 600;
   }
 
   .build {

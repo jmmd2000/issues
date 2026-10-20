@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import { resolve } from "$app/paths";
   import favicon from "$lib/assets/favicon.svg";
+  import ThemeToggle from "$lib/components/ui/ThemeToggle.svelte";
 
   let { title, lede, children }: { title: string; lede: string; children: Snippet } = $props();
 </script>
@@ -19,6 +20,9 @@
   </aside>
 
   <section class="form-panel">
+    <div class="theme-corner">
+      <ThemeToggle />
+    </div>
     <div class="form-frame">
       <a class="mark narrow-only" href={resolve("/")}>
         <img src={favicon} alt="" width="28" height="28" />
@@ -93,10 +97,17 @@
   }
 
   .form-panel {
+    position: relative;
     display: grid;
     place-items: center;
     padding: 3rem 2rem;
     background: var(--colour-bg-lighter);
+  }
+
+  .theme-corner {
+    position: absolute;
+    top: 1rem;
+    right: 1.25rem;
   }
 
   .form-frame {
