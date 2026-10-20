@@ -48,7 +48,7 @@
 
 <style>
   nav {
-    min-height: 55px;
+    min-height: var(--nav-height);
     display: flex;
     align-items: center;
     padding: 0 2rem;

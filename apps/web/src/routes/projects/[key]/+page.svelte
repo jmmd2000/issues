@@ -325,7 +325,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) var(--right-col);
     gap: 0;
-    margin: -2rem -2rem 0;
+    margin: -2rem;
+    min-height: calc(100dvh - var(--nav-height));
     transition: grid-template-columns var(--motion-base) var(--ease-out-expo);
   }
 

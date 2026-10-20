@@ -55,6 +55,8 @@
   --border: 1px solid var(--colour-border);
   --border-accent: 1px solid var(--colour-accent-border);
 
+  --nav-height: 55px;
+
   --font-body: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
