@@ -1,7 +1,5 @@
 <script lang="ts">
   import "$lib/styles/form.css";
-  import { resolve } from "$app/paths";
-  import { MoveLeft } from "@lucide/svelte";
   import type { PageProps } from "./$types";
   import type { ApiToken } from "@issues/api";
   import { client } from "$lib/api/client";
@@ -10,8 +8,20 @@
   import PasswordForm from "$lib/components/forms/PasswordForm.svelte";
   import ServiceUsersForm from "$lib/components/forms/ServiceUsersForm.svelte";
   import BuildInfo from "$lib/components/settings/BuildInfo.svelte";
+  import SettingsNav from "$lib/components/settings/SettingsNav.svelte";
+  import SettingsRow from "$lib/components/settings/SettingsRow.svelte";
+  import SettingsSection from "$lib/components/settings/SettingsSection.svelte";
+  import ThemeSwitcher from "$lib/components/ui/ThemeSwitcher.svelte";
 
   let { data }: PageProps = $props();
+
+  const sections = $derived([
+    { id: "profile", label: "Profile" },
+    { id: "security", label: "Security" },
+    { id: "tokens", label: "API tokens" },
+    ...(data.canManageServiceUsers ? [{ id: "service-users", label: "Service users" }] : []),
+    { id: "about", label: "About" },
+  ]);
 
   async function createOwnToken(name: string, expiresInDays: number) {
     const res = await client.api.auth.tokens.$post({ json: { name, expiresInDays } });
@@ -37,123 +47,88 @@
   <title>Account settings · Issues</title>
 </svelte:head>
 
-<div class="settings-page">
-  <div class="heading-row">
-    <a href={resolve("/")} class="back-link"><span><MoveLeft size={16} strokeWidth={2} /> Back to projects</span></a>
-    <div class="heading-content">
-      <h1>Account settings</h1>
-    </div>
+<div class="settings-shell">
+  <SettingsNav {sections} />
+
+  <div class="settings-body">
+    <h1>Account settings</h1>
+
+    <SettingsSection id="profile" title="Profile">
+      <SettingsRow title="Avatar" help="Shown next to your name on tickets and comments." stacked>
+        <AvatarForm user={data.user} />
+      </SettingsRow>
+      <SettingsRow title="Name" help="Shown on tickets and comments.">
+        <span>{data.user.name}</span>
+      </SettingsRow>
+      <SettingsRow title="Email" help="You sign in with this.">
+        <span>{data.user.email}</span>
+      </SettingsRow>
+      <SettingsRow title="Theme" help="System follows your device.">
+        <ThemeSwitcher />
+      </SettingsRow>
+    </SettingsSection>
+
+    <SettingsSection id="security" title="Security">
+      <SettingsRow title="Change password" stacked>
+        <PasswordForm />
+      </SettingsRow>
+    </SettingsSection>
+
+    <SettingsSection id="tokens" title="API tokens" lede="Long-lived bearer tokens for programmatic access, such as the MCP server.">
+      <SettingsRow stacked>
+        <ApiTokensForm tokens={data.apiTokens} onCreate={createOwnToken} onRevoke={revokeOwnToken} />
+      </SettingsRow>
+    </SettingsSection>
+
+    {#if data.canManageServiceUsers}
+      <SettingsSection id="service-users" title="Service users" lede="Bot accounts that show up as the reporter on tickets and comments. Each service user has its own tokens.">
+        <SettingsRow stacked>
+          <ServiceUsersForm serviceUsers={data.serviceUsers} />
+        </SettingsRow>
+      </SettingsSection>
+    {/if}
+
+    <SettingsSection id="about" title="About" lede="The version of the site and the commits the web app and the API were built from.">
+      <SettingsRow stacked>
+        <BuildInfo apiBuild={data.apiBuild} />
+      </SettingsRow>
+    </SettingsSection>
   </div>
-
-  <section class="settings-card-container">
-    <h2>Avatar</h2>
-    <AvatarForm user={data.user} />
-  </section>
-
-  <section class="settings-card-container">
-    <h2>Password</h2>
-    <PasswordForm />
-  </section>
-
-  <section class="settings-card-container" id="tokens">
-    <h2>API tokens</h2>
-    <p class="section-description">Long-lived bearer tokens for programmatic access.</p>
-    <ApiTokensForm tokens={data.apiTokens} onCreate={createOwnToken} onRevoke={revokeOwnToken} />
-  </section>
-
-  {#if data.canManageServiceUsers}
-    <section class="settings-card-container">
-      <h2>Service users</h2>
-      <p class="section-description">Bot accounts that show up as the reporter on tickets and comments. Each service user has its own tokens.</p>
-      <ServiceUsersForm serviceUsers={data.serviceUsers} />
-    </section>
-  {/if}
-
-  <section class="settings-card-container">
-    <h2>Build</h2>
-    <p class="section-description">The version of the site and the commits the web app and the API were built from.</p>
-    <BuildInfo apiBuild={data.apiBuild} />
-  </section>
 </div>
 
 <style>
-  .settings-page {
-    max-width: 800px;
+  :global(html) {
+    scroll-behavior: smooth;
+  }
+
+  .settings-shell {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 3rem;
+    max-width: 62rem;
     margin: 0 auto;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
+    padding: 2rem 1.5rem 3rem;
   }
 
-  .heading-row {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+  .settings-body {
+    display: grid;
+    gap: 2.5rem;
+    min-width: 0;
+    max-width: 44rem;
+    align-content: start;
   }
 
-  .back-link {
-    text-decoration: none;
-    color: var(--accent-base);
-    font-weight: 500;
-    font-size: 0.9em;
-    transition: color 0.4s ease;
-
-    & span {
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-    }
-
-    &:hover {
-      color: var(--accent-tint-300);
-    }
+  h1 {
+    font-size: 1.3em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
   }
 
-  .heading-content {
-    margin-top: 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-
-    & h1 {
-      font-size: 1.5em;
-      font-weight: 600;
-    }
-  }
-
-  .settings-card-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1em;
-
-    & h2 {
-      font-size: 1em;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-    }
-  }
-
-  .section-description {
-    margin: 0;
-    color: var(--colour-text-secondary);
-    font-size: 0.9em;
-    line-height: 1.5;
-
-    & a {
-      color: var(--accent-base);
-      text-decoration: none;
-
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-
-    & code {
-      background-color: var(--colour-bg);
-      padding: 0.1em 0.3em;
-      border-radius: var(--border-radius-inner);
-      font-size: 0.85em;
+  @media (max-width: 46rem) {
+    .settings-shell {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.5rem;
     }
   }
 </style>

@@ -1,38 +1,20 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { resolve } from "$app/paths";
   import { invalidateAll } from "$app/navigation";
-  import { ChevronDown, KeyRound, LogOut, Monitor, Moon, Settings, Sun } from "@lucide/svelte";
+  import { ChevronDown, KeyRound, LogOut, Settings } from "@lucide/svelte";
   import type { CurrentUser } from "@issues/api";
   import { client } from "$lib/api/client";
   import { shortHash, webBuild } from "$lib/buildInfo";
-  import { applyTheme, readStoredTheme, storeTheme, type ThemeChoice } from "$lib/theme";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Popover from "$lib/components/ui/Popover.svelte";
-  import SegmentedControl, { type SegmentedOption } from "$lib/components/ui/SegmentedControl.svelte";
+  import ThemeSwitcher from "$lib/components/ui/ThemeSwitcher.svelte";
 
   let { user }: { user: CurrentUser | null } = $props();
-
-  const themeOptions: SegmentedOption<ThemeChoice>[] = [
-    { value: "system", label: "System", icon: Monitor },
-    { value: "light", label: "Light", icon: Sun },
-    { value: "dark", label: "Dark", icon: Moon },
-  ];
 
   const tokensHref = `${resolve("/settings")}#tokens`;
 
   let open = $state(false);
-  let theme = $state<ThemeChoice>("system");
-
-  onMount(() => {
-    theme = readStoredTheme();
-  });
-
-  function chooseTheme(next: ThemeChoice) {
-    storeTheme(next);
-    applyTheme(next);
-  }
 
   async function handleLogout() {
     open = false;
@@ -72,7 +54,7 @@
 
         <div class="theme-row">
           <span class="theme-label">Theme</span>
-          <SegmentedControl bind:value={theme} options={themeOptions} label="Theme" size="sm" onchange={chooseTheme} />
+          <ThemeSwitcher size="sm" />
         </div>
 
         <div class="menu-separator" role="separator"></div>
