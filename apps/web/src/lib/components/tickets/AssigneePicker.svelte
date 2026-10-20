@@ -118,7 +118,7 @@
   {/snippet}
 
   {#snippet menu()}
-    <input bind:this={searchInput} class="search" type="text" placeholder="Search members..." bind:value={query} {disabled} />
+    <input bind:this={searchInput} class="form-input compact search" type="text" placeholder="Search members..." bind:value={query} {disabled} />
 
     {#if !multi}
       <button type="button" class="option" role="option" aria-selected={value === undefined} onclick={() => selectSingle(undefined)} {disabled}>
@@ -280,20 +280,7 @@
   }
 
   .search {
-    width: 100%;
-    padding: 0.4em 0.55em;
     margin-bottom: 0.2em;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg);
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.8em;
-    outline: none;
-  }
-
-  .search::placeholder {
-    color: var(--colour-muted);
   }
 
   .search:disabled,

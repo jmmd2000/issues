@@ -114,7 +114,7 @@
         void addLink();
       }}
     >
-      <select bind:value={optionKey} disabled={saving} class="link-type-select" aria-label="Link type">
+      <select bind:value={optionKey} disabled={saving} class="form-input compact" aria-label="Link type">
         {#each LINK_OPTIONS as option (option.key)}
           <option value={option.key}>{option.label}</option>
         {/each}
@@ -292,17 +292,6 @@
     border: var(--border);
     border-radius: var(--border-radius-inner);
     background: var(--colour-bg);
-  }
-
-  .link-type-select {
-    width: 100%;
-    padding: 0.35rem 0.45rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg-lighter);
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.8rem;
   }
 
   .form-actions {

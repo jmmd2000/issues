@@ -200,14 +200,7 @@
                 </div>
                 <div class="avatar-controls">
                   <label for={`avatar-${user.id}`} class="form-label">Avatar</label>
-                  <input
-                    id={`avatar-${user.id}`}
-                    type="file"
-                    accept="image/*"
-                    class="form-input file-input"
-                    disabled={avatarSaving === user.id}
-                    onchange={event => handleAvatarChange(user.id, event)}
-                  />
+                  <input id={`avatar-${user.id}`} type="file" accept="image/*" class="form-input" disabled={avatarSaving === user.id} onchange={event => handleAvatarChange(user.id, event)} />
                   <p class="hint">Cropped to 512x512. PNG, JPEG, or WebP.</p>
                   <div class="avatar-actions">
                     <FormMessage message={avatarMessage[user.id] ?? null} />
@@ -383,10 +376,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.5em;
-  }
-
-  .file-input {
-    padding: 0.3em 0.5em;
   }
 
   .hint {

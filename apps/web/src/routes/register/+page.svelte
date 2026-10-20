@@ -82,19 +82,28 @@
         >
           <div class="field">
             <label for="name">Name</label>
-            <input type="text" id="name" bind:value={name} placeholder="Your name" required maxlength="25" />
+            <input type="text" id="name" class="form-input" aria-invalid={fieldErrors.name ? "true" : undefined} bind:value={name} placeholder="Your name" required maxlength="25" />
             {#if fieldErrors.name}<span class="field-error">{fieldErrors.name}</span>{/if}
           </div>
 
           <div class="field">
             <label for="email">Email</label>
-            <input type="email" id="email" bind:value={email} placeholder="you@example.com" required maxlength="120" />
+            <input type="email" id="email" class="form-input" aria-invalid={fieldErrors.email ? "true" : undefined} bind:value={email} placeholder="you@example.com" required maxlength="120" />
             {#if fieldErrors.email}<span class="field-error">{fieldErrors.email}</span>{/if}
           </div>
 
           <div class="field">
             <label for="password">Password</label>
-            <input type="password" id="password" bind:value={password} placeholder="At least 8 characters" required minlength="8" />
+            <input
+              type="password"
+              id="password"
+              class="form-input"
+              aria-invalid={fieldErrors.password ? "true" : undefined}
+              bind:value={password}
+              placeholder="At least 8 characters"
+              required
+              minlength="8"
+            />
             {#if fieldErrors.password}<span class="field-error">{fieldErrors.password}</span>{/if}
           </div>
 
@@ -198,24 +207,6 @@
     font-weight: 500;
     letter-spacing: -0.02em;
     color: var(--colour-muted);
-  }
-
-  .field input {
-    padding: 0.75rem 0.85rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg);
-    color: var(--colour-text);
-    font-size: 1rem;
-    transition:
-      border-color var(--motion-fast) var(--ease-out-quart),
-      background var(--motion-fast) var(--ease-out-quart);
-  }
-
-  .field input:focus {
-    outline: none;
-    border-color: var(--accent-base);
-    background: var(--colour-bg-lighter);
   }
 
   .field-error {

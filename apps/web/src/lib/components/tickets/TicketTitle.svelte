@@ -71,8 +71,16 @@
   {#if readonly}
     <h1 class="title-static">{title}</h1>
   {:else if editing}
-    <textarea bind:this={input} bind:value={draft} class="title-input" class:invalid={!isValid} rows="1" maxlength="200" disabled={isSaving} onkeydown={handleKeydown} onblur={() => void save()}
-    ></textarea>
+    <textarea
+      bind:this={input}
+      bind:value={draft}
+      class="form-input title-input"
+      aria-invalid={isValid ? undefined : "true"}
+      rows="1"
+      maxlength="200"
+      disabled={isSaving}
+      onkeydown={handleKeydown}
+      onblur={() => void save()}></textarea>
   {:else}
     <button type="button" class="title-button" onclick={startEditing} title="Edit title">
       <h1>{title}</h1>
@@ -123,25 +131,15 @@
   }
 
   .title-input {
-    width: 100%;
     padding: 0.2rem 0.4rem;
     margin: -0.2rem -0.4rem;
-    border: 1px solid var(--accent-tint-600);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg-lighter);
-    color: var(--colour-text);
     font: inherit;
     font-size: clamp(1.8rem, 1.6vw + 1.3rem, 3rem);
     line-height: 1.05;
     font-weight: inherit;
     resize: none;
-    outline: none;
     overflow: hidden;
     field-sizing: content;
-  }
-
-  .title-input.invalid {
-    border-color: var(--colour-error);
   }
 
   .title-static {

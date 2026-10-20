@@ -96,7 +96,7 @@
   .button[data-variant="secondary"] {
     background: var(--colour-bg-lighter);
     color: var(--colour-text);
-    border: 1px solid var(--colour-border);
+    border: 1px solid var(--colour-border-control);
     box-shadow:
       0 1px 2px rgb(from var(--colour-shadow) r g b / 0.07),
       inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
