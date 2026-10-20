@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseThemeChoice, readStoredTheme, storeTheme, THEME_STORAGE_KEY } from "./theme";
+import { isShowingDark, parseThemeChoice, readStoredTheme, storeTheme, THEME_STORAGE_KEY } from "./theme";
 
 const blockedStorage = {
   getItem: () => {
@@ -35,6 +35,18 @@ describe("readStoredTheme", () => {
 
   it("falls back to system when storage is blocked", () => {
     expect(readStoredTheme(blockedStorage)).toBe("system");
+  });
+});
+
+describe("isShowingDark", () => {
+  it("follows a theme set on the page, whatever the browser prefers", () => {
+    expect(isShowingDark({ dataset: { theme: "dark" } }, () => false)).toBe(true);
+    expect(isShowingDark({ dataset: { theme: "light" } }, () => true)).toBe(false);
+  });
+
+  it("follows the browser setting when no theme is set", () => {
+    expect(isShowingDark({ dataset: {} }, () => true)).toBe(true);
+    expect(isShowingDark({ dataset: {} }, () => false)).toBe(false);
   });
 });
 
