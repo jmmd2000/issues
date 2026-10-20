@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
 import { labels, projectMembers } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
+import { statuses } from "../db/schema";
 
 let cookies: string;
 let projectID: string;
@@ -91,7 +92,8 @@ describe("POST /api/projects/:key/labels", () => {
       headers: { "Content-Type": "application/json", Cookie: cookies },
       body: JSON.stringify({ name: "Critical", colour: "#00ff00" }),
     });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(409);
+    expect((await res.json()).message).toBe("A label named Critical already exists.");
   });
 });
 
@@ -123,6 +125,50 @@ describe("GET /api/projects/:key/labels", () => {
     const res = await app.request("/api/projects/TEST/labels", { headers: { Cookie: otherCookies } });
     expect(res.status).toBe(404);
   });
+
+  describe("ticket counts", () => {
+    async function createLabelledTicket(title: string, labelIDs: string[], visibility?: "public" | "private") {
+      const [status] = await db.select({ id: statuses.id }).from(statuses).where(eq(statuses.projectID, projectID)).limit(1);
+      const res = await app.request("/api/projects/TEST/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookies },
+        body: JSON.stringify({ title, statusID: status.id, labelIDs, visibility }),
+      });
+      return (await res.json()).ticket;
+    }
+
+    async function findLabel(name: string) {
+      const [row] = await db
+        .select()
+        .from(labels)
+        .where(and(eq(labels.projectID, projectID), eq(labels.name, name)));
+      return row;
+    }
+
+    async function counts() {
+      const res = await app.request("/api/projects/TEST/labels", { headers: { Cookie: cookies } });
+      const body = await res.json();
+      return Object.fromEntries(body.labels.map((label: { name: string; ticketCount: number }) => [label.name, label.ticketCount]));
+    }
+
+    it("counts the tickets that carry each label, with zero for an unused one", async () => {
+      const bug = await findLabel("Bug");
+      const feature = await findLabel("Feature");
+      await createLabelledTicket("One", [bug.id, feature.id]);
+      await createLabelledTicket("Two", [bug.id]);
+
+      expect(await counts()).toMatchObject({ Bug: 2, Feature: 1, Chore: 0 });
+    });
+
+    it("leaves soft-deleted tickets out and counts private tickets for a member", async () => {
+      const bug = await findLabel("Bug");
+      const gone = await createLabelledTicket("Gone", [bug.id]);
+      await createLabelledTicket("Hidden", [bug.id], "private");
+      await app.request(`/api/projects/TEST/tickets/${gone.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+      expect((await counts()).Bug).toBe(1);
+    });
+  });
 });
 
 describe("PATCH /api/projects/:key/labels/:id", () => {
@@ -135,6 +181,22 @@ describe("PATCH /api/projects/:key/labels/:id", () => {
     projectID = project.id;
     const [seeded] = await db.select().from(labels).where(eq(labels.projectID, projectID)).limit(1);
     labelID = seeded.id;
+  });
+
+  it("refuses to rename a label to a name another label has", async () => {
+    const rows = await db.select().from(labels).where(eq(labels.projectID, projectID));
+    const bug = rows.find(row => row.name === "Bug");
+    const feature = rows.find(row => row.name === "Feature");
+    if (!bug || !feature) throw new Error("Seeded labels are missing.");
+
+    const res = await app.request(`/api/projects/TEST/labels/${bug.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ name: "Feature", colour: bug.colour }),
+    });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).message).toBe("A label named Feature already exists.");
   });
 
   it("updates label name and colour", async () => {

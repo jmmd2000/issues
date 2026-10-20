@@ -51,6 +51,8 @@ export type CreatedApiToken = { token: string; apiToken: ApiToken };
 export type ServiceUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type Status = Jsonified<StatusRow>;
 export type Label = Jsonified<LabelRow>;
+/** A label with the number of tickets that carry it. */
+export type LabelWithCount = Label & { ticketCount: number };
 export type Ticket = Jsonified<TicketRow>;
 
 export type ProjectMemberUser = Jsonified<Pick<UserRow, "id" | "name" | "avatarURL" | "createdAt" | "updatedAt">>;

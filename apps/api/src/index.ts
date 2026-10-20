@@ -41,6 +41,7 @@ export type {
   ServiceUser,
   Status,
   Label,
+  LabelWithCount,
   Priority,
   StatusCategory,
   ProjectMemberUser,

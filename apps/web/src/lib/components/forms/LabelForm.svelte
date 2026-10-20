@@ -1,14 +1,16 @@
 <script lang="ts">
   import { client } from "$lib/api/client";
-  import type { Label } from "@issues/api";
+  import type { LabelWithCount } from "@issues/api";
   import { Plus } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import LabelChip from "$lib/components/tickets/LabelChip.svelte";
+  import ColourPicker from "./ColourPicker.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
   import LabelRow from "./LabelRow.svelte";
 
   const DEFAULT_COLOUR = "#355dd4";
 
-  let { labels, projectKey }: { labels: Label[]; projectKey: string } = $props();
+  let { labels, projectKey }: { labels: LabelWithCount[]; projectKey: string } = $props();
 
   // svelte-ignore state_referenced_locally
   let labelList = $state([...labels]);
@@ -21,7 +23,7 @@
     labelList = labelList.filter(label => label.id !== labelID);
   }
 
-  function handleLabelUpdate(nextLabel: Label) {
+  function handleLabelUpdate(nextLabel: LabelWithCount) {
     labelList = labelList.map(label => (label.id === nextLabel.id ? nextLabel : label));
   }
 
@@ -42,9 +44,8 @@
         fieldErrors = data.fieldErrors ?? {};
         return;
       }
-      const data = (await res.json()) as { label: Label };
-      message = { type: "success", text: "Label added" };
-      labelList = [...labelList, data.label];
+      const data = (await res.json()) as { label: LabelWithCount };
+      labelList = [...labelList, { ...data.label, ticketCount: 0 }];
       newLabel = { name: "", colour: DEFAULT_COLOUR };
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
@@ -60,53 +61,64 @@
   {/each}
 
   <form
-    class="new-label-footer"
+    class="new-label"
     novalidate
     onsubmit={e => {
       e.preventDefault();
       void handleAdd();
     }}
   >
-    <div class="label-row">
-      <label class="form-colour-picker">
-        <span class="form-colour-picker-swatch" style:background-color={newLabel.colour}></span>
-        <input type="color" id="new-label-colour" aria-label="Choose label colour" bind:value={newLabel.colour} disabled={submitting} />
-      </label>
-      <input type="text" id="new-label-name" class="form-input" bind:value={newLabel.name} placeholder="Enter label name..." required maxlength="25" disabled={submitting} />
-      <Button type="submit" size="md" disabled={submitting}>
-        <Plus size="14" />
-        {submitting ? "Adding..." : "Add label"}
-      </Button>
-    </div>
-    <div class="field-errors">
-      {#if fieldErrors.colour}
-        <span id="new-label-colour-error" class="field-error">{fieldErrors.colour}</span>
-      {/if}
-      {#if fieldErrors.name}
-        <span id="new-label-name-error" class="field-error">{fieldErrors.name}</span>
-      {/if}
-    </div>
-    <FormMessage {message} />
+    <ColourPicker bind:value={newLabel.colour} ariaLabel="Colour for the new label" disabled={submitting} />
+    <input
+      type="text"
+      id="new-label-name"
+      class="form-input new-name"
+      aria-label="New label name"
+      bind:value={newLabel.name}
+      placeholder="New label"
+      required
+      maxlength="25"
+      aria-invalid={fieldErrors.name ? "true" : undefined}
+      disabled={submitting}
+    />
+    <span class="preview"><LabelChip name={newLabel.name.trim() || "Label"} colour={newLabel.colour} /></span>
+    <Button type="submit" size="md" disabled={submitting || !newLabel.name.trim()}>
+      <Plus size="14" />
+      {submitting ? "Adding..." : "Add"}
+    </Button>
   </form>
+  <div class="field-errors">
+    {#if fieldErrors.colour}
+      <span id="new-label-colour-error" class="field-error">{fieldErrors.colour}</span>
+    {/if}
+    {#if fieldErrors.name}
+      <span id="new-label-name-error" class="field-error">{fieldErrors.name}</span>
+    {/if}
+  </div>
+  <FormMessage {message} />
 </div>
 
 <style>
   .settings-card {
-    gap: 0.5em;
+    gap: 0.75rem;
   }
 
-  .new-label-footer {
-    padding-top: 1em;
+  .new-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
     border-top: var(--border);
   }
 
-  .label-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75em;
+  .new-name {
+    flex: 1 1 10rem;
+    min-width: 0;
+    max-width: 16rem;
   }
 
-  .new-label-footer :global(.form-message) {
-    margin-top: 0.5em;
+  .preview {
+    min-width: 0;
   }
 </style>
