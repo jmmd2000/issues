@@ -2,7 +2,7 @@
   import { goto, invalidateAll } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { untrack } from "svelte";
-  import type { Label, ProjectMember, Status, TicketDetail } from "@issues/api";
+  import type { Label, ProjectMember, Status, TicketDetail, Visibility } from "@issues/api";
   import { client } from "$lib/api/client";
   import Modal from "$lib/components/ui/Modal.svelte";
   import Checkbox from "$lib/components/ui/Checkbox.svelte";
@@ -14,6 +14,8 @@
     /** "create" opens an empty form; "clone" prefills from `source` and posts to the clone endpoint. */
     mode: "create" | "clone";
     projectKey: string;
+    /** The project's visibility. A private project hides the visibility toggle and the requests leave visibility out. */
+    projectVisibility: Visibility;
     statuses: Status[];
     labels: Label[];
     members: ProjectMember[];
@@ -42,6 +44,7 @@
     open,
     mode,
     projectKey,
+    projectVisibility,
     statuses,
     labels,
     members,
@@ -93,6 +96,10 @@
   const submitText = $derived(submitLabel ?? (mode === "clone" ? "Create clone" : "Create ticket"));
   const parentExclude = $derived(mode === "clone" && source ? source.number : excludeParentNumber);
 
+  function ticketVisibility(values: TicketFormValues): Visibility | undefined {
+    return projectVisibility === "public" ? values.visibility : undefined;
+  }
+
   async function submitCreate(values: TicketFormValues): Promise<TicketFormSubmitResult> {
     const res = await client.api.projects[":key"].tickets.$post({
       param: { key: projectKey },
@@ -104,7 +111,7 @@
         assigneeID: values.assigneeID || undefined,
         labelIDs: values.labelIDs.length ? values.labelIDs : undefined,
         parentTicketID: values.parentTicket?.id,
-        visibility: values.visibility,
+        visibility: ticketVisibility(values),
       },
     });
 
@@ -137,7 +144,7 @@
           assigneeID: values.assigneeID || undefined,
           labelIDs: values.labelIDs.length ? values.labelIDs : undefined,
           parentTicketID: values.parentTicket?.id,
-          visibility: values.visibility,
+          visibility: ticketVisibility(values),
         },
         copyAttachments: untrack(() => copyAttachments),
       },
@@ -187,6 +194,7 @@
       {members}
       {currentUserID}
       {projectKey}
+      {projectVisibility}
       initialValues={formPrefill}
       excludeParentNumber={parentExclude}
       submitLabel={submitText}

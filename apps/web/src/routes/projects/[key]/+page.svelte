@@ -311,6 +311,7 @@
     open={createOpen}
     mode="create"
     projectKey={project.key}
+    projectVisibility={project.visibility}
     statuses={project.statuses}
     labels={project.labels}
     members={project.members}

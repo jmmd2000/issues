@@ -383,7 +383,7 @@ describe("GET /api/feed", () => {
     return row.id;
   }
 
-  async function createTicketIn(projectKey: string, title: string, projectStatusID: string, visibility: "public" | "private" = "public") {
+  async function createTicketIn(projectKey: string, title: string, projectStatusID: string, visibility?: "public" | "private") {
     const res = await app.request(`/api/projects/${projectKey}/tickets`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },

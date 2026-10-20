@@ -29,7 +29,7 @@ async function statusIDFor(projectID: string, slug = "backlog"): Promise<string>
   return row.id;
 }
 
-async function createTicket(cookies: string, projectKey: string, title: string, visibility: "public" | "private", statusID: string, description = "") {
+async function createTicket(cookies: string, projectKey: string, title: string, visibility: "public" | "private" | undefined, statusID: string, description = "") {
   const res = await app.request(`/api/projects/${projectKey}/tickets`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -70,7 +70,7 @@ beforeEach(async () => {
 
   const pubPublicTicket = await createTicket(memberCookies, "PUB", "Public ticket text", "public", pubStatusID);
   const pubPrivateTicket = await createTicket(memberCookies, "PUB", "Private ticket text", "private", pubStatusID);
-  const privTicket = await createTicket(memberCookies, "PRIV", "Private project ticket", "public", privStatusID);
+  const privTicket = await createTicket(memberCookies, "PRIV", "Private project ticket", undefined, privStatusID);
 
   // Seed at least one comment on each ticket so list endpoints have data
   await addComment(memberCookies, "PUB", pubPublicTicket.number, "Hello on public");
@@ -309,7 +309,7 @@ describe("access matrix: private project listed on the home page", () => {
     const backlogID = await statusIDFor(fixture.privProjectID);
     const inProgressID = await statusIDFor(fixture.privProjectID, "in-progress");
 
-    secretTicket = await createTicket(fixture.memberCookies, "PRIV", "Secret title", "private", backlogID, "Secret description");
+    secretTicket = await createTicket(fixture.memberCookies, "PRIV", "Secret title", undefined, backlogID, "Secret description");
     await addComment(fixture.memberCookies, "PRIV", secretTicket.number, "Secret comment");
     await app.request(`/api/projects/PRIV/tickets/${secretTicket.number}`, {
       method: "PATCH",

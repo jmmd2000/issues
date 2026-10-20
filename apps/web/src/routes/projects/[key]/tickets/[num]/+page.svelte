@@ -351,6 +351,7 @@
       <TicketChildren
         children={ticket.children}
         projectKey={project.key}
+        projectVisibility={project.visibility}
         parentTicketID={ticket.id}
         parentTicketNumber={ticket.number}
         parentTicketTitle={ticket.title}
@@ -508,7 +509,7 @@
             </dd>
           </div>
 
-          {#if canEdit}
+          {#if canEdit && project.visibility === "public"}
             <div class="property-row">
               <dt>Visibility</dt>
               <dd>
@@ -575,6 +576,7 @@
     mode="clone"
     source={ticket}
     projectKey={project.key}
+    projectVisibility={project.visibility}
     statuses={project.statuses}
     labels={project.labels}
     members={project.members}

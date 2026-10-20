@@ -213,7 +213,7 @@ describe("GET /api/projects/", () => {
 describe("GET /api/projects/with-counts", () => {
   let cookies: string;
 
-  async function createTicket(projectKey: string, statusID: string, title = "Ticket", visibility: "public" | "private" = "public") {
+  async function createTicket(projectKey: string, statusID: string, title = "Ticket", visibility?: "public" | "private") {
     const res = await app.request(`/api/projects/${projectKey}/tickets`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -269,7 +269,7 @@ describe("GET /api/projects/with-counts", () => {
   it("gives a non-member only the home page details of a listed private project", async () => {
     const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private", showOnHomePage: true, repo: "https://example.com/repo", stack: ["ts"] });
     const backlog = await getStatusID(project.id, "backlog");
-    await createTicket("PRIV", backlog, "Private ticket", "private");
+    await createTicket("PRIV", backlog, "Private ticket");
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
 
     const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: otherCookies } });
@@ -363,7 +363,7 @@ describe("GET /api/projects/with-counts", () => {
 describe("GET /api/projects/public", () => {
   let cookies: string;
 
-  async function createTicket(projectKey: string, statusID: string, title = "Ticket", visibility: "public" | "private" = "public") {
+  async function createTicket(projectKey: string, statusID: string, title = "Ticket", visibility?: "public" | "private") {
     const res = await app.request(`/api/projects/${projectKey}/tickets`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookies },
@@ -416,10 +416,11 @@ describe("GET /api/projects/public", () => {
   });
 
   it("lists a private project with show on home page as locked and counts all its open tickets", async () => {
-    const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private", showOnHomePage: true });
+    const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "public", showOnHomePage: true });
     const backlog = await getStatusID(project.id, "backlog");
     await createTicket("PRIV", backlog, "Public ticket", "public");
     await createTicket("PRIV", backlog, "Private ticket", "private");
+    await updateProject(cookies, "PRIV", { name: "Private", visibility: "private", showOnHomePage: true });
 
     const res = await app.request("/api/projects/public", { method: "GET" });
     const body = await res.json();
