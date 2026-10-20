@@ -1,11 +1,14 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import { Plus } from "@lucide/svelte";
+  import { Lock, Plus } from "@lucide/svelte";
+  import type { ProjectWithCount, PublicProject } from "@issues/api";
   import type { PageProps } from "./$types";
   import Button from "$lib/components/ui/Button.svelte";
   import ProjectActivityCard from "$lib/components/projectDetail/ProjectActivityCard.svelte";
 
   let { data }: PageProps = $props();
+
+  type HomeProject = ProjectWithCount | PublicProject;
 
   const projectCount = $derived(data.projects.length);
   const openTotal = $derived(data.projects.reduce((sum, project) => sum + project.openCount, 0));
@@ -16,6 +19,31 @@
     return `${projectCount} ${projectWord}, ${openTotal} open`;
   });
 </script>
+
+{#snippet projectCard(project: HomeProject)}
+  <header class="project-head">
+    <code class="project-key">{project.key}</code>
+    {#if project.isLocked}
+      <span class="project-private"><Lock size={12} strokeWidth={2} /> Private</span>
+    {/if}
+    <span class="project-rule" aria-hidden="true"></span>
+    <span class="project-count">
+      <span class="project-count-number" data-empty={project.openCount === 0}>{project.openCount}</span>
+      <span class="project-count-label">open</span>
+    </span>
+  </header>
+  <h3 class="project-name">{project.name}</h3>
+  {#if project.description}
+    <p class="project-description">{project.description}</p>
+  {/if}
+  {#if "stack" in project && Array.isArray(project.stack) && project.stack.length > 0}
+    <ul class="project-stack" aria-label="Stack">
+      {#each project.stack as tech (tech)}
+        <li class="project-stack-item">{tech}</li>
+      {/each}
+    </ul>
+  {/if}
+{/snippet}
 
 <svelte:head>
   <title>Issues</title>
@@ -61,27 +89,15 @@
         <ul class="project-list">
           {#each data.projects as project (project.id)}
             <li>
-              <a class="project-card" href={resolve("/projects/[key]", { key: project.key })}>
-                <header class="project-head">
-                  <code class="project-key">{project.key}</code>
-                  <span class="project-rule" aria-hidden="true"></span>
-                  <span class="project-count">
-                    <span class="project-count-number" data-empty={project.openCount === 0}>{project.openCount}</span>
-                    <span class="project-count-label">open</span>
-                  </span>
-                </header>
-                <h3 class="project-name">{project.name}</h3>
-                {#if project.description}
-                  <p class="project-description">{project.description}</p>
-                {/if}
-                {#if "stack" in project && Array.isArray(project.stack) && project.stack.length > 0}
-                  <ul class="project-stack" aria-label="Stack">
-                    {#each project.stack as tech (tech)}
-                      <li class="project-stack-item">{tech}</li>
-                    {/each}
-                  </ul>
-                {/if}
-              </a>
+              {#if project.isLocked}
+                <div class="project-card">
+                  {@render projectCard(project)}
+                </div>
+              {:else}
+                <a class="project-card" href={resolve("/projects/[key]", { key: project.key })}>
+                  {@render projectCard(project)}
+                </a>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -99,7 +115,14 @@
           <ul class="rail-feed">
             {#each data.feed.events as event (event.id)}
               {@const lookup = data.feed.lookups[event.project.key]}
-              <ProjectActivityCard row={event} projectKey={event.project.key} statuses={lookup?.statuses ?? []} labels={lookup?.labels ?? []} members={lookup?.members ?? []} />
+              <ProjectActivityCard
+                row={event}
+                projectKey={event.project.key}
+                isLocked={event.project.isLocked}
+                statuses={lookup?.statuses ?? []}
+                labels={lookup?.labels ?? []}
+                members={lookup?.members ?? []}
+              />
             {/each}
           </ul>
         {/if}
@@ -203,17 +226,17 @@
       transform 60ms var(--ease-out-quart);
   }
 
-  .project-card:hover {
+  a.project-card:hover {
     border-color: var(--accent-tint-600);
     box-shadow: var(--box-shadow);
   }
 
-  .project-card:hover .project-key {
+  a.project-card:hover .project-key {
     color: var(--accent-shade-100);
     background: var(--accent-tint-800);
   }
 
-  .project-card:active {
+  a.project-card:active {
     transform: translateY(1px);
   }
 
@@ -238,6 +261,18 @@
     transition:
       color var(--motion-fast) var(--ease-out-quart),
       background var(--motion-fast) var(--ease-out-quart);
+  }
+
+  .project-private {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    color: var(--colour-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
   }
 
   .project-rule {

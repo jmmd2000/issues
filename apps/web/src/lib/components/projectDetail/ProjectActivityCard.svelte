@@ -12,12 +12,13 @@
   interface ProjectActivityCardProps {
     row: ProjectActivity;
     projectKey: string;
+    isLocked?: boolean;
     statuses: ActivityLookup["statuses"];
     labels: ActivityLookup["labels"];
     members: ActivityLookup["members"];
   }
 
-  let { row, projectKey, statuses, labels, members }: ProjectActivityCardProps = $props();
+  let { row, projectKey, isLocked = false, statuses, labels, members }: ProjectActivityCardProps = $props();
 
   type TicketRef = { projectKey: string; number: number; title?: string };
 
@@ -48,6 +49,7 @@
     parts.push({ kind: "text", value: ` ${phrase} ` });
     const related = relatedTicket(value);
     if (related) parts.push({ kind: "ticket", ...related });
+    else parts.push({ kind: "text", value: "another ticket" });
     return parts;
   }
 
@@ -201,8 +203,12 @@
           <span>{part.name}</span>
         </span>
       {:else if part.kind === "ticket"}
-        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-        <a class="ticket-pill" href={ticketHref(part)} title={part.title ?? ""}>{part.projectKey}-{part.number}</a>
+        {#if isLocked}
+          <span class="ticket-pill">{part.projectKey}-{part.number}</span>
+        {:else}
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="ticket-pill" href={ticketHref(part)} title={part.title ?? ""}>{part.projectKey}-{part.number}</a>
+        {/if}
       {/if}
     {/each}
   </div>
@@ -286,7 +292,7 @@
       background var(--motion-fast) var(--ease-out-quart),
       border-color var(--motion-fast) var(--ease-out-quart);
 
-    &:hover {
+    &:is(a):hover {
       background: var(--accent-tint-900);
       border-color: var(--accent-tint-600);
     }
