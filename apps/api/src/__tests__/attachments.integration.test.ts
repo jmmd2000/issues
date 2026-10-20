@@ -304,6 +304,24 @@ describe("Attachments", () => {
       expect(memberRes.headers.get("cache-control")).toContain("private");
     });
 
+    it("404s for everyone once the ticket is soft-deleted, and serves again after a restore", async () => {
+      const ticket = await createTicket(cookies, "TEST", { visibility: "public" });
+      const create = await postAttachment(ticket.number, bytesToFile(await uniqueImage(21), "d.png", "image/png"));
+      const { attachment } = await create.json();
+      const url = `/uploads/${attachment.storageKey}`;
+
+      expect((await app.request(url, { method: "GET" })).status).toBe(200);
+
+      await app.request(`/api/projects/TEST/tickets/${ticket.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+      expect((await app.request(url, { method: "GET" })).status).toBe(404);
+      expect((await app.request(url, { method: "GET", headers: { Cookie: cookies } })).status).toBe(404);
+
+      await app.request(`/api/projects/TEST/tickets/${ticket.number}/restore`, { method: "POST", headers: { Cookie: cookies } });
+
+      expect((await app.request(url, { method: "GET" })).status).toBe(200);
+    });
+
     it("404s for a non-existent key", async () => {
       const fakeKey = `${"f".repeat(64)}.webp`;
       const res = await app.request(`/uploads/${fakeKey}`, { method: "GET" });
