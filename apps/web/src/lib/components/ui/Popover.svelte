@@ -202,7 +202,7 @@
     padding: 0.3em;
     display: flex;
     flex-direction: column;
-    gap: 0.15em;
+    gap: 0.2em;
     z-index: 20;
 
     &[data-align="end"] {

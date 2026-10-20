@@ -1,6 +1,7 @@
 @import "./lib/styles/cards.css";
 @import "./lib/styles/fields.css";
 @import "./lib/styles/menu.css";
+@import "./lib/styles/tint.css";
 @import "./lib/styles/code-block.css";
 
 * {

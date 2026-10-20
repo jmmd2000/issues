@@ -1,0 +1,13 @@
+/*
+  One colour drives a tinted chip or row. Set --tint, then use the other
+  properties for the background, border and text. The text colour is built
+  from the tint's hue at a fixed lightness, so any colour stays readable.
+*/
+.tinted {
+  --tint: var(--colour-muted);
+  --tint-background: color-mix(in oklab, var(--tint) 14%, var(--colour-paper) 86%);
+  --tint-background-hover: color-mix(in oklab, var(--tint) 22%, var(--colour-paper) 78%);
+  --tint-background-selected: color-mix(in oklab, var(--tint) 28%, var(--colour-paper) 72%);
+  --tint-border: color-mix(in oklab, var(--tint) 35%, var(--colour-paper) 65%);
+  --tint-text: light-dark(oklch(from var(--tint) 0.4 min(c, 0.14) h), oklch(from var(--tint) 0.88 min(c, 0.14) h));
+}
