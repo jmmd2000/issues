@@ -123,10 +123,10 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
-    border: 1px solid color-mix(in oklch, var(--option-colour) 25%, white 75%);
+    border: 1px solid color-mix(in oklch, var(--option-colour) 25%, var(--colour-paper) 75%);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--option-colour) 10%, white 90%);
-    color: color-mix(in oklch, var(--option-colour) 80%, black 20%);
+    background: color-mix(in oklch, var(--option-colour) 10%, var(--colour-paper) 90%);
+    color: color-mix(in oklch, var(--option-colour) 80%, var(--colour-ink) 20%);
     font: inherit;
     font-weight: 650;
     line-height: 1;
@@ -136,7 +136,7 @@
     &:hover,
     &:focus-visible,
     &[aria-expanded="true"] {
-      background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
+      background: color-mix(in oklch, var(--option-colour) 15%, var(--colour-paper) 85%);
     }
 
     &[data-size="md"] {
@@ -223,8 +223,8 @@
     padding: 0.4em 0.5em;
     border: none;
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--option-colour) 10%, white 90%);
-    color: color-mix(in oklch, var(--option-colour) 80%, black 20%);
+    background: color-mix(in oklch, var(--option-colour) 10%, var(--colour-paper) 90%);
+    color: color-mix(in oklch, var(--option-colour) 80%, var(--colour-ink) 20%);
     font: inherit;
     font-size: 0.8rem;
     font-weight: 650;
@@ -232,11 +232,11 @@
     cursor: pointer;
 
     &:hover {
-      background: color-mix(in oklch, var(--option-colour) 15%, white 85%);
+      background: color-mix(in oklch, var(--option-colour) 15%, var(--colour-paper) 85%);
     }
 
     &[aria-selected="true"] {
-      background: color-mix(in oklch, var(--option-colour) 20%, white 80%);
+      background: color-mix(in oklch, var(--option-colour) 20%, var(--colour-paper) 80%);
       font-weight: 800;
     }
 

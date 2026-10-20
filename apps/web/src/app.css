@@ -8,34 +8,37 @@
 }
 
 :root {
+  --colour-paper: white;
+  --colour-ink: black;
+
   --colour-bg: #f8f9fa;
-  --colour-bg-hover: color-mix(in oklch, var(--colour-bg) 95%, black 5%);
-  --colour-bg-lighter: color-mix(in oklch, var(--colour-bg) 10%, white 90%);
+  --colour-bg-hover: color-mix(in oklch, var(--colour-bg) 95%, var(--colour-ink) 5%);
+  --colour-bg-lighter: color-mix(in oklch, var(--colour-bg) 10%, var(--colour-paper) 90%);
   --colour-text: #1e2229;
-  --colour-text-secondary: color-mix(in oklch, var(--colour-text) 62%, white 38%);
-  --colour-muted: color-mix(in oklch, var(--colour-text) 42%, white 58%);
+  --colour-text-secondary: color-mix(in oklch, var(--colour-text) 62%, var(--colour-paper) 38%);
+  --colour-muted: color-mix(in oklch, var(--colour-text) 42%, var(--colour-paper) 58%);
 
   --accent-base: #355dd4;
-  --accent-shade-100: color-mix(in oklch, var(--accent-base) 90%, black 10%);
-  --accent-shade-200: color-mix(in oklch, var(--accent-base) 80%, black 20%);
-  --accent-shade-300: color-mix(in oklch, var(--accent-base) 70%, black 30%);
-  --accent-shade-400: color-mix(in oklch, var(--accent-base) 60%, black 40%);
-  --accent-shade-500: color-mix(in oklch, var(--accent-base) 50%, black 50%);
-  --accent-shade-600: color-mix(in oklch, var(--accent-base) 40%, black 60%);
-  --accent-shade-700: color-mix(in oklch, var(--accent-base) 30%, black 70%);
-  --accent-shade-800: color-mix(in oklch, var(--accent-base) 20%, black 80%);
-  --accent-shade-900: color-mix(in oklch, var(--accent-base) 10%, black 90%);
-  --accent-tint-100: color-mix(in oklch, var(--accent-base) 90%, white 10%);
-  --accent-tint-200: color-mix(in oklch, var(--accent-base) 80%, white 20%);
-  --accent-tint-300: color-mix(in oklch, var(--accent-base) 70%, white 30%);
-  --accent-tint-400: color-mix(in oklch, var(--accent-base) 60%, white 40%);
-  --accent-tint-500: color-mix(in oklch, var(--accent-base) 50%, white 50%);
-  --accent-tint-600: color-mix(in oklch, var(--accent-base) 40%, white 60%);
-  --accent-tint-700: color-mix(in oklch, var(--accent-base) 30%, white 70%);
-  --accent-tint-800: color-mix(in oklch, var(--accent-base) 20%, white 80%);
-  --accent-tint-900: color-mix(in oklch, var(--accent-base) 10%, white 90%);
+  --accent-shade-100: color-mix(in oklch, var(--accent-base) 90%, var(--colour-ink) 10%);
+  --accent-shade-200: color-mix(in oklch, var(--accent-base) 80%, var(--colour-ink) 20%);
+  --accent-shade-300: color-mix(in oklch, var(--accent-base) 70%, var(--colour-ink) 30%);
+  --accent-shade-400: color-mix(in oklch, var(--accent-base) 60%, var(--colour-ink) 40%);
+  --accent-shade-500: color-mix(in oklch, var(--accent-base) 50%, var(--colour-ink) 50%);
+  --accent-shade-600: color-mix(in oklch, var(--accent-base) 40%, var(--colour-ink) 60%);
+  --accent-shade-700: color-mix(in oklch, var(--accent-base) 30%, var(--colour-ink) 70%);
+  --accent-shade-800: color-mix(in oklch, var(--accent-base) 20%, var(--colour-ink) 80%);
+  --accent-shade-900: color-mix(in oklch, var(--accent-base) 10%, var(--colour-ink) 90%);
+  --accent-tint-100: color-mix(in oklch, var(--accent-base) 90%, var(--colour-paper) 10%);
+  --accent-tint-200: color-mix(in oklch, var(--accent-base) 80%, var(--colour-paper) 20%);
+  --accent-tint-300: color-mix(in oklch, var(--accent-base) 70%, var(--colour-paper) 30%);
+  --accent-tint-400: color-mix(in oklch, var(--accent-base) 60%, var(--colour-paper) 40%);
+  --accent-tint-500: color-mix(in oklch, var(--accent-base) 50%, var(--colour-paper) 50%);
+  --accent-tint-600: color-mix(in oklch, var(--accent-base) 40%, var(--colour-paper) 60%);
+  --accent-tint-700: color-mix(in oklch, var(--accent-base) 30%, var(--colour-paper) 70%);
+  --accent-tint-800: color-mix(in oklch, var(--accent-base) 20%, var(--colour-paper) 80%);
+  --accent-tint-900: color-mix(in oklch, var(--accent-base) 10%, var(--colour-paper) 90%);
 
-  --colour-border: color-mix(in oklch, var(--colour-text) 10%, white 90%);
+  --colour-border: color-mix(in oklch, var(--colour-text) 10%, var(--colour-paper) 90%);
   --colour-accent-border: var(--accent-shade-100);
   --border-radius-outer: 8px;
   --border-radius-inner: 4px;
@@ -48,13 +51,13 @@
   --box-shadow: rgb(from var(--colour-text) r g b / 0.06) 0px 1px 3px 0px, rgb(from var(--colour-text) r g b / 0.06) 0px 1px 2px -1px;
 
   --colour-success: #248f47;
-  --colour-success-bg: color-mix(in oklch, var(--colour-success) 20%, white 80%);
-  --colour-success-bg-hover: color-mix(in oklch, var(--colour-success) 25%, white 75%);
-  --colour-success-border: color-mix(in oklch, var(--colour-success) 50%, white 50%);
+  --colour-success-bg: color-mix(in oklch, var(--colour-success) 20%, var(--colour-paper) 80%);
+  --colour-success-bg-hover: color-mix(in oklch, var(--colour-success) 25%, var(--colour-paper) 75%);
+  --colour-success-border: color-mix(in oklch, var(--colour-success) 50%, var(--colour-paper) 50%);
   --colour-error: #cc3333;
-  --colour-error-bg: color-mix(in oklch, var(--colour-error) 20%, white 80%);
-  --colour-error-bg-hover: color-mix(in oklch, var(--colour-error) 25%, white 75%);
-  --colour-error-border: color-mix(in oklch, var(--colour-error) 50%, white 50%);
+  --colour-error-bg: color-mix(in oklch, var(--colour-error) 20%, var(--colour-paper) 80%);
+  --colour-error-bg-hover: color-mix(in oklch, var(--colour-error) 25%, var(--colour-paper) 75%);
+  --colour-error-border: color-mix(in oklch, var(--colour-error) 50%, var(--colour-paper) 50%);
 
   --colour-status-backlog: var(--colour-muted);
   --colour-status-active: var(--accent-base);

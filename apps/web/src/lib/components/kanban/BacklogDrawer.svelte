@@ -175,7 +175,7 @@
     visibility: visible !important;
     min-height: 4.25rem;
     border: 1px dashed var(--colour-border) !important;
-    background: color-mix(in oklch, var(--accent-base) 5%, white 95%) !important;
+    background: color-mix(in oklch, var(--accent-base) 5%, var(--colour-paper) 95%) !important;
     box-shadow: none !important;
     opacity: 1 !important;
     outline: none !important;

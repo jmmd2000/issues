@@ -115,13 +115,13 @@
   .button[data-variant="danger"] {
     background: var(--colour-error);
     color: var(--colour-bg-lighter);
-    border: 1px solid color-mix(in oklch, var(--colour-error) 82%, black 18%);
+    border: 1px solid color-mix(in oklch, var(--colour-error) 82%, var(--colour-ink) 18%);
     box-shadow:
       rgb(from var(--colour-text) r g b / 0.2) 0px 1px 3px,
       rgb(from var(--colour-bg-lighter) r g b / 0.14) 0px 1px 0px inset;
 
     &:hover:not(:disabled) {
-      background: color-mix(in oklch, var(--colour-error) 84%, black 16%);
+      background: color-mix(in oklch, var(--colour-error) 84%, var(--colour-ink) 16%);
     }
   }
 

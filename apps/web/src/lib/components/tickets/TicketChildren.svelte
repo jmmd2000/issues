@@ -168,15 +168,15 @@
     height: 0.7rem;
     border: var(--border);
     border-radius: 999px;
-    background: linear-gradient(180deg, color-mix(in oklch, var(--colour-bg) 92%, black 8%), var(--colour-bg));
+    background: linear-gradient(180deg, color-mix(in oklch, var(--colour-bg) 92%, var(--colour-ink) 8%), var(--colour-bg));
     box-shadow: inset 0 1px 2px rgb(from var(--colour-text) r g b / 0.1);
     overflow: hidden;
   }
 
   .progress-fill {
     height: 100%;
-    background: linear-gradient(180deg, color-mix(in oklch, var(--colour-status-done) 80%, white 20%), var(--colour-status-done));
-    border-right: 1px solid color-mix(in oklch, var(--colour-status-done) 70%, black 30%);
+    background: linear-gradient(180deg, color-mix(in oklch, var(--colour-status-done) 80%, var(--colour-paper) 20%), var(--colour-status-done));
+    border-right: 1px solid color-mix(in oklch, var(--colour-status-done) 70%, var(--colour-ink) 30%);
     box-shadow:
       0 1px 2px rgb(from var(--colour-status-done) r g b / 0.35),
       inset 0 1px 0 rgb(255 255 255 / 0.4);

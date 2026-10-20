@@ -106,8 +106,8 @@
   }
 
   .toggle-track.on {
-    background: linear-gradient(180deg, color-mix(in oklch, var(--accent-base) 85%, white 15%) 0%, var(--accent-base) 100%);
-    border-color: color-mix(in oklch, var(--accent-base) 80%, black 20%);
+    background: linear-gradient(180deg, color-mix(in oklch, var(--accent-base) 85%, var(--colour-paper) 15%) 0%, var(--accent-base) 100%);
+    border-color: color-mix(in oklch, var(--accent-base) 80%, var(--colour-ink) 20%);
     box-shadow:
       0 1px 3px rgb(from var(--accent-base) r g b / 0.35),
       inset 0 1px 0 rgb(255 255 255 / 0.1);

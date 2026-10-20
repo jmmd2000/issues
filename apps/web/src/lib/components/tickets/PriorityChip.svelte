@@ -82,22 +82,22 @@
   .badge {
     width: 20px;
     height: 20px;
-    border: 1px solid color-mix(in oklch, var(--priority-colour) 55%, white 45%);
-    background: color-mix(in oklch, var(--priority-colour) 15%, white 85%);
+    border: 1px solid color-mix(in oklch, var(--priority-colour) 55%, var(--colour-paper) 45%);
+    background: color-mix(in oklch, var(--priority-colour) 15%, var(--colour-paper) 85%);
   }
 
   .badge .icon {
-    color: color-mix(in oklch, var(--priority-colour) 75%, black 25%);
+    color: color-mix(in oklch, var(--priority-colour) 75%, var(--colour-ink) 25%);
   }
 
   .chip {
-    --priority-foreground: color-mix(in oklch, var(--priority-colour) 75%, black 25%);
+    --priority-foreground: color-mix(in oklch, var(--priority-colour) 75%, var(--colour-ink) 25%);
 
     gap: 0.4rem;
     min-height: 1.4rem;
     padding: 0.2rem 0.4rem;
-    border: 1px solid color-mix(in oklch, var(--priority-colour) 40%, white 60%);
-    background: color-mix(in oklch, var(--priority-colour) 15%, white 85%);
+    border: 1px solid color-mix(in oklch, var(--priority-colour) 40%, var(--colour-paper) 60%);
+    background: color-mix(in oklch, var(--priority-colour) 15%, var(--colour-paper) 85%);
     color: var(--priority-foreground);
     font-size: 0.7rem;
     font-weight: 600;
