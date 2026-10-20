@@ -1,28 +1,28 @@
 <script lang="ts">
+  import { Check } from "@lucide/svelte";
   import { client } from "$lib/api/client";
+  import { canChangePassword, checkNewPassword } from "$lib/passwordRules";
   import Button from "$lib/components/ui/Button.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
+  import PasswordField from "./PasswordField.svelte";
 
   let form = $state({ currentPassword: "", newPassword: "", confirmPassword: "" });
   let message = $state<FormMessageType | null>(null);
   let fieldErrors: Record<string, string> = $state({});
   let submitting = $state(false);
 
+  const checks = $derived(checkNewPassword(form.newPassword, form.confirmPassword));
+  const canSubmit = $derived(canChangePassword(form.currentPassword, form.newPassword, form.confirmPassword));
+
   function resetForm() {
     form = { currentPassword: "", newPassword: "", confirmPassword: "" };
   }
 
   async function handleSubmit() {
-    if (submitting) return;
+    if (submitting || !canSubmit) return;
 
     message = null;
     fieldErrors = {};
-
-    if (form.newPassword !== form.confirmPassword) {
-      fieldErrors = { confirmPassword: "Passwords do not match." };
-      return;
-    }
-
     submitting = true;
     try {
       const res = await client.api.auth["change-password"].$post({
@@ -52,49 +52,71 @@
     void handleSubmit();
   }}
 >
-  <div>
-    <label for="currentPassword" class="form-label">Current password</label>
-    <input type="password" id="currentPassword" class="form-input" bind:value={form.currentPassword} autocomplete="current-password" required />
-    {#if fieldErrors.currentPassword}
-      <span id="currentPassword-error" class="field-error">{fieldErrors.currentPassword}</span>
-    {/if}
-  </div>
+  <PasswordField id="currentPassword" label="Current password" autocomplete="current-password" bind:value={form.currentPassword} error={fieldErrors.currentPassword} />
+  <PasswordField id="newPassword" label="New password" autocomplete="new-password" bind:value={form.newPassword} error={fieldErrors.newPassword} />
+  <PasswordField id="confirmPassword" label="Confirm new password" autocomplete="new-password" bind:value={form.confirmPassword} error={fieldErrors.confirmPassword} />
 
-  <div>
-    <label for="newPassword" class="form-label">New password</label>
-    <input type="password" id="newPassword" class="form-input" bind:value={form.newPassword} autocomplete="new-password" minlength="8" required />
-    {#if fieldErrors.newPassword}
-      <span id="newPassword-error" class="field-error">{fieldErrors.newPassword}</span>
-    {/if}
-  </div>
+  <ul class="requirements" aria-label="Password requirements">
+    <li class="requirement" data-met={checks.longEnough}><span class="tick" aria-hidden="true"><Check size={9} strokeWidth={4} /></span>At least 8 characters</li>
+    <li class="requirement" data-met={checks.matches}><span class="tick" aria-hidden="true"><Check size={9} strokeWidth={4} /></span>Both new passwords match</li>
+  </ul>
 
-  <div>
-    <label for="confirmPassword" class="form-label">Confirm new password</label>
-    <input type="password" id="confirmPassword" class="form-input" bind:value={form.confirmPassword} autocomplete="new-password" minlength="8" required />
-    {#if fieldErrors.confirmPassword}
-      <span id="confirmPassword-error" class="field-error">{fieldErrors.confirmPassword}</span>
-    {/if}
-  </div>
-
-  <div class="settings-card-footer">
-    <FormMessage {message} />
-    <Button type="submit" disabled={submitting}>
+  <div class="footer">
+    <Button type="submit" disabled={submitting || !canSubmit}>
       {submitting ? "Saving..." : "Update password"}
     </Button>
+    <FormMessage {message} />
   </div>
 </form>
 
 <style>
-  .settings-card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1em;
-    padding-top: 1em;
-    border-top: var(--border);
+  .requirements {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .settings-card-footer :global(.form-message) {
-    flex: 1;
+  .requirement {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--colour-muted);
+    font-size: 0.8125rem;
+
+    &[data-met="true"] {
+      color: var(--colour-success);
+    }
+  }
+
+  .tick {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    transition: background var(--motion-fast) var(--ease-out-quart);
+
+    & :global(svg) {
+      color: var(--colour-bg-lighter);
+      opacity: 0;
+    }
+  }
+
+  .requirement[data-met="true"] .tick {
+    background: currentColor;
+
+    & :global(svg) {
+      opacity: 1;
+    }
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 </style>
