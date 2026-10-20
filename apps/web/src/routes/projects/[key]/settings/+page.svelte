@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.project.name} settings · Issues</title>
+  <title>{data.project.name} · Settings · Issues</title>
 </svelte:head>
 
 <div class="settings-page">

@@ -54,7 +54,7 @@
 {/snippet}
 
 <svelte:head>
-  <title>Issues</title>
+  <title>Projects · Issues</title>
 </svelte:head>
 
 <div class="home">
