@@ -1,6 +1,7 @@
 <!-- Root level layout -->
 <script lang="ts">
   import "$lib/../app.css";
+  import { page } from "$app/state";
   import { resolve } from "$app/paths";
   import { Search } from "@lucide/svelte";
   import type { Snippet } from "svelte";
@@ -10,6 +11,8 @@
   import Toaster from "$lib/components/ui/Toaster.svelte";
 
   let { data, children }: LayoutProps & { children: Snippet } = $props();
+
+  const showNav = $derived(page.url.pathname !== "/login" && page.url.pathname !== "/register");
 </script>
 
 <svelte:head>
@@ -19,21 +22,23 @@
   <link rel="icon" href={favicon} type="image/svg+xml" />
 </svelte:head>
 
-<nav>
-  <span class="icon-title">
-    <img src={favicon} alt="" width="24" height="24" />
-    <a href={resolve("/")}>Issues</a>
-  </span>
+{#if showNav}
+  <nav>
+    <span class="icon-title">
+      <img src={favicon} alt="" width="24" height="24" />
+      <a href={resolve("/")}>Issues</a>
+    </span>
 
-  <a class="nav-link" href={resolve("/search")}>
-    <Search size={14} strokeWidth={2.4} />
-    Search
-  </a>
+    <a class="nav-link" href={resolve("/search")}>
+      <Search size={14} strokeWidth={2.4} />
+      Search
+    </a>
 
-  <div class="nav-actions">
-    <UserMenu user={data.user} />
-  </div>
-</nav>
+    <div class="nav-actions">
+      <UserMenu user={data.user} />
+    </div>
+  </nav>
+{/if}
 
 <main>
   {@render children()}
