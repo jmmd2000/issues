@@ -24,10 +24,31 @@ describe("CommentThread", () => {
   });
 
   it("opens the composer when the Add a comment trigger is clicked", async () => {
-    const screen = await render(CommentThread, { ...baseProps });
+    const comments = [makeComment({ id: "c-1", body: "Hi", author: { id: "u-1", name: "Alice", avatarURL: null } })];
+    const screen = await render(CommentThread, { ...baseProps, comments });
     await screen.getByRole("button", { name: "Add a comment" }).click();
-    await expect.element(screen.getByRole("heading", { name: "Add a comment" })).toBeVisible();
+    await expect.element(screen.getByPlaceholder("Add a comment")).toBeVisible();
     await expect.element(screen.getByRole("button", { name: "Comment" })).toBeDisabled();
+  });
+
+  it("shows the composer open when there are no comments", async () => {
+    const screen = await render(CommentThread, { ...baseProps });
+    await expect.element(screen.getByPlaceholder("Add a comment")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Add a comment" }).elements()).toHaveLength(0);
+  });
+
+  it("lists the newest comment first", async () => {
+    const comments = [
+      makeComment({ id: "c-old", body: "Older", author: { id: "u-1", name: "Alice", avatarURL: null } }),
+      makeComment({ id: "c-new", body: "Newer", author: { id: "u-2", name: "Bob", avatarURL: null } }),
+    ];
+    const screen = await render(CommentThread, { ...baseProps, comments });
+    await expect.element(screen.getByText("Bob")).toBeVisible();
+    const authors = screen
+      .getByRole("article")
+      .elements()
+      .map(article => article.querySelector(".comment-author")?.textContent);
+    expect(authors).toEqual(["Bob", "Alice"]);
   });
 
   it("renders a tombstone for deleted comments", async () => {

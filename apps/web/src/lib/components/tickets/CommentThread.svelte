@@ -17,11 +17,14 @@
 
   let { comments, projectKey, ticketNumber, currentUserID, onmutated }: CommentThreadProps = $props();
   const canWrite = $derived(!!currentUserID);
+  // The API returns comments oldest first.
+  const newestFirst = $derived([...comments].reverse());
 
   let draft = $state("");
   let posting = $state(false);
   let postError = $state<string | null>(null);
   let composing = $state(false);
+  const composerOpen = $derived(composing || comments.length === 0);
 
   let editingID = $state<string | null>(null);
   let editDraft = $state("");
@@ -133,11 +136,38 @@
     <span class="thread-count">{comments.length}</span>
   </header>
 
+  {#if canWrite}
+    {#if composerOpen}
+      <form
+        class="comment-composer"
+        onsubmit={event => {
+          event.preventDefault();
+          void postComment();
+        }}
+      >
+        <MarkdownEditor bind:value={draft} placeholder="Add a comment" minHeight="8rem" autofocus={composing} onsubmit={() => void postComment()} attachmentContext={{ projectKey, ticketNumber }} />
+        {#if postError}
+          <p class="comment-error" role="alert">{postError}</p>
+        {/if}
+        <div class="composer-actions">
+          {#if comments.length > 0}
+            <Button type="button" variant="secondary" onclick={cancelComposing} disabled={posting}>Cancel</Button>
+          {/if}
+          <Button type="submit" aria-keyshortcuts="Control+Enter" disabled={posting || !draft.trim()}>
+            {posting ? "Posting..." : "Comment"}
+          </Button>
+        </div>
+      </form>
+    {:else}
+      <button type="button" class="composer-trigger" onclick={startComposing}>Add a comment</button>
+    {/if}
+  {/if}
+
   {#if comments.length === 0}
     <p class="thread-empty">No comments yet.</p>
   {:else}
     <ol class="comment-list">
-      {#each comments as comment (comment.id)}
+      {#each newestFirst as comment (comment.id)}
         <li class="comment" class:is-deleted={comment.isDeleted}>
           <div class="comment-avatar">
             <UserAvatar name={comment.author.name} avatarURL={comment.author.avatarURL} size="md" />
@@ -190,30 +220,6 @@
         </li>
       {/each}
     </ol>
-  {/if}
-
-  {#if canWrite}
-    {#if composing}
-      <form
-        class="comment-composer"
-        onsubmit={event => {
-          event.preventDefault();
-          void postComment();
-        }}
-      >
-        <h3 class="composer-title">Add a comment</h3>
-        <MarkdownEditor bind:value={draft} placeholder="Leave a comment..." minHeight="8rem" autofocus onsubmit={() => void postComment()} attachmentContext={{ projectKey, ticketNumber }} />
-        {#if postError}
-          <p class="comment-error" role="alert">{postError}</p>
-        {/if}
-        <div class="composer-actions">
-          <Button type="button" variant="secondary" onclick={cancelComposing} disabled={posting}>Cancel</Button>
-          <Button type="submit" disabled={posting || !draft.trim()}>{posting ? "Posting..." : "Comment"}</Button>
-        </div>
-      </form>
-    {:else}
-      <button type="button" class="composer-trigger" onclick={startComposing}>Add a comment</button>
-    {/if}
   {/if}
 </section>
 
@@ -382,14 +388,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
-    padding-top: 0.5rem;
-    border-top: var(--border);
-  }
-
-  .composer-title {
-    color: var(--colour-text);
-    font-size: 0.8rem;
-    font-weight: 700;
   }
 
   .composer-actions {
