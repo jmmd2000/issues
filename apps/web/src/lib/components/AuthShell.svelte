@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { resolve } from "$app/paths";
   import favicon from "$lib/assets/favicon.svg";
 
   let { title, lede, children }: { title: string; lede: string; children: Snippet } = $props();
@@ -7,10 +8,10 @@
 
 <section class="auth">
   <aside class="brand">
-    <div class="mark">
+    <a class="mark" href={resolve("/")}>
       <img src={favicon} alt="" width="28" height="28" />
       <span>Issues</span>
-    </div>
+    </a>
     <div class="brand-body">
       <h2 class="brand-headline">My personal issue tracker.</h2>
       <p class="brand-sub">Just for me.</p>
@@ -19,10 +20,10 @@
 
   <section class="form-panel">
     <div class="form-frame">
-      <div class="mark narrow-only">
+      <a class="mark narrow-only" href={resolve("/")}>
         <img src={favicon} alt="" width="28" height="28" />
         <span>Issues</span>
-      </div>
+      </a>
       <header class="frame-head">
         <h1>{title}</h1>
         <p class="lede">{lede}</p>
@@ -60,8 +61,10 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
+    color: inherit;
     font-size: 1rem;
     font-weight: 700;
+    text-decoration: none;
   }
 
   .narrow-only {
