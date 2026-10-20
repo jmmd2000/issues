@@ -3,21 +3,10 @@ export type ThemeChoice = "system" | "light" | "dark";
 /** The key under which the choice is saved. The inline script in `app.html` reads the same key. */
 export const THEME_STORAGE_KEY = "theme";
 
-const NEXT_CHOICE: Record<ThemeChoice, ThemeChoice> = {
-  system: "light",
-  light: "dark",
-  dark: "system",
-};
-
 /** Turns any saved value into a theme choice. Anything unknown means `system`. */
 export function parseThemeChoice(value: unknown): ThemeChoice {
   if (value === "light" || value === "dark") return value;
   return "system";
-}
-
-/** Returns the choice that follows `choice` when the toggle is pressed. */
-export function nextThemeChoice(choice: ThemeChoice): ThemeChoice {
-  return NEXT_CHOICE[choice];
 }
 
 /**

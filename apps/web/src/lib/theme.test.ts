@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextThemeChoice, parseThemeChoice, readStoredTheme, storeTheme, THEME_STORAGE_KEY } from "./theme";
+import { parseThemeChoice, readStoredTheme, storeTheme, THEME_STORAGE_KEY } from "./theme";
 
 const blockedStorage = {
   getItem: () => {
@@ -21,14 +21,6 @@ describe("parseThemeChoice", () => {
     expect(parseThemeChoice(null)).toBe("system");
     expect(parseThemeChoice("solarized")).toBe("system");
     expect(parseThemeChoice(42)).toBe("system");
-  });
-});
-
-describe("nextThemeChoice", () => {
-  it("cycles system, light, dark and back to system", () => {
-    expect(nextThemeChoice("system")).toBe("light");
-    expect(nextThemeChoice("light")).toBe("dark");
-    expect(nextThemeChoice("dark")).toBe("system");
   });
 });
 

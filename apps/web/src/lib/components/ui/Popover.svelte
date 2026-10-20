@@ -16,7 +16,7 @@
 
   let { open = $bindable(false), disabled = false, menuRole = "listbox", menuLabel, trigger, menu }: Props = $props();
 
-  const itemSelector = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"]';
+  const itemSelector = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"], [role="radio"][aria-checked="true"]';
   const enterDuration = 180;
   const leaveDuration = 150;
 
@@ -52,6 +52,7 @@
   }
 
   function isChosen(item: HTMLElement) {
+    if (item.getAttribute("role") === "radio") return false;
     return item.getAttribute("aria-selected") === "true" || item.getAttribute("aria-checked") === "true";
   }
 
@@ -89,7 +90,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (disabled || !rootElement || !event.composedPath().includes(rootElement)) return;
+    if (disabled || event.defaultPrevented || !rootElement || !event.composedPath().includes(rootElement)) return;
 
     if (!open) {
       if (!hasItems || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;

@@ -55,7 +55,7 @@
     <PasswordForm />
   </section>
 
-  <section class="settings-card-container">
+  <section class="settings-card-container" id="tokens">
     <h2>API tokens</h2>
     <p class="section-description">Long-lived bearer tokens for programmatic access.</p>
     <ApiTokensForm tokens={data.apiTokens} onCreate={createOwnToken} onRevoke={revokeOwnToken} />
