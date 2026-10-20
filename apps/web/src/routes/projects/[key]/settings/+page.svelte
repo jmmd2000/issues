@@ -6,6 +6,8 @@
   import GeneralSettingsForm from "$lib/components/forms/GeneralSettingsForm.svelte";
   import LabelForm from "$lib/components/forms/LabelForm.svelte";
   import StatusForm from "$lib/components/forms/StatusForm.svelte";
+  import ReadOnlyLabels from "$lib/components/settings/ReadOnlyLabels.svelte";
+  import ReadOnlyStatuses from "$lib/components/settings/ReadOnlyStatuses.svelte";
   import DangerZone from "$lib/components/forms/DangerZone.svelte";
   import TrashSection from "$lib/components/tickets/TrashSection.svelte";
 
@@ -30,11 +32,19 @@
   </section>
   <section class="settings-card-container">
     <h2>Labels</h2>
-    <LabelForm labels={data.project.labels} projectKey={data.project.key} />
+    {#if data.isOwner}
+      <LabelForm labels={data.project.labels} projectKey={data.project.key} />
+    {:else}
+      <ReadOnlyLabels labels={data.project.labels} />
+    {/if}
   </section>
   <section class="settings-card-container">
     <h2>Statuses</h2>
-    <StatusForm statuses={data.project.statuses} projectKey={data.project.key} />
+    {#if data.isOwner}
+      <StatusForm statuses={data.project.statuses} projectKey={data.project.key} />
+    {:else}
+      <ReadOnlyStatuses statuses={data.project.statuses} />
+    {/if}
   </section>
   {#if data.isOwner}
     <section class="settings-card-container">
