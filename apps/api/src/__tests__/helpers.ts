@@ -40,16 +40,17 @@ export async function createProject(
     name?: string;
     description?: string;
     visibility?: "public" | "private";
+    showOnHomePage?: boolean;
     repo?: string | null;
     stack?: string[];
   } = {}
 ) {
-  const { key = "TEST", name = "Test Project", description = "A test project", visibility = "public", repo = null, stack = [] } = overrides;
+  const { key = "TEST", name = "Test Project", description = "A test project", visibility = "public", showOnHomePage = false, repo = null, stack = [] } = overrides;
 
   const res = await app.request("/api/projects/create", {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookies },
-    body: JSON.stringify({ key, name, description, visibility, repo, stack }),
+    body: JSON.stringify({ key, name, description, visibility, showOnHomePage, repo, stack }),
   });
 
   const body = await res.json();
@@ -110,16 +111,17 @@ export async function updateProject(
     description?: string;
     metadata?: Record<string, unknown>;
     visibility?: "public" | "private";
+    showOnHomePage?: boolean;
     repo?: string | null;
     stack?: string[];
   } = {}
 ) {
-  const { name = "Updated Project", description = "An updated test project", metadata = {}, visibility = "public", repo = null, stack = [] } = overrides;
+  const { name = "Updated Project", description = "An updated test project", metadata = {}, visibility = "public", showOnHomePage, repo = null, stack = [] } = overrides;
 
   const res = await app.request(`/api/projects/${key}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Cookie: cookies },
-    body: JSON.stringify({ name, description, metadata, visibility, repo, stack }),
+    body: JSON.stringify({ name, description, metadata, visibility, showOnHomePage, repo, stack }),
   });
 
   const body = await res.json();

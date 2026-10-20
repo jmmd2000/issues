@@ -139,6 +139,22 @@ describe("POST /api/projects/create", () => {
     expect(body.project.visibility).toBe("private");
   });
 
+  it("turns show on home page off by default", async () => {
+    const res = await app.request("/api/projects/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ key: "PRIV", name: "Private Project", description: "No setting given", visibility: "private" }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.project.showOnHomePage).toBe(false);
+  });
+
+  it("persists show on home page", async () => {
+    const project = await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: true });
+    expect(project.showOnHomePage).toBe(true);
+  });
+
   it("rejects invalid repo URL", async () => {
     const res = await app.request("/api/projects/create", {
       method: "POST",
@@ -639,6 +655,37 @@ describe("PATCH /api/projects/:key", () => {
 
     expect(updated.name).toBe("Renamed");
     expect(updated.visibility).toBe("private");
+  });
+
+  it("updates show on home page", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const turnedOn = await updateProject(cookies, "PRIV", { visibility: "private", showOnHomePage: true });
+    expect(turnedOn.showOnHomePage).toBe(true);
+
+    const turnedOff = await updateProject(cookies, "PRIV", { visibility: "private", showOnHomePage: false });
+    expect(turnedOff.showOnHomePage).toBe(false);
+  });
+
+  it("keeps show on home page when the field is left out", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: true });
+
+    const updated = await updateProject(cookies, "PRIV", { name: "Renamed", visibility: "private" });
+
+    expect(updated.name).toBe("Renamed");
+    expect(updated.showOnHomePage).toBe(true);
+  });
+
+  it("rejects a show on home page value that is not a boolean", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const res = await app.request("/api/projects/PRIV", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ name: "X", description: "X", repo: null, stack: [], metadata: {}, visibility: "private", showOnHomePage: "yes" }),
+    });
+
+    expect(res.status).toBe(400);
   });
 
   it("rejects attempt to change key via body", async () => {
