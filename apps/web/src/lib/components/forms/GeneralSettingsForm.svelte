@@ -3,6 +3,7 @@
   import { getStackItems } from "$lib/stack";
   import type { Project } from "@issues/api";
   import Button from "$lib/components/ui/Button.svelte";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
 
   let { project }: { project: Project } = $props();
@@ -12,6 +13,7 @@
     name: project.name,
     description: project.description ?? "",
     visibility: project.visibility,
+    showOnHomePage: project.showOnHomePage,
     repo: project.repo ?? "",
     metadata: project.metadata ?? {},
   });
@@ -34,6 +36,7 @@
           name: form.name,
           description: form.description,
           visibility: form.visibility,
+          showOnHomePage: form.showOnHomePage,
           repo: form.repo.trim() === "" ? null : form.repo,
           stack: getStackItems(stackInput),
           metadata: form.metadata,
@@ -94,6 +97,22 @@
       {/if}
     </div>
   </div>
+
+  {#if form.visibility === "private"}
+    <div class="form-row">
+      <div class="form-row-copy">
+        <span id="showOnHomePage-label" class="form-row-label">Show on home page</span>
+        <p id="showOnHomePage-help" class="form-row-help">Visitors see the name, description, ticket count and activity on a locked card. They cannot open the project.</p>
+      </div>
+
+      <div>
+        <Toggle bind:checked={form.showOnHomePage} ariaLabel="Show on home page" />
+        {#if fieldErrors.showOnHomePage}
+          <span class="field-error">{fieldErrors.showOnHomePage}</span>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   <div>
     <label for="projectRepo" class="form-label">Repository URL</label>

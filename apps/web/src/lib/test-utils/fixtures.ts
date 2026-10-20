@@ -101,6 +101,7 @@ export function makeProjectDetail(overrides: Partial<ProjectDetail> = {}): Proje
     stack: [],
     metadata: {},
     visibility: "public",
+    showOnHomePage: false,
     ownerID: owner.userID,
     createdAt: baseDate,
     updatedAt: baseDate,

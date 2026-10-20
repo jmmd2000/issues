@@ -13,7 +13,16 @@ export class ProjectService {
    * @param data The project fields plus the creator's userID as `ownerID`
    * @returns The created project
    */
-  static async createProject(data: { key: string; name: string; description: string; visibility: "public" | "private"; repo: string | null; stack: string[]; ownerID: string }) {
+  static async createProject(data: {
+    key: string;
+    name: string;
+    description: string;
+    visibility: "public" | "private";
+    showOnHomePage: boolean;
+    repo: string | null;
+    stack: string[];
+    ownerID: string;
+  }) {
     return await db.transaction(async tx => {
       const [project] = await tx.insert(projects).values(data).returning();
       await Promise.all([StatusService.seedDefaults(tx, project.id), LabelService.seedDefaults(tx, project.id)]);
@@ -83,6 +92,7 @@ export class ProjectService {
           stack: projects.stack,
           metadata: projects.metadata,
           visibility: projects.visibility,
+          showOnHomePage: projects.showOnHomePage,
           ownerID: projects.ownerID,
           createdAt: projects.createdAt,
           updatedAt: projects.updatedAt,
@@ -111,6 +121,7 @@ export class ProjectService {
         stack: projects.stack,
         metadata: projects.metadata,
         visibility: projects.visibility,
+        showOnHomePage: projects.showOnHomePage,
         ownerID: projects.ownerID,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
@@ -209,6 +220,7 @@ export class ProjectService {
       stack: string[];
       metadata: Record<string, unknown>;
       visibility: "public" | "private";
+      showOnHomePage?: boolean;
     }
   ) {
     const [project] = await db.update(projects).set(data).where(eq(projects.id, projectID)).returning();

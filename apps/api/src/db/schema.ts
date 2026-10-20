@@ -50,6 +50,7 @@ export const projects = pgTable("projects", {
   stack: text("stack").array().notNull().default([]),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
   visibility: text("visibility", { enum: ["public", "private"] }).notNull().default("public"),
+  showOnHomePage: boolean("show_on_home_page").notNull().default(false),
   ownerID: uuid("owner_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
