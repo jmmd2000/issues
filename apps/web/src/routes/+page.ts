@@ -10,7 +10,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
   const { user } = await parent();
   const api = createClient(fetch);
 
-  const feedPromise = api.api.feed.$get({ query: { limit: "8" } }).catch(() => null);
+  const feedPromise = api.api.feed.$get({ query: { limit: "40" } }).catch(() => null);
 
   if (user) {
     const projectsRes = await api.api.projects["with-counts"].$get();

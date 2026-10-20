@@ -1,4 +1,4 @@
-import type { Comment, Label, ProjectActivity, ProjectDetail, ProjectMember, ProjectStats, ProjectWithCount, PublicProject, Status, TicketActivity, TicketLink } from "@issues/api";
+import type { Comment, GlobalActivity, Label, ProjectActivity, ProjectDetail, ProjectMember, ProjectStats, ProjectWithCount, PublicProject, Status, TicketActivity, TicketLink } from "@issues/api";
 
 const baseDate = "2026-05-01T10:00:00.000Z";
 
@@ -165,4 +165,8 @@ export function makeHomeProject(overrides: Partial<ProjectWithCount> = {}): Proj
 
 export function makeLockedProject(overrides: Partial<PublicProject> = {}): PublicProject {
   return { id: "00000000-0000-0000-0000-0000000000p2", key: "LOCK", name: "Locked project", description: "A private project", openCount: 0, isLocked: true, ...overrides };
+}
+
+export function makeGlobalActivity(overrides: Partial<GlobalActivity> = {}): GlobalActivity {
+  return { ...makeProjectActivity(), project: { key: "TEST", isLocked: false }, ...overrides };
 }
