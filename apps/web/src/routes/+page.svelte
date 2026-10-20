@@ -71,7 +71,9 @@
         {:else if data.feed.events.length === 0}
           <p class="rail-empty">No activity yet.</p>
         {:else}
-          <ActivityFeed events={data.feed.events} lookups={data.feed.lookups} />
+          <div class="feed-scroll">
+            <ActivityFeed events={data.feed.events} lookups={data.feed.lookups} />
+          </div>
         {/if}
       </aside>
     {/if}
@@ -163,6 +165,12 @@
     color: var(--colour-muted);
     letter-spacing: 0.1em;
     text-transform: uppercase;
+  }
+
+  .feed-scroll {
+    max-height: max(20rem, calc(100dvh - 15rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .rail-empty {
