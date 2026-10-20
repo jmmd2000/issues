@@ -2,6 +2,11 @@
 
 FROM node:26-slim AS build
 
+# The slim image has no CA certificates, and the source map upload needs them to trust GlitchTip.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 # Node 25+ no longer ships corepack, so install it before enabling it.
 RUN npm install -g corepack@0.36.0 \
  && corepack enable
