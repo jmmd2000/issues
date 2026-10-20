@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
 import { canView, listedPrivateWhere, type Role } from "../lib/access";
@@ -7,6 +7,11 @@ import { requireCondition } from "../lib/sql";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 import type { ActivityLookup, ProjectWithCount, PublicProject } from "../lib/types";
+
+/** Formats the latest time in an aggregate as an ISO 8601 string in UTC, so every browser can read it. */
+function isoTime(latest: SQL) {
+  return sql<string | null>`to_char(${latest} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+}
 
 /** Public projects first, then private ones. Each group runs from A to Z, ignoring case. */
 const homePageOrder = [sql`${projects.visibility} = 'private'`, sql`lower(${projects.name})`, projects.key];
@@ -75,7 +80,7 @@ export class ProjectService {
         description: projects.description,
         openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${listedPrivateWhere}))::int`,
         isLocked: sql<boolean>`${listedPrivateWhere}`,
-        lastActivityAt: sql<string | null>`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null and ${tickets.visibility} = 'public')::text`,
+        lastActivityAt: isoTime(sql`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null and ${tickets.visibility} = 'public')`),
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -120,7 +125,7 @@ export class ProjectService {
         .select({
           ...projectColumns,
           openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
-          lastActivityAt: sql<string | null>`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null)::text`,
+          lastActivityAt: isoTime(sql`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null)`),
         })
         .from(projects)
         .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -144,7 +149,7 @@ export class ProjectService {
       .select({
         ...projectColumns,
         openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause} or ${listedPrivateWhere}))::int`,
-        lastActivityAt: sql<string | null>`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause}))::text`,
+        lastActivityAt: isoTime(sql`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause}))`),
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -280,7 +285,7 @@ export class ProjectService {
           total: sql<number>`count(*)::int`,
           open: sql<number>`count(*) filter (where ${statuses.category} in ('backlog', 'active'))::int`,
           closed: sql<number>`count(*) filter (where ${statuses.category} in ('done', 'cancelled'))::int`,
-          lastActivityAt: sql<string | null>`max(${tickets.updatedAt})::text`,
+          lastActivityAt: isoTime(sql`max(${tickets.updatedAt})`),
         })
         .from(tickets)
         .innerJoin(statuses, eq(tickets.statusID, statuses.id))
