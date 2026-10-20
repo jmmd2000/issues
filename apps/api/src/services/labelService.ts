@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, getTableColumns, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { labels } from "../db/schema";
+import { labels, ticketLabels, tickets } from "../db/schema";
 import type { Transaction } from "../lib/types";
 
 const DEFAULT_LABELS = [
@@ -34,16 +34,19 @@ export class LabelService {
     return label;
   }
   /**
-   * Gets all labels belonging to a given project
+   * Gets all labels belonging to a given project, each with the number of tickets that carry it.
+   * Soft-deleted tickets are not counted. The caller must be a member, so private tickets are counted too.
    * @param projectID The ID of the project
-   * @returns The labels of the projects
+   * @returns The labels of the project, with a `ticketCount` each
    */
   static async getLabels(projectID: string) {
-    const projectLabels = await db.query.labels.findMany({
-      where: eq(labels.projectID, projectID),
-    });
-
-    return projectLabels;
+    return await db
+      .select({ ...getTableColumns(labels), ticketCount: sql<number>`count(${tickets.id})::int` })
+      .from(labels)
+      .leftJoin(ticketLabels, eq(ticketLabels.labelID, labels.id))
+      .leftJoin(tickets, and(eq(tickets.id, ticketLabels.ticketID), isNull(tickets.deletedAt)))
+      .where(eq(labels.projectID, projectID))
+      .groupBy(labels.id);
   }
 
   /**
