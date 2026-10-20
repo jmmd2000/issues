@@ -58,14 +58,16 @@ export class ProjectService {
    * Lists every public project on the instance, plus every private project
    * listed on the home page, along with each project's count of open tickets.
    * Used by the unauthenticated homepage; deliberately limited to `id`, `key`,
-   * `name`, `description`, `openCount` and `isLocked` so sensitive fields
-   * (repo, stack, owner, timestamps) are not exposed to anonymous viewers.
-   * A public project counts only its public tickets. A listed private project
-   * counts every open ticket, as a number only, and is marked `isLocked`.
+   * `name`, `description`, `openCount`, `isLocked` and `lastActivityAt` so
+   * sensitive fields (repo, stack, owner) are not exposed to anonymous viewers.
+   * A public project counts only its public tickets, and its `lastActivityAt`
+   * is the latest update of one of those. A listed private project counts
+   * every open ticket, as a number only, is marked `isLocked`, and has no
+   * `lastActivityAt`.
    * @returns Home page projects with their open ticket counts, in home page order
    */
   static async getPublicProjectsWithCounts(): Promise<PublicProject[]> {
-    return await db
+    const rows = await db
       .select({
         id: projects.id,
         key: projects.key,
@@ -73,6 +75,7 @@ export class ProjectService {
         description: projects.description,
         openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${listedPrivateWhere}))::int`,
         isLocked: sql<boolean>`${listedPrivateWhere}`,
+        lastActivityAt: sql<string | null>`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null and ${tickets.visibility} = 'public')::text`,
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -80,6 +83,8 @@ export class ProjectService {
       .where(requireCondition(or(eq(projects.visibility, "public"), listedPrivateWhere)))
       .groupBy(projects.id)
       .orderBy(...homePageOrder);
+
+    return rows.map(({ lastActivityAt, ...row }) => (row.isLocked ? row : { ...row, lastActivityAt }));
   }
 
   /**
@@ -89,8 +94,10 @@ export class ProjectService {
    * Private projects listed on the home page are included for everyone. A
    * viewer who is not a member gets only the home page details of those, marked
    * `isLocked`, and their open count covers every ticket as a number only.
+   * Each project row has a `lastActivityAt`, the latest update of a ticket the
+   * viewer can see. A locked project has none.
    * @param role The current user's resolved role
-   * @returns Project rows with an `openCount` column, or locked home page details, in home page order
+   * @returns Project rows with `openCount` and `lastActivityAt` columns, or locked home page details, in home page order
    */
   static async getAllProjectsWithCounts(role: Role): Promise<(ProjectWithCount | PublicProject)[]> {
     const projectColumns = {
@@ -113,6 +120,7 @@ export class ProjectService {
         .select({
           ...projectColumns,
           openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
+          lastActivityAt: sql<string | null>`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null)::text`,
         })
         .from(projects)
         .leftJoin(tickets, eq(tickets.projectID, projects.id))
@@ -136,6 +144,7 @@ export class ProjectService {
       .select({
         ...projectColumns,
         openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause} or ${listedPrivateWhere}))::int`,
+        lastActivityAt: sql<string | null>`max(${tickets.updatedAt}) filter (where ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause}))::text`,
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
