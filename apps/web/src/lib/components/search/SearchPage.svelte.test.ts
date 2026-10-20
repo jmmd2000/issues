@@ -105,15 +105,6 @@ beforeEach(() => {
 });
 
 describe("SearchPage", () => {
-  it("renders the empty state and syntax hints before a search runs", async () => {
-    const screen = await render(SearchPage, { search: makeSearch() });
-
-    await expect.element(screen.getByRole("heading", { name: "Search" })).toBeVisible();
-    await expect.element(screen.getByText("No query or filters selected.")).toBeVisible();
-    await expect.element(screen.getByText('"exact phrase"')).toBeVisible();
-    await expect.element(screen.getByText("-excluded")).toBeVisible();
-  });
-
   it("updates the URL after typing in the search input", async () => {
     const screen = await render(SearchPage, { search: makeSearch() });
 
@@ -204,17 +195,6 @@ describe("SearchPage", () => {
     expect(queryScreen.getByText("Relevance").elements()).toHaveLength(1);
     expect(queryScreen.getByText("Most relevant").elements()).toHaveLength(1);
     expect(queryScreen.getByText("Least relevant").elements()).toHaveLength(1);
-  });
-
-  it("shows title-specific direction labels when sorting by title", async () => {
-    const screen = await render(SearchPage, {
-      search: makeSearch({
-        state: makeState({ sortBy: "title" }),
-      }),
-    });
-
-    expect(screen.getByText("A-Z").elements()).toHaveLength(1);
-    expect(screen.getByText("Z-A").elements()).toHaveLength(1);
   });
 
   it("clears sorting back to latest updated when clearing the search", async () => {

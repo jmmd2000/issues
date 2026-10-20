@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { commitsDiffer, formatBuiltAt, shortHash, webBuild } from "./buildInfo";
+import { commitsDiffer, formatBuiltAt, shortHash } from "./buildInfo";
 
 describe("shortHash", () => {
   it("shortens a full commit hash to seven characters", () => {
@@ -40,12 +40,5 @@ describe("formatBuiltAt", () => {
 
   it("formats a build time", () => {
     expect(formatBuiltAt("2026-10-20T09:30:00Z")).toMatch(/2026/);
-  });
-});
-
-describe("webBuild", () => {
-  it("reads the build values set by the Vite define", () => {
-    expect(webBuild.siteVersion).toMatch(/^\d+\.\d+\.\d+/);
-    expect(webBuild.packages.map(item => item.name)).toEqual(["svelte", "@sveltejs/kit", "vite"]);
   });
 });

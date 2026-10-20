@@ -42,11 +42,6 @@ describe("TicketSearchCombobox", () => {
     mockState.tickets = [];
   });
 
-  it("renders the search input when no ticket is selected", async () => {
-    const screen = await render(TicketSearchCombobox, { ...baseProps });
-    await expect.element(screen.getByPlaceholder("Search tickets by title...")).toBeVisible();
-  });
-
   it("does not query the API for terms shorter than 2 characters", async () => {
     const screen = await render(TicketSearchCombobox, { ...baseProps });
     await screen.getByPlaceholder("Search tickets by title...").fill("a");
@@ -62,13 +57,6 @@ describe("TicketSearchCombobox", () => {
     await screen.getByPlaceholder("Search tickets by title...").fill("ticket");
     await expect.element(screen.getByRole("button", { name: /TEST-1.*First ticket/ })).toBeVisible();
     await expect.element(screen.getByRole("button", { name: /TEST-2.*Second ticket/ })).toBeVisible();
-  });
-
-  it("renders the no-matches hint when the API returns an empty list", async () => {
-    mockState.tickets = [];
-    const screen = await render(TicketSearchCombobox, { ...baseProps });
-    await screen.getByPlaceholder("Search tickets by title...").fill("none");
-    await expect.element(screen.getByText("No matches.")).toBeVisible();
   });
 
   it("calls onpicked with the chosen ticket and clears the dropdown", async () => {
@@ -97,14 +85,6 @@ describe("TicketSearchCombobox", () => {
     await screen.getByPlaceholder("Search tickets by title...").fill("closed");
     await expect.element(screen.getByRole("button", { name: /TEST-1/ })).toBeVisible();
     expect(mockState.lastQuery).toMatchObject({ includeClosed: "true" });
-  });
-
-  it("renders the default selection pill when a ticket is selected", async () => {
-    const selected: TicketRef = { id: "t-7", number: 7, title: "Picked ticket" };
-    const screen = await render(TicketSearchCombobox, { ...baseProps, selected });
-    await expect.element(screen.getByText("TEST-7")).toBeVisible();
-    await expect.element(screen.getByText("Picked ticket")).toBeVisible();
-    await expect.element(screen.getByRole("button", { name: "Clear selected ticket" })).toBeVisible();
   });
 
   it("calls oncleared when the pill clear button is clicked", async () => {

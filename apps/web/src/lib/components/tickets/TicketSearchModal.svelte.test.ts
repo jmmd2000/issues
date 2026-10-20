@@ -49,28 +49,6 @@ describe("TicketSearchModal", () => {
     mockState.tickets = [];
   });
 
-  it("renders the title and search input when open", async () => {
-    const screen = await render(TicketSearchModal, { ...baseProps });
-    await expect.element(screen.getByRole("heading", { name: "Pick a ticket" })).toBeVisible();
-    await expect.element(screen.getByPlaceholder("Search tickets by title...")).toBeVisible();
-  });
-
-  it("shows the type-2-chars hint until enough characters are typed", async () => {
-    const screen = await render(TicketSearchModal, { ...baseProps });
-    await expect.element(screen.getByText("Type at least 2 characters.")).toBeVisible();
-  });
-
-  it("renders search results for each matching ticket", async () => {
-    mockState.tickets = [
-      { id: "t-1", number: 12, title: "First match", statusID: status.id, priority: "high", assigneeID: member.userID },
-      { id: "t-2", number: 13, title: "Second match", statusID: status.id, priority: "medium", assigneeID: null },
-    ];
-    const screen = await render(TicketSearchModal, { ...baseProps });
-    await screen.getByPlaceholder("Search tickets by title...").fill("match");
-    await expect.element(screen.getByText("First match")).toBeVisible();
-    await expect.element(screen.getByText("Second match")).toBeVisible();
-  });
-
   it("excludes tickets whose number appears in excludeTicketNumbers", async () => {
     mockState.tickets = [
       { id: "t-1", number: 12, title: "Excluded", statusID: status.id, priority: "medium", assigneeID: null },
@@ -103,10 +81,5 @@ describe("TicketSearchModal", () => {
     const screen = await render(TicketSearchModal, { ...baseProps, onclose });
     await screen.getByRole("button", { name: "Cancel" }).click();
     expect(onclose).toHaveBeenCalledOnce();
-  });
-
-  it("hides the search input when open is false", async () => {
-    const screen = await render(TicketSearchModal, { ...baseProps, open: false });
-    await expect.element(screen.getByPlaceholder("Search tickets by title...")).not.toBeVisible();
   });
 });

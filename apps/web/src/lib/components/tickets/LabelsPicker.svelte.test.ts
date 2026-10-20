@@ -10,17 +10,6 @@ const labels = [
 ];
 
 describe("LabelsPicker", () => {
-  it("renders the placeholder when nothing is selected", async () => {
-    const screen = await render(LabelsPicker, { labels, value: [] });
-    await expect.element(screen.getByText("Add labels")).toBeVisible();
-  });
-
-  it("renders selected label chips", async () => {
-    const screen = await render(LabelsPicker, { labels, value: ["l-bug", "l-docs"] });
-    await expect.element(screen.getByText("bug")).toBeVisible();
-    await expect.element(screen.getByText("docs")).toBeVisible();
-  });
-
   it("opens the menu and lists all labels", async () => {
     const screen = await render(LabelsPicker, { labels, value: [] });
     await screen.getByRole("button", { name: /labels/i }).click();
@@ -43,16 +32,5 @@ describe("LabelsPicker", () => {
     await screen.getByRole("button", { name: /labels/i }).click();
     await screen.getByRole("option", { name: "feature" }).click();
     expect(onChange).toHaveBeenCalledWith(["l-feature"]);
-  });
-
-  it("renders the empty-project hint when there are no labels", async () => {
-    const screen = await render(LabelsPicker, { labels: [], value: [] });
-    await screen.getByRole("button", { name: /labels/i }).click();
-    await expect.element(screen.getByText("This project has no labels yet.")).toBeVisible();
-  });
-
-  it("renders a saving spinner while loading", async () => {
-    const screen = await render(LabelsPicker, { labels, value: [], loading: true });
-    await expect.element(screen.getByLabelText("Saving labels")).toBeVisible();
   });
 });

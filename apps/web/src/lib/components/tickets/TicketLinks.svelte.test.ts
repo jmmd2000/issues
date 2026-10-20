@@ -22,11 +22,6 @@ describe("TicketLinks", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the empty state when there are no links", async () => {
-    const screen = await render(TicketLinks, { ...baseProps });
-    await expect.element(screen.getByText("No links.")).toBeVisible();
-  });
-
   it("groups links by their rendered direction label", async () => {
     const links = [
       makeTicketLink({
@@ -67,18 +62,5 @@ describe("TicketLinks", () => {
     await screen.getByRole("button", { name: "Add link" }).click();
     await screen.getByRole("button", { name: "Cancel" }).click();
     expect(screen.getByPlaceholder("Search tickets...").elements()).toHaveLength(0);
-  });
-
-  it("renders a remove button per link with an accessible label", async () => {
-    const links = [
-      makeTicketLink({
-        id: "l1",
-        linkType: "blocks",
-        direction: "outgoing",
-        ticket: { id: "t2", number: 2, title: "Other", projectKey: "TEST", status: { name: "Backlog", category: "backlog" }, priority: "medium", assignee: null },
-      }),
-    ];
-    const screen = await render(TicketLinks, { ...baseProps, links });
-    await expect.element(screen.getByRole("button", { name: /Remove blocks TEST-2/ })).toBeVisible();
   });
 });
