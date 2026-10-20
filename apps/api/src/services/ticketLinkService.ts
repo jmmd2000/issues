@@ -4,6 +4,7 @@ import { parseTicketRef } from "@issues/shared";
 import { db } from "../db";
 import { projects, statuses, ticketLinks, tickets, users } from "../db/schema";
 import { canView, visibilityWhere, type Role } from "../lib/access";
+import { isUniqueViolation } from "../lib/sql";
 import type { LinkType, Priority, StatusCategory, TicketLink } from "../lib/types";
 import { ActivityService } from "./activityService";
 
@@ -239,14 +240,4 @@ export class TicketLinkService {
       });
     });
   }
-}
-
-/** Postgres unique-violation SQLSTATE check; walks `cause` chain because Drizzle wraps `pg` errors. */
-function isUniqueViolation(err: unknown): boolean {
-  let cur: unknown = err;
-  while (cur && typeof cur === "object") {
-    if ("code" in cur && (cur as { code: unknown }).code === "23505") return true;
-    cur = "cause" in cur ? (cur as { cause: unknown }).cause : null;
-  }
-  return false;
 }
