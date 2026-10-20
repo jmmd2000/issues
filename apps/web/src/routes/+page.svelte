@@ -1,20 +1,12 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import { Globe2, Lock, Plus } from "@lucide/svelte";
-  import type { ProjectWithCount, PublicProject } from "@issues/api";
+  import { Plus } from "@lucide/svelte";
   import type { PageProps } from "./$types";
   import Button from "$lib/components/ui/Button.svelte";
   import ProjectActivityCard from "$lib/components/projectDetail/ProjectActivityCard.svelte";
+  import ProjectLedger from "$lib/components/ProjectLedger.svelte";
 
   let { data }: PageProps = $props();
-
-  type HomeProject = ProjectWithCount | PublicProject;
-
-  /** The signed-out list holds only public projects and locked ones, so a project that is not locked there is public. */
-  function isPublicProject(project: HomeProject): boolean {
-    if (project.isLocked) return false;
-    return "visibility" in project ? project.visibility === "public" : true;
-  }
 
   const projectCount = $derived(data.projects.length);
   const openTotal = $derived(data.projects.reduce((sum, project) => sum + project.openCount, 0));
@@ -25,33 +17,6 @@
     return `${projectCount} ${projectWord}, ${openTotal} open`;
   });
 </script>
-
-{#snippet projectCard(project: HomeProject)}
-  <header class="project-head">
-    <code class="project-key">{project.key}</code>
-    {#if project.isLocked}
-      <span class="project-visibility"><Lock size={12} strokeWidth={2} /> Private</span>
-    {:else if isPublicProject(project)}
-      <span class="project-visibility"><Globe2 size={12} strokeWidth={2} /> Public</span>
-    {/if}
-    <span class="project-rule" aria-hidden="true"></span>
-    <span class="project-count">
-      <span class="project-count-number" data-empty={project.openCount === 0}>{project.openCount}</span>
-      <span class="project-count-label">open</span>
-    </span>
-  </header>
-  <h3 class="project-name">{project.name}</h3>
-  {#if project.description}
-    <p class="project-description">{project.description}</p>
-  {/if}
-  {#if "stack" in project && Array.isArray(project.stack) && project.stack.length > 0}
-    <ul class="project-stack" aria-label="Stack">
-      {#each project.stack as tech (tech)}
-        <li class="project-stack-item">{tech}</li>
-      {/each}
-    </ul>
-  {/if}
-{/snippet}
 
 <svelte:head>
   <title>Projects · Issues</title>
@@ -94,21 +59,7 @@
           {/if}
         </div>
       {:else}
-        <ul class="project-list">
-          {#each data.projects as project (project.id)}
-            <li>
-              {#if project.isLocked}
-                <div class="project-card">
-                  {@render projectCard(project)}
-                </div>
-              {:else}
-                <a class="project-card" href={resolve("/projects/[key]", { key: project.key })}>
-                  {@render projectCard(project)}
-                </a>
-              {/if}
-            </li>
-          {/each}
-        </ul>
+        <ProjectLedger projects={data.projects} />
       {/if}
     </section>
 
@@ -209,153 +160,6 @@
     gap: 0.75rem;
     padding: 2rem 0;
     color: var(--colour-muted);
-  }
-
-  .project-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
-  }
-
-  .project-card {
-    display: block;
-    padding: 1.1rem 1.25rem 1.15rem;
-    background: var(--colour-bg-lighter);
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    color: inherit;
-    text-decoration: none;
-    transition:
-      border-color var(--motion-fast) var(--ease-out-quart),
-      box-shadow var(--motion-fast) var(--ease-out-quart),
-      transform 60ms var(--ease-out-quart);
-  }
-
-  a.project-card:hover {
-    border-color: var(--accent-tint-600);
-    box-shadow: var(--box-shadow);
-  }
-
-  a.project-card:hover .project-key {
-    color: var(--accent-shade-100);
-    background: var(--accent-tint-800);
-  }
-
-  a.project-card:active {
-    transform: translateY(1px);
-  }
-
-  .project-head {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-bottom: 0.65rem;
-  }
-
-  .project-key {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    color: var(--accent-base);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    line-height: 1;
-    flex-shrink: 0;
-    padding: 0.2rem 0.45rem;
-    margin: -0.2rem -0.45rem;
-    border-radius: var(--border-radius-inner);
-    transition:
-      color var(--motion-fast) var(--ease-out-quart),
-      background var(--motion-fast) var(--ease-out-quart);
-  }
-
-  .project-visibility {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    flex-shrink: 0;
-    color: var(--colour-muted);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: 1;
-  }
-
-  .project-rule {
-    flex: 1;
-    height: 1px;
-    background: var(--colour-border);
-    min-width: 1rem;
-  }
-
-  .project-count {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.3rem;
-    flex-shrink: 0;
-    line-height: 1;
-  }
-
-  .project-count-number {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    color: var(--accent-base);
-    font-variant-numeric: tabular-nums;
-    font-size: 0.9rem;
-    transition: color var(--motion-fast) var(--ease-out-quart);
-  }
-
-  .project-count-number[data-empty="true"] {
-    color: var(--colour-muted);
-  }
-
-  .project-count-label {
-    color: var(--colour-muted);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .project-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--colour-text);
-    margin: 0;
-    line-height: 1.3;
-  }
-
-  .project-description {
-    margin-top: 0.4rem;
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: var(--colour-text-secondary);
-    max-width: 65ch;
-  }
-
-  .project-stack {
-    list-style: none;
-    padding: 0;
-    margin: 0.85rem 0 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .project-stack-item {
-    padding: 0.15rem 0.55rem;
-    border: 1px solid var(--accent-tint-700);
-    border-radius: 999px;
-    background: var(--colour-bg);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    line-height: 1.4;
-    color: var(--colour-text-secondary);
   }
 
   .rail {
