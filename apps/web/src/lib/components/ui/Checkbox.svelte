@@ -66,7 +66,7 @@
     border-radius: 3px;
     border: 1.5px solid var(--colour-border);
     background: var(--colour-bg-lighter);
-    box-shadow: 0 1px 2px rgb(from var(--colour-text) r g b / 0.06);
+    box-shadow: 0 1px 2px rgb(from var(--colour-shadow) r g b / 0.06);
     display: inline-flex;
     align-items: center;
     justify-content: center;

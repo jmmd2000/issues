@@ -53,7 +53,7 @@
     pointer-events: none;
     transform: translateX(-50%);
     z-index: 200;
-    box-shadow: rgb(from var(--colour-text) r g b / 0.25) 0px 2px 8px;
+    box-shadow: rgb(from var(--colour-shadow) r g b / 0.25) 0px 2px 8px;
     animation: tooltip-in 0.15s ease-out;
   }
 

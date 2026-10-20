@@ -259,7 +259,7 @@
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: -0.01em;
-    box-shadow: 0 1px 2px rgba(30, 34, 41, 0.05);
+    box-shadow: 0 1px 2px rgb(from var(--colour-shadow) r g b / 0.05);
   }
 
   .title-input::placeholder {
@@ -270,7 +270,7 @@
   .title-input:focus-visible {
     outline: none;
     border-color: var(--accent-base);
-    box-shadow: 0 0 0 3px rgba(53, 93, 212, 0.12);
+    box-shadow: 0 0 0 3px rgb(from var(--accent-base) r g b / 0.12);
   }
 
   .meta-grid {

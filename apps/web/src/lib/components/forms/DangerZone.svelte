@@ -76,7 +76,7 @@
 
 <style>
   .danger-zone {
-    border-color: color-mix(in oklch, var(--colour-error) 40%, var(--colour-border));
+    border-color: color-mix(in oklab, var(--colour-error) 40%, var(--colour-border));
   }
 
   .danger-row {

@@ -376,7 +376,7 @@
       font-size: 0.8rem;
       font-weight: 600;
       box-shadow:
-        0 1px 2px rgb(from var(--colour-text) r g b / 0.07),
+        0 1px 2px rgb(from var(--colour-shadow) r g b / 0.07),
         inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
       cursor: pointer;
     }

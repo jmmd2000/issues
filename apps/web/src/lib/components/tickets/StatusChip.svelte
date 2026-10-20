@@ -27,10 +27,10 @@
     align-items: center;
     min-height: 1.4rem;
     padding: 0.2rem 0.45rem;
-    border: 1px solid color-mix(in oklch, var(--status-colour) 35%, white 65%);
+    border: 1px solid color-mix(in oklab, var(--status-colour) 35%, var(--colour-paper) 65%);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--status-colour) 10%, white 90%);
-    color: color-mix(in oklch, var(--status-colour) 80%, black 20%);
+    background: color-mix(in oklab, var(--status-colour) 10%, var(--colour-paper) 90%);
+    color: color-mix(in oklab, var(--status-colour) 65%, var(--colour-ink) 35%);
     font-size: 0.7rem;
     font-weight: 700;
     line-height: 1;

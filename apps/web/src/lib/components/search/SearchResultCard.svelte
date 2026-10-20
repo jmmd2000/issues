@@ -89,8 +89,8 @@
       transform 60ms var(--ease-out-quart);
 
     &:hover {
-      border-color: color-mix(in oklch, var(--accent-base) 35%, var(--colour-border) 65%);
-      background: color-mix(in oklch, var(--colour-bg-lighter) 88%, var(--accent-tint-900) 12%);
+      border-color: color-mix(in oklab, var(--accent-base) 35%, var(--colour-border) 65%);
+      background: color-mix(in oklab, var(--colour-bg-lighter) 88%, var(--accent-tint-900) 12%);
     }
 
     &:active {

@@ -83,7 +83,7 @@
     border: 1px solid var(--colour-border);
     border-radius: 999px;
     background: var(--colour-border);
-    box-shadow: inset 0 1px 2px rgb(from var(--colour-text) r g b / 0.1);
+    box-shadow: inset 0 1px 2px rgb(from var(--colour-shadow) r g b / 0.1);
     cursor: pointer;
     transition:
       background 0.2s,
@@ -106,8 +106,8 @@
   }
 
   .toggle-track.on {
-    background: linear-gradient(180deg, color-mix(in oklch, var(--accent-base) 85%, white 15%) 0%, var(--accent-base) 100%);
-    border-color: color-mix(in oklch, var(--accent-base) 80%, black 20%);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--accent-base) 85%, var(--colour-paper) 15%) 0%, var(--accent-base) 100%);
+    border-color: color-mix(in oklab, var(--accent-base) 80%, var(--colour-ink) 20%);
     box-shadow:
       0 1px 3px rgb(from var(--accent-base) r g b / 0.35),
       inset 0 1px 0 rgb(255 255 255 / 0.1);
@@ -125,8 +125,8 @@
     border-radius: 50%;
     background: var(--colour-bg-lighter);
     box-shadow:
-      0 1px 3px rgb(from var(--colour-text) r g b / 0.2),
-      0 0 0 0.5px rgb(from var(--colour-text) r g b / 0.1);
+      0 1px 3px rgb(from var(--colour-shadow) r g b / 0.2),
+      0 0 0 0.5px rgb(from var(--colour-shadow) r g b / 0.1);
     transition: transform var(--motion-base) var(--ease-out-quart);
     pointer-events: none;
   }

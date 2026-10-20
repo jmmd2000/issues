@@ -93,7 +93,7 @@
     }
 
     &::backdrop {
-      background: rgb(from var(--colour-text) r g b / 0);
+      background: rgb(from var(--colour-shadow) r g b / 0);
       backdrop-filter: blur(0);
       transition:
         background var(--motion-base) var(--ease-out-quart),
@@ -103,13 +103,13 @@
     }
 
     &[open]::backdrop {
-      background: rgb(from var(--colour-text) r g b / 0.4);
+      background: rgb(from var(--colour-shadow) r g b / 0.4);
       backdrop-filter: blur(2px);
     }
 
     @starting-style {
       &[open]::backdrop {
-        background: rgb(from var(--colour-text) r g b / 0);
+        background: rgb(from var(--colour-shadow) r g b / 0);
         backdrop-filter: blur(0);
       }
     }

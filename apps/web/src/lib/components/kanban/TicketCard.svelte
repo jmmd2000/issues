@@ -89,7 +89,7 @@
       transform 0.08s;
 
     &:hover {
-      border-color: color-mix(in oklch, var(--accent-base) 30%, white 70%);
+      border-color: color-mix(in oklab, var(--accent-base) 30%, var(--colour-paper) 70%);
     }
 
     &:active {
