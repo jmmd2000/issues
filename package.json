@@ -7,7 +7,7 @@
     "prepare": "husky",
     "dev": "pnpm --parallel --filter @issues/api --filter web dev",
     "build": "pnpm -r build",
-    "check": "pnpm -r check",
+    "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
