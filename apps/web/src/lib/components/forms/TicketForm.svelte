@@ -23,7 +23,7 @@
 
 <script lang="ts">
   import { untrack, type Snippet } from "svelte";
-  import type { Label, ProjectMember, Status } from "@issues/api";
+  import type { Label, ProjectMember, Status, Visibility } from "@issues/api";
   import FormMessage, { type FormMessage as FormMessageType } from "$lib/components/forms/FormMessage.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import VisibilityToggle from "$lib/components/ui/VisibilityToggle.svelte";
@@ -40,6 +40,8 @@
     members: ProjectMember[];
     currentUserID: string;
     projectKey: string;
+    /** A private project already hides every ticket, so the form hides the visibility toggle. */
+    projectVisibility: Visibility;
     initialValues?: Partial<TicketFormValues>;
     submitLabel?: string;
     cancelLabel?: string;
@@ -57,6 +59,7 @@
     members,
     currentUserID,
     projectKey,
+    projectVisibility,
     initialValues = {},
     submitLabel = "Create ticket",
     cancelLabel = "Cancel",
@@ -199,17 +202,19 @@
     />
   </div>
 
-  <div class="field">
-    <span class="field-label">Visibility</span>
-    <VisibilityToggle bind:value={visibility} />
-    <p class="field-help">
-      {#if visibility === "private"}
-        Only project members can see this ticket and its attachments.
-      {:else}
-        Anyone who can see the project can see this ticket.
-      {/if}
-    </p>
-  </div>
+  {#if projectVisibility === "public"}
+    <div class="field">
+      <span class="field-label">Visibility</span>
+      <VisibilityToggle bind:value={visibility} />
+      <p class="field-help">
+        {#if visibility === "private"}
+          Only project members can see this ticket and its attachments.
+        {:else}
+          Anyone who can see the project can see this ticket.
+        {/if}
+      </p>
+    </div>
+  {/if}
 
   {#if extras}
     <div class="extras">

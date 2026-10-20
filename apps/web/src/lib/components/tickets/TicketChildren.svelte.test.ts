@@ -26,6 +26,7 @@ function makeChild(overrides: Partial<TicketChild> = {}): TicketChild {
 
 const baseProps = {
   projectKey: "TEST",
+  projectVisibility: "public" as const,
   parentTicketID: "p-1",
   parentTicketNumber: 7,
   parentTicketTitle: "Parent ticket",

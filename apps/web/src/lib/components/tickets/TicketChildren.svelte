@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Plus } from "@lucide/svelte";
-  import type { Label, ProjectMember, Status, TicketChild } from "@issues/api";
+  import type { Label, ProjectMember, Status, TicketChild, Visibility } from "@issues/api";
   import { client } from "$lib/api/client";
   import TicketModal from "./TicketModal.svelte";
   import TicketRow from "./TicketRow.svelte";
@@ -9,6 +9,7 @@
   interface TicketChildrenProps {
     children: TicketChild[];
     projectKey: string;
+    projectVisibility: Visibility;
     parentTicketID: string;
     parentTicketNumber: number;
     parentTicketTitle: string;
@@ -19,7 +20,7 @@
     onmutated: () => void | Promise<void>;
   }
 
-  let { children, projectKey, parentTicketID, parentTicketNumber, parentTicketTitle, statuses, labels, members, currentUserID, onmutated }: TicketChildrenProps = $props();
+  let { children, projectKey, projectVisibility, parentTicketID, parentTicketNumber, parentTicketTitle, statuses, labels, members, currentUserID, onmutated }: TicketChildrenProps = $props();
   const canWrite = $derived(!!currentUserID);
 
   const total = $derived(children.length);
@@ -106,6 +107,7 @@
     open={createOpen}
     mode="create"
     {projectKey}
+    {projectVisibility}
     {statuses}
     {labels}
     {members}

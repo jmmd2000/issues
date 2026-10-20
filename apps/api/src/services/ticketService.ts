@@ -99,7 +99,7 @@ export class TicketService {
    * attaches any labels, and writes a `created` activity row. All work runs in
    * a single transaction.
    * @param data The ticket fields plus `projectID` and `reporterID` from the route.
-   * @throws HTTPException 400 if the status, assignee, labels or parent do not belong to the project
+   * @throws HTTPException 400 if the status, assignee, labels or parent do not belong to the project, or the project is private and the request sets visibility
    * @throws HTTPException 500
    * @returns The created ticket
    */
@@ -114,6 +114,7 @@ export class TicketService {
    * link + activity rows on the same transaction so a clone is atomic.
    */
   private static async insertTicket(tx: Transaction, data: TicketCreateInput) {
+    await this.assertVisibilityAllowed(tx, data.projectID, data.visibility);
     await this.assertStatusInProject(tx, data.projectID, data.statusID);
     if (data.assigneeID) await this.assertAssigneeIsMember(tx, data.projectID, data.assigneeID);
     if (data.labelIDs) await this.assertLabelsInProject(tx, data.projectID, data.labelIDs);
@@ -478,7 +479,7 @@ export class TicketService {
    * @param projectID The ID of the project that the ticket belongs to
    * @param userID The ID of the user performing the update
    * @param data The fields to update
-   * @throws HTTPException 400 if the status, assignee, labels or parent do not belong to the project
+   * @throws HTTPException 400 if the status, assignee, labels or parent do not belong to the project, or the project is private and the request sets visibility
    * @throws HTTPException 404
    * @returns The updated ticket
    */
@@ -503,6 +504,7 @@ export class TicketService {
       const { labelIDs, ...fields } = data;
       let ticket: typeof tickets.$inferSelect | undefined;
 
+      await this.assertVisibilityAllowed(tx, projectID, fields.visibility);
       if (fields.statusID) await this.assertStatusInProject(tx, projectID, fields.statusID);
       if (fields.assigneeID) await this.assertAssigneeIsMember(tx, projectID, fields.assigneeID);
       if (labelIDs) await this.assertLabelsInProject(tx, projectID, labelIDs);
@@ -700,6 +702,23 @@ export class TicketService {
       const [row] = await tx.select({ parentTicketID: tickets.parentTicketID }).from(tickets).where(eq(tickets.id, cursor)).limit(1);
       if (!row) return;
       cursor = row.parentTicketID;
+    }
+  }
+
+  /**
+   * Checks that a request may set a ticket's visibility. Every ticket in a
+   * private project is already hidden, so the project refuses any visibility
+   * value. A request that leaves visibility out is always valid.
+   * @param tx The active transaction
+   * @param projectID The project the ticket belongs to
+   * @param visibility The visibility from the request, if any
+   * @throws HTTPException 400 if the project is private and the request sets visibility
+   */
+  private static async assertVisibilityAllowed(tx: Transaction, projectID: string, visibility: "public" | "private" | undefined) {
+    if (visibility === undefined) return;
+    const [project] = await tx.select({ visibility: projects.visibility }).from(projects).where(eq(projects.id, projectID)).limit(1);
+    if (project?.visibility === "private") {
+      throw new HTTPException(400, { message: "Ticket visibility cannot be set in a private project." });
     }
   }
 
