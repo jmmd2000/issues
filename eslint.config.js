@@ -57,7 +57,7 @@ export default defineConfig(
   },
   {
     // CLI scripts and the server's startup messages print on purpose.
-    files: ["apps/api/src/scripts/**/*.ts", "apps/api/src/index.ts"],
+    files: ["apps/api/src/scripts/**/*.ts", "apps/api/src/index.ts", "apps/web/scripts/**/*.mjs"],
     rules: { "no-console": "off" },
   }
 );
