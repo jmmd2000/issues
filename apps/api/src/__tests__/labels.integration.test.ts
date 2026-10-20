@@ -92,7 +92,8 @@ describe("POST /api/projects/:key/labels", () => {
       headers: { "Content-Type": "application/json", Cookie: cookies },
       body: JSON.stringify({ name: "Critical", colour: "#00ff00" }),
     });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(409);
+    expect((await res.json()).message).toBe("A label named Critical already exists.");
   });
 });
 
@@ -180,6 +181,22 @@ describe("PATCH /api/projects/:key/labels/:id", () => {
     projectID = project.id;
     const [seeded] = await db.select().from(labels).where(eq(labels.projectID, projectID)).limit(1);
     labelID = seeded.id;
+  });
+
+  it("refuses to rename a label to a name another label has", async () => {
+    const rows = await db.select().from(labels).where(eq(labels.projectID, projectID));
+    const bug = rows.find(row => row.name === "Bug");
+    const feature = rows.find(row => row.name === "Feature");
+    if (!bug || !feature) throw new Error("Seeded labels are missing.");
+
+    const res = await app.request(`/api/projects/TEST/labels/${bug.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ name: "Feature", colour: bug.colour }),
+    });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).message).toBe("A label named Feature already exists.");
   });
 
   it("updates label name and colour", async () => {
