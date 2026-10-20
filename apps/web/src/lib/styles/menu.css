@@ -1,0 +1,60 @@
+/*
+  Rows inside a Popover menu. Tinted rows set --menu-item-background,
+  --menu-item-hover, --menu-item-selected and --menu-item-colour.
+*/
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  width: 100%;
+  padding: 0.45em 0.5em;
+  border: none;
+  border-radius: var(--border-radius-inner);
+  background: var(--menu-item-background, none);
+  color: var(--menu-item-colour, var(--colour-text));
+  font: inherit;
+  font-size: 0.8em;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease-out-quart),
+    color var(--motion-fast) var(--ease-out-quart);
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    background: var(--menu-item-hover, var(--colour-bg-hover));
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--colour-focus);
+  }
+
+  &[aria-selected="true"],
+  &[aria-checked="true"] {
+    background: var(--menu-item-selected, var(--menu-item-background, none));
+    color: var(--menu-item-colour, var(--accent-base));
+    font-weight: 600;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  /* A row that destroys something. Keep it last, below a separator. */
+  &.destructive {
+    color: var(--colour-error);
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      background: var(--colour-error-bg);
+    }
+  }
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 0.2em 0;
+  background: var(--colour-border);
+}

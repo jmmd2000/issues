@@ -318,7 +318,7 @@
           {#snippet menu()}
             <button
               type="button"
-              class="action-item"
+              class="menu-item"
               role="menuitem"
               onclick={() => {
                 actionsOpen = false;
@@ -327,10 +327,10 @@
             >
               <Copy size={14} strokeWidth={2} /> Clone ticket
             </button>
-            <div class="action-separator" role="separator"></div>
+            <div class="menu-separator" role="separator"></div>
             <button
               type="button"
-              class="action-item action-item--danger"
+              class="menu-item destructive"
               role="menuitem"
               onclick={() => {
                 actionsOpen = false;
@@ -609,45 +609,6 @@
   .ticket-actions {
     display: flex;
     align-items: flex-start;
-  }
-
-  :global(.action-item) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.45rem 0.6rem;
-    border: 0;
-    background: transparent;
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.85rem;
-    border-radius: var(--border-radius-inner);
-    text-align: left;
-    cursor: pointer;
-    transition:
-      background var(--motion-fast) var(--ease-out-quart),
-      color var(--motion-fast) var(--ease-out-quart);
-  }
-
-  :global(.action-item:hover),
-  :global(.action-item:focus-visible) {
-    background: var(--colour-bg-hover);
-  }
-
-  :global(.action-item--danger) {
-    color: var(--colour-error);
-  }
-
-  :global(.action-item--danger:hover),
-  :global(.action-item--danger:focus-visible) {
-    background: var(--colour-error-bg);
-  }
-
-  :global(.action-separator) {
-    height: 1px;
-    background: var(--colour-border);
-    margin: 0.2rem 0;
   }
 
   .confirm-body {

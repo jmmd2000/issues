@@ -100,7 +100,7 @@
       {@const isSelected = multi ? selectedSet.has(status.id) : value === status.id}
       <button
         type="button"
-        class="option"
+        class="menu-item"
         style:--option-colour={categoryColours[status.category]}
         role="option"
         aria-selected={isSelected}
@@ -214,35 +214,17 @@
     max-width: 22em;
   }
 
-  .option {
+  .menu-item {
     --option-colour: var(--colour-status-backlog);
+    --menu-item-background: color-mix(in oklab, var(--option-colour) 10%, var(--colour-paper) 90%);
+    --menu-item-hover: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
+    --menu-item-selected: color-mix(in oklab, var(--option-colour) 20%, var(--colour-paper) 80%);
+    --menu-item-colour: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
 
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.4em 0.5em;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    background: color-mix(in oklab, var(--option-colour) 10%, var(--colour-paper) 90%);
-    color: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
-    font: inherit;
-    font-size: 0.8rem;
     font-weight: 650;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
-    }
 
     &[aria-selected="true"] {
-      background: color-mix(in oklab, var(--option-colour) 20%, var(--colour-paper) 80%);
       font-weight: 800;
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.65;
     }
   }
 

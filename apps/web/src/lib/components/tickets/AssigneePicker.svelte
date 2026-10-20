@@ -37,7 +37,6 @@
 
   let open = $state(false);
   let query = $state("");
-  let searchInput: HTMLInputElement | null = $state(null);
 
   const otherMembers = $derived(currentUserID ? members.filter(member => member.userID !== currentUserID) : members);
 
@@ -55,8 +54,7 @@
   const currentUserMember = $derived(currentUserID ? (members.find(member => member.userID === currentUserID) ?? null) : null);
 
   $effect(() => {
-    if (open) queueMicrotask(() => searchInput?.focus());
-    else query = "";
+    if (!open) query = "";
   });
 
   function selectSingle(next: string | undefined) {
@@ -118,10 +116,10 @@
   {/snippet}
 
   {#snippet menu()}
-    <input bind:this={searchInput} class="form-input compact search" type="text" placeholder="Search members..." bind:value={query} {disabled} />
+    <input class="form-input compact search" type="text" placeholder="Search members..." bind:value={query} {disabled} />
 
     {#if !multi}
-      <button type="button" class="option" role="option" aria-selected={value === undefined} onclick={() => selectSingle(undefined)} {disabled}>
+      <button type="button" class="menu-item" role="option" aria-selected={value === undefined} onclick={() => selectSingle(undefined)} {disabled}>
         <span class="check">
           {#if value === undefined}<Check size={12} strokeWidth={3} />{/if}
         </span>
@@ -133,7 +131,7 @@
     {/if}
 
     {#if !multi && currentUserID}
-      <button type="button" class="option" role="option" aria-selected={value === currentUserID} onclick={() => selectSingle(currentUserID)} {disabled}>
+      <button type="button" class="menu-item" role="option" aria-selected={value === currentUserID} onclick={() => selectSingle(currentUserID)} {disabled}>
         <span class="check">
           {#if value === currentUserID}<Check size={12} strokeWidth={3} />{/if}
         </span>
@@ -149,12 +147,12 @@
     {/if}
 
     {#if !multi}
-      <div class="divider"></div>
+      <div class="menu-separator"></div>
     {/if}
 
     {#each filtered as member (member.userID)}
       {@const isSelected = multi ? selectedSet.has(member.userID) : value === member.userID}
-      <button type="button" class="option" role="option" aria-selected={isSelected} onclick={() => (multi ? toggleMulti(member.userID) : selectSingle(member.userID))} {disabled}>
+      <button type="button" class="menu-item" role="option" aria-selected={isSelected} onclick={() => (multi ? toggleMulti(member.userID) : selectSingle(member.userID))} {disabled}>
         <span class="check">
           {#if isSelected}<Check size={12} strokeWidth={3} />{/if}
         </span>
@@ -283,36 +281,6 @@
     margin-bottom: 0.2em;
   }
 
-  .search:disabled,
-  .option:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
-
-  .option {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.45em 0.5em;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    background: none;
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.8em;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--colour-bg-hover);
-    }
-
-    &[aria-selected="true"] {
-      color: var(--accent-base);
-      font-weight: 600;
-    }
-  }
-
   .check {
     width: 0.9em;
     height: 0.9em;
@@ -321,12 +289,6 @@
     justify-content: center;
     color: var(--accent-base);
     flex-shrink: 0;
-  }
-
-  .divider {
-    height: 1px;
-    background: var(--colour-border);
-    margin: 0.2em 0;
   }
 
   .empty {
