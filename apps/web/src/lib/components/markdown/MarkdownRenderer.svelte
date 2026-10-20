@@ -91,19 +91,20 @@
     overflow-wrap: anywhere;
   }
 
-  .markdown-body :global(p) {
-    margin: 0;
+  .markdown-body > :global(* + *) {
+    margin-top: 0.9em;
   }
 
-  .markdown-body :global(p + p),
-  .markdown-body :global(ul + p),
-  .markdown-body :global(ol + p),
-  .markdown-body :global(pre + p),
-  .markdown-body :global(blockquote + p),
-  .markdown-body :global(h1 + *),
-  .markdown-body :global(h2 + *),
-  .markdown-body :global(h3 + *) {
-    margin-top: 0.9em;
+  .markdown-body > :global(* + h1),
+  .markdown-body > :global(* + h2),
+  .markdown-body > :global(* + h3) {
+    margin-top: 1.5em;
+  }
+
+  .markdown-body > :global(h1 + *),
+  .markdown-body > :global(h2 + *),
+  .markdown-body > :global(h3 + *) {
+    margin-top: 0.5em;
   }
 
   .markdown-body :global(h1),
@@ -137,7 +138,6 @@
   .markdown-body :global(ul),
   .markdown-body :global(ol) {
     padding-left: 1.25em;
-    margin: 0;
   }
 
   .markdown-body :global(li + li) {
@@ -157,10 +157,28 @@
   }
 
   .markdown-body :global(blockquote) {
-    margin: 0;
     padding: 0.2em 0 0.2em 0.9em;
     border-left: 3px solid var(--colour-border);
     color: var(--colour-text-secondary);
+  }
+
+  .markdown-body :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  .markdown-body :global(th),
+  .markdown-body :global(td) {
+    padding: 0.4em 0.75em;
+    border: var(--border);
+    text-align: left;
+  }
+
+  .markdown-body :global(th) {
+    background: var(--colour-bg);
+    font-weight: 600;
   }
 
   .markdown-body :global(img) {
