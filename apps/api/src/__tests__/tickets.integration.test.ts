@@ -3,7 +3,7 @@ import app from "../index";
 import { db } from "../db";
 import { attachments, labels, projectMembers, statuses, ticketActivity, ticketLabels, ticketLinks, tickets } from "../db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase, updateProject } from "./helpers";
 
 let cookies: string;
 let projectID: string;
@@ -36,6 +36,14 @@ async function createTicket(overrides: Partial<{ title: string; description: str
   });
   const body = await res.json();
   return body.ticket;
+}
+
+function createTicketRequest(body: object) {
+  return app.request("/api/projects/TEST/tickets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookies },
+    body: JSON.stringify({ statusID, ...body }),
+  });
 }
 
 describe("POST /api/projects/:key/tickets", () => {
@@ -1473,5 +1481,92 @@ describe("PATCH /api/projects/:key/tickets/:num/move cross-project references", 
 
     expect(res.status).toBe(400);
     expect((await res.json()).message).toBe("A ticket cannot be moved relative to itself.");
+  });
+});
+
+describe("ticket visibility in a private project", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const project = await createProject(cookies);
+    projectID = project.id;
+    statusID = await seedStatusID();
+  });
+
+  async function makePrivate() {
+    await updateProject(cookies, "TEST", { visibility: "private" });
+  }
+
+  async function patchTicket(num: number, body: object) {
+    return app.request(`/api/projects/TEST/tickets/${num}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function storedVisibility(ticketID: string) {
+    const [row] = await db.select({ visibility: tickets.visibility }).from(tickets).where(eq(tickets.id, ticketID));
+    return row.visibility;
+  }
+
+  it("rejects a visibility value on create and creates no ticket", async () => {
+    await makePrivate();
+
+    const res = await createTicketRequest({ title: "Hidden anyway", visibility: "public" });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).message).toBe("Ticket visibility cannot be set in a private project.");
+    expect(await db.select().from(tickets).where(eq(tickets.projectID, projectID))).toHaveLength(0);
+  });
+
+  it("creates a ticket when the request leaves visibility out", async () => {
+    await makePrivate();
+
+    const res = await createTicketRequest({ title: "Hidden anyway" });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("rejects a visibility value on patch and leaves the ticket unchanged", async () => {
+    const created = await createTicket({ visibility: "private" });
+    await makePrivate();
+
+    const res = await patchTicket(created.number, { visibility: "public" });
+
+    expect(res.status).toBe(400);
+    expect(await storedVisibility(created.id)).toBe("private");
+  });
+
+  it("still allows other fields to change", async () => {
+    const created = await createTicket();
+    await makePrivate();
+
+    const res = await patchTicket(created.number, { title: "Renamed" });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects a visibility value on clone and creates no clone", async () => {
+    const source = await createTicket();
+    await makePrivate();
+
+    const res = await app.request(`/api/projects/TEST/tickets/${source.number}/clone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ ticket: { title: "Clone", statusID, visibility: "private" } }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await db.select().from(tickets).where(eq(tickets.projectID, projectID))).toHaveLength(1);
+  });
+
+  it("keeps the stored visibility when the project becomes private and public again", async () => {
+    const created = await createTicket({ visibility: "private" });
+
+    await makePrivate();
+    await updateProject(cookies, "TEST", { visibility: "public" });
+
+    expect(await storedVisibility(created.id)).toBe("private");
   });
 });

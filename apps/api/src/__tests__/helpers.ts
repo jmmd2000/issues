@@ -59,10 +59,11 @@ export async function createProject(
 
 /**
  * Test helper to create a ticket in any project through the API, using that
- * project's first status.
+ * project's first status. Leave `visibility` out for a private project, because
+ * the API refuses a visibility value there.
  * @returns the created ticket
  */
-export async function createTicketInProject(cookies: string, projectKey: string, title: string, visibility: "public" | "private" = "public") {
+export async function createTicketInProject(cookies: string, projectKey: string, title: string, visibility?: "public" | "private") {
   const [status] = await db.select({ id: statuses.id }).from(statuses).innerJoin(projects, eq(statuses.projectID, projects.id)).where(eq(projects.key, projectKey)).limit(1);
 
   const res = await app.request(`/api/projects/${projectKey}/tickets`, {
