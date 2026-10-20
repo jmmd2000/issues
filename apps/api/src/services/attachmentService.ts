@@ -1,4 +1,4 @@
-import { asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { attachments, tickets } from "../db/schema";
@@ -175,6 +175,8 @@ export class AttachmentService {
   /**
    * Returns visibility info for an attachment surfaced via /uploads/:storageKey.
    * Used by the route to decide whether to gate by session or serve openly.
+   * Tickets in the trash do not count, so a file is reachable only while a live
+   * ticket holds it. Restoring the ticket makes the file reachable again.
    */
   static async resolveAccess(storageKey: string): Promise<{ found: boolean; isPublic: boolean; projectIDs: string[]; mimeType: string; filename: string; isImage: boolean } | null> {
     const rows = await db
@@ -188,7 +190,7 @@ export class AttachmentService {
       })
       .from(attachments)
       .innerJoin(tickets, eq(attachments.ticketID, tickets.id))
-      .where(eq(attachments.storageKey, storageKey));
+      .where(and(eq(attachments.storageKey, storageKey), isNull(tickets.deletedAt)));
 
     if (rows.length === 0) return null;
 
