@@ -45,19 +45,41 @@ describe("POST /api/projects/create", () => {
     expect(res.status).toBe(401);
   });
 
-  it("rejects duplicate project key", async () => {
-    await app.request("/api/projects/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ key: "DUPE", name: "First", description: "First project", visibility: "public" }),
-    });
-
+  async function createWithKey(requestCookies: string, key: string) {
     const res = await app.request("/api/projects/create", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: cookies },
-      body: JSON.stringify({ key: "DUPE", name: "Second", description: "Second project", visibility: "public" }),
+      headers: { "Content-Type": "application/json", Cookie: requestCookies },
+      body: JSON.stringify({ key, name: "Second", description: "", visibility: "public" }),
     });
-    expect(res.status).toBe(500);
+    return { status: res.status, body: await res.json() };
+  }
+
+  it("refuses a key that is in use and names the project that has it", async () => {
+    await createProject(cookies, { key: "DUPE", name: "First" });
+
+    const { status, body } = await createWithKey(cookies, "dupe");
+
+    expect(status).toBe(409);
+    expect(body.message).toBe("DUPE is already used by First.");
+  });
+
+  it("does not name a private project the caller cannot see", async () => {
+    await createProject(cookies, { key: "HIDE", name: "Secret plans", visibility: "private", showOnHomePage: false });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const { status, body } = await createWithKey(otherCookies, "HIDE");
+
+    expect(status).toBe(409);
+    expect(body.message).toBe("HIDE is already in use.");
+  });
+
+  it("names a private project that is listed on the home page", async () => {
+    await createProject(cookies, { key: "LIST", name: "Listed", visibility: "private", showOnHomePage: true });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const { body } = await createWithKey(otherCookies, "LIST");
+
+    expect(body.message).toBe("LIST is already used by Listed.");
   });
 
   it("rejects key shorter than 2 characters", async () => {
