@@ -33,7 +33,7 @@
   <section class="settings-card-container">
     <h2>Labels</h2>
     {#if data.isOwner}
-      <LabelForm labels={data.project.labels} projectKey={data.project.key} />
+      <LabelForm labels={data.labelsWithCounts} projectKey={data.project.key} />
     {:else}
       <ReadOnlyLabels labels={data.project.labels} />
     {/if}

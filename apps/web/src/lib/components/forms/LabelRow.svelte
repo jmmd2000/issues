@@ -1,13 +1,15 @@
 <script lang="ts">
   import { client } from "$lib/api/client";
-  import type { Label } from "@issues/api";
+  import type { LabelWithCount } from "@issues/api";
   import { Check, Trash2 } from "@lucide/svelte";
   import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
+  import { deleteLabelWarning } from "$lib/labels";
   import Button from "$lib/components/ui/Button.svelte";
-  import Modal from "$lib/components/ui/Modal.svelte";
+  import LabelChip from "$lib/components/tickets/LabelChip.svelte";
+  import ColourPicker from "./ColourPicker.svelte";
 
-  let { label, projectKey, onDelete, onUpdate }: { label: Label; projectKey: string; onDelete: (labelID: string) => void; onUpdate: (label: Label) => void } = $props();
+  let { label, projectKey, onDelete, onUpdate }: { label: LabelWithCount; projectKey: string; onDelete: (labelID: string) => void; onUpdate: (label: LabelWithCount) => void } = $props();
 
   // svelte-ignore state_referenced_locally
   const form = $state({ name: label.name, colour: label.colour });
@@ -18,7 +20,7 @@
   let justSaved = $state(false);
   let submitting = $state(false);
   let deleting = $state(false);
-  let confirmOpen = $state(false);
+  let confirming = $state(false);
   let savedTimer: ReturnType<typeof setTimeout> | null = null;
 
   onDestroy(() => {
@@ -49,9 +51,9 @@
         }
         return;
       }
-      const data = (await res.json()) as { label: Label };
+      const data = (await res.json()) as { label: LabelWithCount };
       lastSaved = { name: data.label.name, colour: data.label.colour };
-      onUpdate(data.label);
+      onUpdate({ ...data.label, ticketCount: label.ticketCount });
       justSaved = true;
       if (savedTimer) clearTimeout(savedTimer);
       savedTimer = setTimeout(() => {
@@ -67,7 +69,7 @@
   function requestDelete() {
     if (submitting || deleting) return;
     networkError = null;
-    confirmOpen = true;
+    confirming = true;
   }
 
   async function confirmDelete() {
@@ -82,14 +84,14 @@
       if (!res.ok) {
         const data = (await res.json()) as { message?: string };
         networkError = data.message ?? "Failed to delete. Please try again.";
-        confirmOpen = false;
+        confirming = false;
         return;
       }
 
       onDelete(label.id);
     } catch {
       networkError = "Failed to delete. Please try again.";
-      confirmOpen = false;
+      confirming = false;
     } finally {
       deleting = false;
     }
@@ -97,127 +99,142 @@
 </script>
 
 <form
+  class="label-row"
   novalidate
   onsubmit={e => {
     e.preventDefault();
     void handleSubmit();
   }}
 >
-  <div class="label-row">
-    <label class="form-colour-picker">
-      <span class="form-colour-picker-swatch" style:background-color={form.colour}></span>
-      <input type="color" id="label-{label.id}-colour" aria-label="Choose label colour" bind:value={form.colour} onchange={handleSubmit} disabled={submitting || deleting} />
-    </label>
-    <input
-      type="text"
-      id="label-{label.id}-name"
-      class="form-input row-name"
-      bind:value={form.name}
-      placeholder="Enter label name..."
-      required
-      maxlength="25"
-      onchange={handleSubmit}
-      onblur={handleSubmit}
-      disabled={submitting || deleting}
-    />
-    {#if networkError}
-      <span class="row-status" data-type="error">{networkError}</span>
-    {:else if justSaved}
-      <span class="row-status" data-type="success" transition:fade={{ duration: 300 }}>
-        <Check size="14" />
-        Saved
-      </span>
-    {/if}
-    <button type="button" class="delete-button" aria-label={`Delete label ${form.name}`} onclick={requestDelete} disabled={submitting || deleting}>
-      <Trash2 size="16" color="var(--colour-error)" />
-    </button>
-  </div>
-  <div class="field-errors">
-    {#if fieldErrors.colour}
-      <span id="label-{label.id}-colour-error" class="field-error">{fieldErrors.colour}</span>
-    {/if}
-    {#if fieldErrors.name}
-      <span id="label-{label.id}-name-error" class="field-error">{fieldErrors.name}</span>
-    {/if}
-  </div>
-</form>
+  <ColourPicker bind:value={form.colour} ariaLabel={`Colour for ${lastSaved.name}`} disabled={submitting || deleting} onchange={() => void handleSubmit()} />
+  <input
+    type="text"
+    id="label-{label.id}-name"
+    class="form-input row-name"
+    aria-label="Label name"
+    bind:value={form.name}
+    placeholder="Label name"
+    required
+    maxlength="25"
+    aria-invalid={fieldErrors.name ? "true" : undefined}
+    onchange={handleSubmit}
+    onblur={handleSubmit}
+    disabled={submitting || deleting}
+  />
+  <span class="preview"><LabelChip name={form.name.trim() || "Label"} colour={form.colour} /></span>
 
-<Modal open={confirmOpen} title={`Delete "${lastSaved.name}"?`} onclose={() => (confirmOpen = false)} maxWidth="28rem">
-  <p class="confirm-body">
-    Remove the <strong>{lastSaved.name}</strong> label from this project. Tickets currently tagged with it will lose the tag.
-  </p>
-  {#snippet footer()}
-    <Button type="button" variant="secondary" onclick={() => (confirmOpen = false)} disabled={deleting}>Cancel</Button>
-    <Button type="button" variant="danger" onclick={() => void confirmDelete()} disabled={deleting}>
-      {deleting ? "Deleting..." : "Delete label"}
-    </Button>
-  {/snippet}
-</Modal>
+  {#if networkError}
+    <span class="row-status" data-type="error">{networkError}</span>
+  {:else if justSaved}
+    <span class="row-status" data-type="success" transition:fade={{ duration: 300 }}>
+      <Check size="14" />
+      Saved
+    </span>
+  {/if}
+
+  {#if confirming}
+    <span class="confirm">
+      <span>Delete {lastSaved.name}? {deleteLabelWarning(label.ticketCount)}</span>
+      <Button type="button" variant="danger" size="sm" disabled={deleting} onclick={() => void confirmDelete()}>{deleting ? "Deleting..." : "Delete"}</Button>
+      <Button type="button" variant="secondary" size="sm" disabled={deleting} onclick={() => (confirming = false)}>Cancel</Button>
+    </span>
+  {:else}
+    <button type="button" class="delete-button" aria-label={`Delete label ${lastSaved.name}`} onclick={requestDelete} disabled={submitting || deleting}>
+      <Trash2 size="15" />
+    </button>
+  {/if}
+</form>
+{#if fieldErrors.colour || fieldErrors.name}
+  <div class="field-errors">
+    {#if fieldErrors.colour}<span id="label-{label.id}-colour-error" class="field-error">{fieldErrors.colour}</span>{/if}
+    {#if fieldErrors.name}<span id="label-{label.id}-name-error" class="field-error">{fieldErrors.name}</span>{/if}
+  </div>
+{/if}
 
 <style>
   .label-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.75em;
+    gap: 0.75rem;
   }
 
   .row-name {
-    flex: 1;
+    flex: 1 1 10rem;
     min-width: 0;
+    max-width: 16rem;
+  }
+
+  .preview {
+    min-width: 0;
+    flex: 0 1 auto;
   }
 
   .row-status {
-    font-size: 0.875rem;
     display: flex;
     align-items: center;
     gap: 0.25em;
-  }
+    font-size: 0.875rem;
 
-  .row-status[data-type="error"] {
-    color: var(--colour-error);
-    background-color: var(--colour-error-bg);
-    border: var(--border);
-    border-color: var(--colour-error-border);
-    border-radius: var(--border-radius-inner);
-    padding: 0.4em 0.6em;
-  }
+    &[data-type="error"] {
+      padding: 0.4em 0.6em;
+      border: 1px solid var(--colour-error-border);
+      border-radius: var(--border-radius-inner);
+      background-color: var(--colour-error-bg);
+      color: var(--colour-error);
+    }
 
-  .row-status[data-type="success"] {
-    color: var(--colour-success);
+    &[data-type="success"] {
+      color: var(--colour-success);
+    }
   }
 
   .delete-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--colour-error-bg);
-    border: var(--border);
-    border-color: var(--colour-error-border);
-    padding: 0.4em 0.6em;
-    height: 2em;
-    margin: 0;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
     border-radius: var(--border-radius-inner);
-    transition: background-color var(--motion-fast) var(--ease-out-quart);
+    background: transparent;
+    color: var(--colour-muted);
     cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
-      background-color: var(--colour-error-bg-hover);
-    }
-
-    &:focus {
-      outline: 2px solid var(--colour-error);
+      background: var(--colour-error-bg);
+      color: var(--colour-error);
     }
 
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.7;
     }
   }
 
-  .confirm-body {
-    margin: 0;
-    color: var(--colour-text);
-    font-size: 0.9rem;
-    line-height: 1.5;
+  .label-row:hover .delete-button,
+  .label-row:focus-within .delete-button,
+  .delete-button:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .delete-button {
+      opacity: 1;
+    }
+  }
+
+  .confirm {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    font-size: 0.875rem;
   }
 </style>

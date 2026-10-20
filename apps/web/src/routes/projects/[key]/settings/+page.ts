@@ -1,7 +1,7 @@
 // Load function for project detail settings page
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
-import type { ProjectDetail, Ticket } from "@issues/api";
+import type { LabelWithCount, ProjectDetail, Ticket } from "@issues/api";
 import { createClient } from "$lib/api/client";
 import { requireAuth } from "$lib/auth";
 import { LIST_COLUMN_IDS } from "$lib/components/tickets/TicketList.svelte";
@@ -28,9 +28,13 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   const trashSortDirection = trashSortDirectionSchema.parse(url.searchParams.get("trashSortDirection"));
 
   // Trash list is owner-only -- skip the API call entirely for non-owners so a 403 doesn't surface as a noisy load error.
+  let labelsWithCounts: LabelWithCount[] = project.labels.map(label => ({ ...label, ticketCount: 0 }));
   let trashTickets: Ticket[] = [];
   let trashTotal = 0;
   if (isOwner) {
+    const labelsRes = await api.labels.$get({ param: { key: params.key } });
+    if (labelsRes.ok) labelsWithCounts = ((await labelsRes.json()) as { labels: LabelWithCount[] }).labels;
+
     const trashRes = await api.tickets.trash.$get({
       param: { key: params.key },
       query: { sortBy: trashSortBy, sortDirection: trashSortDirection, page: String(trashPage), perPage: String(TRASH_PER_PAGE) },
@@ -42,5 +46,5 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
     }
   }
 
-  return { user, project, isOwner, trashTickets, trashPage, trashPerPage: TRASH_PER_PAGE, trashTotal, trashSortBy, trashSortDirection };
+  return { user, project, isOwner, labelsWithCounts, trashTickets, trashPage, trashPerPage: TRASH_PER_PAGE, trashTotal, trashSortBy, trashSortDirection };
 };
