@@ -17,20 +17,18 @@
   };
 </script>
 
-<span class="status-chip" style:--status-colour={colours[category]}>{name}</span>
+<span class="status-chip tinted" style:--tint={colours[category]}>{name}</span>
 
 <style>
   .status-chip {
-    --status-colour: var(--colour-status-backlog);
-
     display: inline-flex;
     align-items: center;
     min-height: 1.4rem;
     padding: 0.2rem 0.45rem;
-    border: 1px solid color-mix(in oklab, var(--status-colour) 35%, var(--colour-paper) 65%);
+    border: 1px solid var(--tint-border);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklab, var(--status-colour) 10%, var(--colour-paper) 90%);
-    color: color-mix(in oklab, var(--status-colour) 65%, var(--colour-ink) 35%);
+    background: var(--tint-background);
+    color: var(--tint-text);
     font-size: 0.7rem;
     font-weight: 700;
     line-height: 1;

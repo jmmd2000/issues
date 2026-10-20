@@ -65,11 +65,11 @@
   {#snippet trigger({ toggle, open })}
     <button
       type="button"
-      class="trigger"
+      class="trigger tinted"
       data-size={size}
-      data-empty={multi ? selectedStatuses.length === 0 : singleStatus?.category === "backlog"}
+      data-empty={multi && selectedStatuses.length === 0}
       data-multi={multi}
-      style:--option-colour={singleColour}
+      style:--tint={singleColour}
       onclick={toggle}
       {disabled}
       aria-expanded={open}
@@ -100,8 +100,8 @@
       {@const isSelected = multi ? selectedSet.has(status.id) : value === status.id}
       <button
         type="button"
-        class="menu-item"
-        style:--option-colour={categoryColours[status.category]}
+        class="menu-item tinted"
+        style:--tint={categoryColours[status.category]}
         role="option"
         aria-selected={isSelected}
         onclick={() => (multi ? toggleMulti(status.id) : selectSingle(status.id))}
@@ -118,15 +118,13 @@
 
 <style>
   .trigger {
-    --option-colour: var(--colour-status-backlog);
-
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
-    border: 1px solid color-mix(in oklab, var(--option-colour) 25%, var(--colour-paper) 75%);
+    border: 1px solid var(--tint-border);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklab, var(--option-colour) 10%, var(--colour-paper) 90%);
-    color: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
+    background: var(--tint-background);
+    color: var(--tint-text);
     font: inherit;
     font-weight: 650;
     line-height: 1;
@@ -136,7 +134,7 @@
     &:hover,
     &:focus-visible,
     &[aria-expanded="true"] {
-      background: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
+      background: var(--tint-background-hover);
     }
 
     &[data-size="md"] {
@@ -215,11 +213,10 @@
   }
 
   .menu-item {
-    --option-colour: var(--colour-status-backlog);
-    --menu-item-background: color-mix(in oklab, var(--option-colour) 10%, var(--colour-paper) 90%);
-    --menu-item-hover: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
-    --menu-item-selected: color-mix(in oklab, var(--option-colour) 20%, var(--colour-paper) 80%);
-    --menu-item-colour: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
+    --menu-item-background: var(--tint-background);
+    --menu-item-hover: var(--tint-background-hover);
+    --menu-item-selected: var(--tint-background-selected);
+    --menu-item-colour: var(--tint-text);
 
     font-weight: 650;
 

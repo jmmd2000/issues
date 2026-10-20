@@ -110,11 +110,10 @@
       <div class="option-list">
         {#each filtered as label (label.id)}
           {@const selected = selectedSet.has(label.id)}
-          <button type="button" class="menu-item" role="option" aria-selected={selected} onclick={() => toggle(label.id)} {disabled}>
+          <button type="button" class="menu-item tinted" style:--tint={label.colour} role="option" aria-selected={selected} onclick={() => toggle(label.id)} {disabled}>
             <span class="check">
               {#if selected}<Check size={12} strokeWidth={3} />{/if}
             </span>
-            <span class="swatch" style:--swatch-colour={label.colour}></span>
             <span class="option-name">{label.name}</span>
           </button>
         {:else}
@@ -226,19 +225,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--accent-base);
+    color: currentColor;
     flex-shrink: 0;
   }
 
-  .swatch {
-    --swatch-colour: var(--colour-muted);
+  .menu-item {
+    --menu-item-background: var(--tint-background);
+    --menu-item-hover: var(--tint-background-hover);
+    --menu-item-selected: var(--tint-background-selected);
+    --menu-item-colour: var(--tint-text);
 
-    flex: 0 0 auto;
-    width: 0.7em;
-    height: 0.7em;
-    border-radius: 999px;
-    background: var(--swatch-colour);
-    border: 1px solid color-mix(in oklab, var(--swatch-colour) 50%, var(--colour-ink) 50%);
+    font-weight: 650;
+
+    &[aria-selected="true"] {
+      font-weight: 800;
+    }
   }
 
   .option-name {
