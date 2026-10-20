@@ -35,12 +35,20 @@
     if (open) onclose();
   }
 
+  // A drag that starts inside the dialog and ends on the backdrop still fires a click on the dialog.
+  // Closing only when the press also started on the backdrop stops a text selection from closing the form.
+  let pressStartedOnBackdrop = false;
+
+  function handleMouseDown(event: MouseEvent) {
+    pressStartedOnBackdrop = event.target === dialog;
+  }
+
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === dialog) onclose();
+    if (event.target === dialog && pressStartedOnBackdrop) onclose();
   }
 </script>
 
-<dialog bind:this={dialog} class="modal" style:--modal-max-width={maxWidth} onclose={handleClose} onclick={handleBackdropClick}>
+<dialog bind:this={dialog} class="modal" style:--modal-max-width={maxWidth} onclose={handleClose} onmousedown={handleMouseDown} onclick={handleBackdropClick}>
   <header class="modal-header">
     <h2>{title}</h2>
     {#if showCloseButton}
