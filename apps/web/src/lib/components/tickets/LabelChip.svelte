@@ -18,10 +18,10 @@
     align-items: center;
     max-width: 100%;
     padding: 0.2rem 0.45rem;
-    border: 1px solid color-mix(in oklch, var(--label-colour) 35%, var(--colour-paper) 65%);
+    border: 1px solid color-mix(in oklab, var(--label-colour) 35%, var(--colour-paper) 65%);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--label-colour) 15%, var(--colour-paper) 85%);
-    color: color-mix(in oklch, var(--label-colour) 75%, var(--colour-ink) 25%);
+    background: color-mix(in oklab, var(--label-colour) 15%, var(--colour-paper) 85%);
+    color: color-mix(in oklab, var(--label-colour) 65%, var(--colour-ink) 35%);
     font-size: 0.7rem;
     font-weight: 700;
     line-height: 1.1;

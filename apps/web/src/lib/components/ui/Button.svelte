@@ -78,7 +78,7 @@
     color: var(--colour-bg-lighter);
     border: 1px solid var(--accent-shade-100);
     box-shadow:
-      rgb(from var(--colour-text) r g b / 0.2) 0px 1px 3px,
+      rgb(from var(--colour-shadow) r g b / 0.2) 0px 1px 3px,
       rgb(from var(--colour-bg-lighter) r g b / 0.14) 0px 1px 0px inset;
 
     &:hover:not(:disabled) {
@@ -88,7 +88,7 @@
     &:active:not(:disabled) {
       transform: translateY(1px);
       box-shadow:
-        rgb(from var(--colour-text) r g b / 0.25) 0px 0px 1px,
+        rgb(from var(--colour-shadow) r g b / 0.25) 0px 0px 1px,
         rgb(from var(--colour-bg-lighter) r g b / 0.08) 0px 1px 0px inset;
     }
   }
@@ -98,7 +98,7 @@
     color: var(--colour-text);
     border: 1px solid var(--colour-border);
     box-shadow:
-      0 1px 2px rgb(from var(--colour-text) r g b / 0.07),
+      0 1px 2px rgb(from var(--colour-shadow) r g b / 0.07),
       inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
 
     &:hover:not(:disabled) {
@@ -115,20 +115,20 @@
   .button[data-variant="danger"] {
     background: var(--colour-error);
     color: var(--colour-bg-lighter);
-    border: 1px solid color-mix(in oklch, var(--colour-error) 82%, var(--colour-ink) 18%);
+    border: 1px solid color-mix(in oklab, var(--colour-error) 82%, var(--colour-ink) 18%);
     box-shadow:
-      rgb(from var(--colour-text) r g b / 0.2) 0px 1px 3px,
+      rgb(from var(--colour-shadow) r g b / 0.2) 0px 1px 3px,
       rgb(from var(--colour-bg-lighter) r g b / 0.14) 0px 1px 0px inset;
 
     &:hover:not(:disabled) {
-      background: color-mix(in oklch, var(--colour-error) 84%, var(--colour-ink) 16%);
+      background: color-mix(in oklab, var(--colour-error) 84%, var(--colour-ink) 16%);
     }
   }
 
   .button[data-variant="danger"]:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow:
-      rgb(from var(--colour-text) r g b / 0.25) 0px 0px 1px,
+      rgb(from var(--colour-shadow) r g b / 0.25) 0px 0px 1px,
       rgb(from var(--colour-bg-lighter) r g b / 0.08) 0px 1px 0px inset;
   }
 </style>

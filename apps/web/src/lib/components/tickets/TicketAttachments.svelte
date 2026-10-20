@@ -504,7 +504,7 @@
     justify-content: center;
     gap: 0.35rem;
     border-radius: var(--border-radius-outer);
-    background: color-mix(in oklch, var(--accent-tint-900) 88%, transparent);
+    background: color-mix(in oklab, var(--accent-tint-900) 88%, transparent);
     color: var(--accent-base);
     font-size: 0.85rem;
     font-weight: 700;

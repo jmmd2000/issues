@@ -143,10 +143,10 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
-    border: 1px solid color-mix(in oklch, var(--option-colour) 25%, var(--colour-paper) 75%);
+    border: 1px solid color-mix(in oklab, var(--option-colour) 25%, var(--colour-paper) 75%);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--option-colour) 10%, var(--colour-paper) 90%);
-    color: color-mix(in oklch, var(--option-colour) 80%, var(--colour-ink) 20%);
+    background: color-mix(in oklab, var(--option-colour) 10%, var(--colour-paper) 90%);
+    color: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
     font: inherit;
     font-weight: 650;
     line-height: 1;
@@ -157,7 +157,7 @@
   .trigger:hover,
   .trigger:focus-visible,
   .trigger[aria-expanded="true"] {
-    background: color-mix(in oklch, var(--option-colour) 15%, var(--colour-paper) 85%);
+    background: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
   }
 
   .trigger[data-size="md"] {
@@ -249,10 +249,10 @@
     align-items: center;
     gap: 0.3em;
     padding: 0.2rem 0.45rem;
-    border: 1px solid color-mix(in oklch, var(--option-colour) 40%, var(--colour-paper) 60%);
+    border: 1px solid color-mix(in oklab, var(--option-colour) 40%, var(--colour-paper) 60%);
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--option-colour) 15%, var(--colour-paper) 85%);
-    color: color-mix(in oklch, var(--option-colour) 75%, var(--colour-ink) 25%);
+    background: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
+    color: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
     font-size: 0.7rem;
     font-weight: 700;
     line-height: 1.1;
@@ -273,8 +273,8 @@
     padding: 0.4em 0.5em;
     border: none;
     border-radius: var(--border-radius-inner);
-    background: color-mix(in oklch, var(--option-colour) 10%, var(--colour-paper) 90%);
-    color: color-mix(in oklch, var(--option-colour) 80%, var(--colour-ink) 20%);
+    background: color-mix(in oklab, var(--option-colour) 10%, var(--colour-paper) 90%);
+    color: color-mix(in oklab, var(--option-colour) 65%, var(--colour-ink) 35%);
     font: inherit;
     font-size: 0.8rem;
     font-weight: 650;
@@ -283,11 +283,11 @@
   }
 
   .option:hover {
-    background: color-mix(in oklch, var(--option-colour) 15%, var(--colour-paper) 85%);
+    background: color-mix(in oklab, var(--option-colour) 15%, var(--colour-paper) 85%);
   }
 
   .option[aria-selected="true"] {
-    background: color-mix(in oklch, var(--option-colour) 20%, var(--colour-paper) 80%);
+    background: color-mix(in oklab, var(--option-colour) 20%, var(--colour-paper) 80%);
     font-weight: 800;
   }
 

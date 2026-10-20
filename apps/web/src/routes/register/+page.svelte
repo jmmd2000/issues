@@ -129,7 +129,7 @@
     padding: 3rem 3rem 2.5rem;
     background:
       radial-gradient(circle at 28% 18%, rgb(from var(--colour-bg-lighter) r g b / 0.12), transparent 55%),
-      radial-gradient(circle at 78% 82%, rgb(from var(--colour-text) r g b / 0.25), transparent 60%), var(--accent-base);
+      radial-gradient(circle at 78% 82%, rgb(from var(--colour-shadow) r g b / 0.25), transparent 60%), var(--accent-base);
     color: var(--colour-bg-lighter);
   }
 

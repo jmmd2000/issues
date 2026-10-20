@@ -62,8 +62,8 @@
     background: var(--colour-bg-lighter);
     border: var(--border);
     box-shadow:
-      0 8px 24px rgb(from var(--colour-text) r g b / 0.15),
-      0 2px 8px rgb(from var(--colour-text) r g b / 0.08);
+      0 8px 24px rgb(from var(--colour-shadow) r g b / 0.15),
+      0 2px 8px rgb(from var(--colour-shadow) r g b / 0.08);
     animation: slide-in-right var(--motion-base) var(--ease-out-quart);
     min-width: 16rem;
     max-width: 21rem;

@@ -50,7 +50,7 @@
 
   .fallback {
     background-color: var(--accent-base);
-    color: white;
+    color: var(--colour-bg-lighter);
     font-weight: 800;
   }
 </style>

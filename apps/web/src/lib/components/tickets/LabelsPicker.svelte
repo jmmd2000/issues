@@ -283,7 +283,7 @@
     height: 0.7em;
     border-radius: 999px;
     background: var(--swatch-colour);
-    border: 1px solid color-mix(in oklch, var(--swatch-colour) 50%, var(--colour-ink) 50%);
+    border: 1px solid color-mix(in oklab, var(--swatch-colour) 50%, var(--colour-ink) 50%);
   }
 
   .option-name {

@@ -36,7 +36,7 @@
   function liftDraggedCard(element: HTMLElement | undefined) {
     if (!element) return;
     element.style.transition = "rotate 160ms var(--ease-out-quart), box-shadow 160ms var(--ease-out-quart)";
-    element.style.boxShadow = "rgb(from var(--colour-text) r g b / 0.14) 0 8px 24px -4px, rgb(from var(--colour-text) r g b / 0.08) 0 2px 6px";
+    element.style.boxShadow = "rgb(from var(--colour-shadow) r g b / 0.14) 0 8px 24px -4px, rgb(from var(--colour-shadow) r g b / 0.08) 0 2px 6px";
     requestAnimationFrame(() => {
       element.style.rotate = "1.5deg";
     });
@@ -140,7 +140,7 @@
     visibility: visible !important;
     min-height: var(--ticket-drop-target-height);
     border: 1px dashed var(--colour-border) !important;
-    background: color-mix(in oklch, var(--accent-base) 5%, var(--colour-paper) 95%) !important;
+    background: color-mix(in oklab, var(--accent-base) 5%, var(--colour-paper) 95%) !important;
     box-shadow: none !important;
     opacity: 1 !important;
     outline: none !important;
