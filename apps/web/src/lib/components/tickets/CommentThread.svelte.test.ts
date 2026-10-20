@@ -31,6 +31,26 @@ describe("CommentThread", () => {
     await expect.element(screen.getByRole("button", { name: "Comment" })).toBeDisabled();
   });
 
+  it("shows the composer open when there are no comments", async () => {
+    const screen = await render(CommentThread, { ...baseProps });
+    await expect.element(screen.getByPlaceholder("Add a comment")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Add a comment" }).elements()).toHaveLength(0);
+  });
+
+  it("lists the newest comment first", async () => {
+    const comments = [
+      makeComment({ id: "c-old", body: "Older", author: { id: "u-1", name: "Alice", avatarURL: null } }),
+      makeComment({ id: "c-new", body: "Newer", author: { id: "u-2", name: "Bob", avatarURL: null } }),
+    ];
+    const screen = await render(CommentThread, { ...baseProps, comments });
+    await expect.element(screen.getByText("Bob")).toBeVisible();
+    const authors = screen
+      .getByRole("article")
+      .elements()
+      .map(article => article.querySelector(".comment-author")?.textContent);
+    expect(authors).toEqual(["Bob", "Alice"]);
+  });
+
   it("renders a tombstone for deleted comments", async () => {
     const comments = [makeComment({ id: "c-dead", body: null, isDeleted: true, author: { id: "u-1", name: "Alice", avatarURL: null } })];
     const screen = await render(CommentThread, { ...baseProps, comments });
