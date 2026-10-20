@@ -2,6 +2,9 @@ app: issues
 images:
   - name: issues-api
     dockerfile: apps/api/Dockerfile
+    buildArgs:
+      GIT_SHA: "{tag}"
+      BUILT_AT: "{builtAt}"
   - name: issues-web
     dockerfile: apps/web/Dockerfile
     buildArgs:

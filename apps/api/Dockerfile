@@ -29,8 +29,13 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends libvips42 ca-certificates dumb-init \
  && rm -rf /var/lib/apt/lists/*
 
+ARG GIT_SHA=dev
+ARG BUILT_AT=""
+
 ENV NODE_ENV=production
 ENV PORT=4000
+ENV GIT_SHA=${GIT_SHA}
+ENV BUILT_AT=${BUILT_AT}
 
 WORKDIR /app
 

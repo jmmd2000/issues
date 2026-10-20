@@ -31,6 +31,15 @@ export type ApiTokenRow = typeof apiTokens.$inferSelect;
 
 export type Visibility = "public" | "private";
 
+/** What the API is running on. `builtAt` is `null` for a local run. */
+export type BuildInfo = {
+  gitSha: string;
+  builtAt: string | null;
+  nodeVersion: string;
+  postgresVersion: string | null;
+  packages: { name: string; version: string | null }[];
+};
+
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
 export type ProjectWithCount = Project & { openCount: number; isLocked: false };

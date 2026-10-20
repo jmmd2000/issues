@@ -32,6 +32,8 @@ const envSchema = z
     GLITCHTIP_ENVIRONMENT: z.preprocess(blankToUndefined, z.string().optional()),
     // The commit the image was built from. The deploy sets it from the image tag.
     GIT_SHA: z.preprocess(blankToUndefined, z.string().default("dev")),
+    // When the image was built. The deploy sets it. A local run leaves it out.
+    BUILT_AT: z.preprocess(blankToUndefined, z.string().optional()),
   })
   .refine(env => !env.GLITCHTIP_DSN || env.GLITCHTIP_ENVIRONMENT, {
     message: "is needed whenever GLITCHTIP_DSN is set, such as production",
