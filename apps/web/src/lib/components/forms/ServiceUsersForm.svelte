@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
   import type { ApiToken, ServiceUser } from "@issues/api";
   import { ChevronDown, Plus } from "@lucide/svelte";
   import { client } from "$lib/api/client";
@@ -7,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
+  import AvatarEditor from "./AvatarEditor.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
   import ApiTokensForm from "./ApiTokensForm.svelte";
 
@@ -23,11 +23,6 @@
   let creating = $state(false);
   let createMessage = $state<FormMessageType | null>(null);
   let createFieldErrors: Record<string, string> = $state({});
-
-  let pendingAvatarFile = $state<Record<string, File | null>>({});
-  let pendingAvatarPreview = $state<Record<string, string | null>>({});
-  let avatarSaving = $state<string | null>(null);
-  let avatarMessage = $state<Record<string, FormMessageType | null>>({});
 
   function formatDate(value: string): string {
     return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -110,62 +105,19 @@
     };
   }
 
-  function clearAvatarSelection(userID: string) {
-    const previousURL = pendingAvatarPreview[userID];
-    if (previousURL) URL.revokeObjectURL(previousURL);
-    pendingAvatarFile = { ...pendingAvatarFile, [userID]: null };
-    pendingAvatarPreview = { ...pendingAvatarPreview, [userID]: null };
-  }
-
-  function handleAvatarChange(userID: string, event: Event) {
-    avatarMessage = { ...avatarMessage, [userID]: null };
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    clearAvatarSelection(userID);
-    if (file) {
-      pendingAvatarFile = { ...pendingAvatarFile, [userID]: file };
-      pendingAvatarPreview = { ...pendingAvatarPreview, [userID]: URL.createObjectURL(file) };
-    }
-  }
-
-  async function saveAvatar(userID: string) {
-    const file = pendingAvatarFile[userID];
-    if (!file || avatarSaving) return;
-    avatarSaving = userID;
-    avatarMessage = { ...avatarMessage, [userID]: null };
-    try {
+  function saveAvatarFor(userID: string) {
+    return async (file: File) => {
       const updated = await uploadServiceUserAvatar(userID, file);
       users = users.map(user => (user.id === userID ? { ...user, avatarURL: updated.avatarURL } : user));
-      clearAvatarSelection(userID);
-      avatarMessage = { ...avatarMessage, [userID]: { type: "success", text: "Avatar updated." } };
-    } catch (err) {
-      avatarMessage = { ...avatarMessage, [userID]: { type: "error", text: err instanceof Error ? err.message : "Upload failed." } };
-    } finally {
-      avatarSaving = null;
-    }
+    };
   }
 
-  async function removeAvatar(userID: string) {
-    if (avatarSaving) return;
-    avatarSaving = userID;
-    avatarMessage = { ...avatarMessage, [userID]: null };
-    try {
+  function removeAvatarFor(userID: string) {
+    return async () => {
       await deleteServiceUserAvatar(userID);
       users = users.map(user => (user.id === userID ? { ...user, avatarURL: null } : user));
-      clearAvatarSelection(userID);
-      avatarMessage = { ...avatarMessage, [userID]: { type: "success", text: "Avatar removed." } };
-    } catch (err) {
-      avatarMessage = { ...avatarMessage, [userID]: { type: "error", text: err instanceof Error ? err.message : "Remove failed." } };
-    } finally {
-      avatarSaving = null;
-    }
+    };
   }
-
-  onDestroy(() => {
-    for (const url of Object.values(pendingAvatarPreview)) {
-      if (url) URL.revokeObjectURL(url);
-    }
-  });
 </script>
 
 <div class="settings-card">
@@ -175,8 +127,6 @@
     <ul class="user-list">
       {#each users as user (user.id)}
         {@const expanded = expandedUserID === user.id}
-        {@const previewURL = pendingAvatarPreview[user.id]}
-        {@const pendingFile = pendingAvatarFile[user.id]}
         <li class="user-row">
           <button type="button" class="user-header" aria-expanded={expanded} onclick={() => toggleExpand(user.id)}>
             <UserAvatar name={user.name} avatarURL={user.avatarURL} size="sm" />
@@ -191,29 +141,7 @@
           {#if expanded}
             <div class="user-body">
               <div class="avatar-row">
-                <div class="avatar-preview">
-                  {#if previewURL}
-                    <img class="preview-image" src={previewURL} alt="New avatar preview" />
-                  {:else}
-                    <UserAvatar name={user.name} avatarURL={user.avatarURL} size="lg" />
-                  {/if}
-                </div>
-                <div class="avatar-controls">
-                  <label for={`avatar-${user.id}`} class="form-label">Avatar</label>
-                  <input id={`avatar-${user.id}`} type="file" accept="image/*" class="form-input" disabled={avatarSaving === user.id} onchange={event => handleAvatarChange(user.id, event)} />
-                  <p class="hint">Cropped to 512x512. PNG, JPEG, or WebP.</p>
-                  <div class="avatar-actions">
-                    <FormMessage message={avatarMessage[user.id] ?? null} />
-                    {#if user.avatarURL}
-                      <Button type="button" variant="danger" size="sm" disabled={avatarSaving === user.id} onclick={() => removeAvatar(user.id)}>
-                        {avatarSaving === user.id ? "Removing..." : "Remove"}
-                      </Button>
-                    {/if}
-                    <Button type="button" size="sm" disabled={!pendingFile || avatarSaving === user.id} onclick={() => saveAvatar(user.id)}>
-                      {avatarSaving === user.id && pendingFile ? "Saving..." : "Save avatar"}
-                    </Button>
-                  </div>
-                </div>
+                <AvatarEditor id={`avatar-${user.id}`} name={user.name} avatarURL={user.avatarURL} onsave={saveAvatarFor(user.id)} onremove={removeAvatarFor(user.id)} />
               </div>
               {#if tokensLoading === user.id && !tokensByUser[user.id]}
                 <p class="loading">Loading tokens...</p>
@@ -357,43 +285,6 @@
     gap: 1.25em;
     padding-bottom: 1em;
     border-bottom: var(--border);
-  }
-
-  .avatar-preview {
-    flex: 0 0 auto;
-  }
-
-  .preview-image {
-    width: 5rem;
-    height: 5rem;
-    border-radius: 50%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .avatar-controls {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5em;
-  }
-
-  .hint {
-    margin: 0;
-    font-size: 0.8em;
-    color: var(--colour-text-secondary);
-  }
-
-  .avatar-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.75em;
-    margin-top: 0.5em;
-  }
-
-  .avatar-actions :global(.form-message) {
-    flex: 1;
   }
 
   .loading {
