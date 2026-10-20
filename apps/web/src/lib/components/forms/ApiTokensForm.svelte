@@ -1,12 +1,10 @@
 <script lang="ts">
   import type { ApiToken } from "@issues/api";
-  import { Copy, Plus, Trash2 } from "@lucide/svelte";
+  import { Copy, Plus } from "@lucide/svelte";
+  import { DEFAULT_EXPIRY_DAYS, EXPIRY_CHOICES, daysLeft, expiryLabel } from "$lib/tokens";
   import Button from "$lib/components/ui/Button.svelte";
-  import Modal from "$lib/components/ui/Modal.svelte";
+  import SegmentedControl, { type SegmentedOption } from "$lib/components/ui/SegmentedControl.svelte";
   import FormMessage, { type FormMessage as FormMessageType } from "./FormMessage.svelte";
-
-  const EXPIRY_OPTIONS = [7, 30, 90, 180, 365] as const;
-  const DEFAULT_EXPIRY = 90;
 
   type CreateResult = { ok: true; token: string; apiToken: ApiToken } | { ok: false; message?: string; fieldErrors?: Record<string, string> };
   type RevokeResult = { ok: true } | { ok: false; message?: string };
@@ -25,51 +23,46 @@
     emptyText?: string;
   } = $props();
 
+  const expiryOptions: SegmentedOption<string>[] = EXPIRY_CHOICES.map(days => ({ value: String(days), label: `${days} days` }));
+
   // svelte-ignore state_referenced_locally
   let tokenList = $state([...tokens]);
-  let form = $state({ name: "", expiresInDays: DEFAULT_EXPIRY });
+  let name = $state("");
+  let expiry = $state(String(DEFAULT_EXPIRY_DAYS));
   let fieldErrors: Record<string, string> = $state({});
   let message = $state<FormMessageType | null>(null);
   let submitting = $state(false);
 
-  let revealOpen = $state(false);
-  let revealedToken = $state("");
-  let revealedName = $state("");
-  let copied = $state(false);
+  let revealed = $state<{ id: string; name: string; value: string }[]>([]);
+  let copiedID = $state<string | null>(null);
 
-  let confirmOpen = $state(false);
-  let confirmTarget = $state<ApiToken | null>(null);
+  let confirmingID = $state<string | null>(null);
   let revoking = $state(false);
+
+  const canCreate = $derived(name.trim().length > 0 && !submitting);
 
   function formatDate(value: string | null): string {
     if (!value) return "Never";
     return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
-  function daysUntil(value: string): number {
-    const diff = new Date(value).getTime() - Date.now();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  }
-
   async function handleCreate() {
-    if (submitting) return;
+    if (!canCreate) return;
 
     submitting = true;
     fieldErrors = {};
     message = null;
     try {
-      const result = await onCreate(form.name, form.expiresInDays);
+      const result = await onCreate(name.trim(), Number(expiry));
       if (!result.ok) {
         message = { type: "error", text: result.message ?? "Failed to create token." };
         fieldErrors = result.fieldErrors ?? {};
         return;
       }
       tokenList = [result.apiToken, ...tokenList];
-      revealedToken = result.token;
-      revealedName = result.apiToken.name;
-      revealOpen = true;
-      copied = false;
-      form = { name: "", expiresInDays: DEFAULT_EXPIRY };
+      revealed = [{ id: result.apiToken.id, name: result.apiToken.name, value: result.token }, ...revealed];
+      name = "";
+      expiry = String(DEFAULT_EXPIRY_DAYS);
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
     } finally {
@@ -77,96 +70,101 @@
     }
   }
 
-  async function handleCopy() {
+  async function handleCopy(item: { id: string; value: string }) {
     try {
-      await navigator.clipboard.writeText(revealedToken);
-      copied = true;
+      await navigator.clipboard.writeText(item.value);
+      copiedID = item.id;
     } catch {
-      copied = false;
+      copiedID = null;
     }
   }
 
-  function dismissReveal() {
-    revealOpen = false;
-    revealedToken = "";
-    revealedName = "";
-    copied = false;
+  function dismiss(id: string) {
+    revealed = revealed.filter(item => item.id !== id);
   }
 
-  function requestRevoke(token: ApiToken) {
-    confirmTarget = token;
-    confirmOpen = true;
-  }
-
-  async function confirmRevoke() {
-    if (!confirmTarget || revoking) return;
-    const target = confirmTarget;
+  async function confirmRevoke(token: ApiToken) {
+    if (revoking) return;
 
     revoking = true;
+    message = null;
     try {
-      const result = await onRevoke(target.id);
+      const result = await onRevoke(token.id);
       if (!result.ok) {
         message = { type: "error", text: result.message ?? "Failed to revoke token." };
-        confirmOpen = false;
         return;
       }
-      tokenList = tokenList.filter(token => token.id !== target.id);
-      confirmOpen = false;
-      confirmTarget = null;
+      tokenList = tokenList.filter(item => item.id !== token.id);
+      confirmingID = null;
     } catch {
       message = { type: "error", text: "Network error. Please try again." };
-      confirmOpen = false;
     } finally {
       revoking = false;
     }
   }
 </script>
 
-<div class="settings-card">
+<div class="tokens">
+  {#each revealed as item (item.id)}
+    <div class="reveal" role="status">
+      <div class="reveal-title">Copy the token for {item.name} now. It is not shown again.</div>
+      <div class="reveal-token">
+        <code>{item.value}</code>
+        <Button type="button" variant="secondary" size="sm" onclick={() => void handleCopy(item)}><Copy size={13} strokeWidth={2} /> {copiedID === item.id ? "Copied" : "Copy"}</Button>
+      </div>
+      <Button type="button" variant="secondary" size="sm" onclick={() => dismiss(item.id)}>Dismiss</Button>
+    </div>
+  {/each}
+
   {#if tokenList.length === 0}
     <p class="empty">{emptyText}</p>
   {:else}
     <ul class="token-list">
       {#each tokenList as token (token.id)}
-        {@const remaining = daysUntil(token.expiresAt)}
+        {@const expiryInfo = expiryLabel(daysLeft(token.expiresAt))}
         <li class="token-row">
           <div class="token-info">
             <span class="token-name">{token.name}</span>
-            <span class="token-meta">
-              Created {formatDate(token.createdAt)}
-              · Last used {formatDate(token.lastUsedAt)}
-              ·
-              <span class="expiry" data-warning={remaining <= 14}>
-                {remaining > 0 ? `Expires in ${remaining} days` : "Expired"}
-              </span>
-            </span>
+            <span class="token-meta">Created {formatDate(token.createdAt)} · Last used {formatDate(token.lastUsedAt)}</span>
           </div>
-          <button type="button" class="revoke-button" aria-label={`Revoke token ${token.name}`} onclick={() => requestRevoke(token)}>
-            <Trash2 size="16" color="var(--colour-error)" />
-          </button>
+          <span class="expiry" data-tone={expiryInfo.tone}>{expiryInfo.text}</span>
+          {#if confirmingID === token.id}
+            <span class="confirm">
+              <span>Revoke {token.name}?</span>
+              <Button type="button" variant="danger" size="sm" disabled={revoking} onclick={() => void confirmRevoke(token)}>{revoking ? "Revoking..." : "Revoke"}</Button>
+              <Button type="button" variant="secondary" size="sm" disabled={revoking} onclick={() => (confirmingID = null)}>Cancel</Button>
+            </span>
+          {:else}
+            <Button type="button" variant="secondary" size="sm" aria-label={`Revoke token ${token.name}`} onclick={() => (confirmingID = token.id)}>Revoke</Button>
+          {/if}
         </li>
       {/each}
     </ul>
   {/if}
 
   <form
-    class="create-row"
+    class="create"
     novalidate
     onsubmit={e => {
       e.preventDefault();
       void handleCreate();
     }}
   >
-    <input type="text" id="token-name" class="form-input" bind:value={form.name} {placeholder} required maxlength="80" disabled={submitting} />
-    <select id="token-expiry" class="form-input expiry-select" bind:value={form.expiresInDays} disabled={submitting}>
-      {#each EXPIRY_OPTIONS as days (days)}
-        <option value={days}>{days} days</option>
-      {/each}
-    </select>
-    <Button type="submit" size="md" disabled={submitting}>
-      <Plus size="14" />
-      {submitting ? "Creating..." : "Create token"}
-    </Button>
+    <div class="field">
+      <label for="token-name" class="form-label">Name</label>
+      <input type="text" id="token-name" class="form-input" bind:value={name} {placeholder} maxlength="80" disabled={submitting} />
+    </div>
+    <div class="field">
+      <span class="form-label">Expires after</span>
+      <SegmentedControl bind:value={expiry} options={expiryOptions} label="Expires after" size="sm" disabled={submitting} />
+    </div>
+    <div class="create-footer">
+      <Button type="submit" disabled={!canCreate}>
+        <Plus size={14} />
+        {submitting ? "Creating..." : "Create token"}
+      </Button>
+      <FormMessage {message} />
+    </div>
   </form>
 
   <div class="field-errors">
@@ -174,38 +172,13 @@
       <span class="field-error">{error}</span>
     {/each}
   </div>
-  <FormMessage {message} />
 </div>
 
-<Modal open={revealOpen} title={`Token "${revealedName}" created`} onclose={dismissReveal} maxWidth="36rem">
-  <div class="reveal-body">
-    <p class="reveal-warning">Copy this token now — you will not be able to see it again.</p>
-    <div class="reveal-token">
-      <code>{revealedToken}</code>
-      <button type="button" class="copy-button" onclick={handleCopy} aria-label="Copy token">
-        <Copy size="14" />
-        {copied ? "Copied" : "Copy"}
-      </button>
-    </div>
-  </div>
-  {#snippet footer()}
-    <Button type="button" onclick={dismissReveal}>Done</Button>
-  {/snippet}
-</Modal>
-
-<Modal open={confirmOpen} title={`Revoke "${confirmTarget?.name ?? ""}"?`} onclose={() => (confirmOpen = false)} maxWidth="28rem">
-  <p class="confirm-body">Any client using this token will immediately stop working. This cannot be undone.</p>
-  {#snippet footer()}
-    <Button type="button" variant="secondary" onclick={() => (confirmOpen = false)} disabled={revoking}>Cancel</Button>
-    <Button type="button" variant="danger" onclick={() => void confirmRevoke()} disabled={revoking}>
-      {revoking ? "Revoking..." : "Revoke token"}
-    </Button>
-  {/snippet}
-</Modal>
-
 <style>
-  .settings-card {
-    gap: 1em;
+  .tokens {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .empty {
@@ -214,149 +187,133 @@
     font-size: 0.9em;
   }
 
-  .token-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  .reveal {
     display: flex;
     flex-direction: column;
-    gap: 0.5em;
-  }
-
-  .token-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75em;
-    padding: 0.75em 1em;
-    background-color: var(--colour-bg);
-    border: var(--border);
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--colour-success-border);
     border-radius: var(--border-radius-inner);
+    background: var(--colour-success-bg);
   }
 
-  .token-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2em;
-  }
-
-  .token-name {
-    font-weight: 500;
-    color: var(--colour-text);
-  }
-
-  .token-meta {
-    font-size: 0.8em;
-    color: var(--colour-text-secondary);
-  }
-
-  .expiry[data-warning="true"] {
-    color: var(--colour-error);
-    font-weight: 500;
-  }
-
-  .revoke-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--colour-error-bg);
-    border: var(--border);
-    border-color: var(--colour-error-border);
-    padding: 0.4em 0.6em;
-    height: 2em;
-    border-radius: var(--border-radius-inner);
-    cursor: pointer;
-    transition: background-color var(--motion-fast) var(--ease-out-quart);
-
-    &:hover {
-      background-color: var(--colour-error-bg-hover);
-    }
-
-    &:focus {
-      outline: 2px solid var(--colour-error);
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-  }
-
-  .create-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75em;
-    padding-top: 1em;
-    border-top: var(--border);
-  }
-
-  .create-row .form-input {
-    flex: 1;
-  }
-
-  .expiry-select {
-    flex: 0 0 auto;
-    width: auto;
-    cursor: pointer;
-  }
-
-  .reveal-body {
-    display: flex;
-    flex-direction: column;
-    gap: 1em;
-  }
-
-  .reveal-warning {
-    margin: 0;
-    padding: 0.75em 1em;
-    background-color: var(--colour-error-bg);
-    border: var(--border);
-    border-color: var(--colour-error-border);
-    border-radius: var(--border-radius-inner);
-    color: var(--colour-error);
-    font-size: 0.9em;
+  .reveal-title {
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
   .reveal-token {
     display: flex;
-    gap: 0.5em;
-    align-items: stretch;
-  }
-
-  .reveal-token code {
-    flex: 1;
-    padding: 0.6em 0.8em;
-    background-color: var(--colour-bg);
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.85em;
-    word-break: break-all;
-    user-select: all;
-  }
-
-  .copy-button {
-    display: flex;
     align-items: center;
-    gap: 0.4em;
-    padding: 0.5em 0.8em;
-    background-color: var(--colour-bg-lighter);
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    font-size: 0.85em;
-    font-weight: 500;
-    cursor: pointer;
+    gap: 0.5rem;
+    max-width: 100%;
 
-    &:hover {
-      background-color: var(--colour-bg-hover);
+    & code {
+      min-width: 0;
+      padding: 0.35rem 0.6rem;
+      border: var(--border);
+      border-radius: var(--border-radius-inner);
+      background: var(--colour-bg-lighter);
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      overflow-wrap: anywhere;
     }
   }
 
-  .confirm-body {
+  .token-list {
+    display: flex;
+    flex-direction: column;
     margin: 0;
-    color: var(--colour-text);
-    font-size: 0.9rem;
-    line-height: 1.5;
+    padding: 0;
+    list-style: none;
+  }
+
+  .token-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.25rem 1rem;
+    align-items: center;
+    padding: 0.625rem 0;
+    border-top: var(--border);
+
+    &:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+  }
+
+  .token-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .token-name {
+    font-weight: 500;
+  }
+
+  .token-meta {
+    color: var(--colour-text-secondary);
+    font-size: 0.8125rem;
+  }
+
+  .expiry {
+    color: var(--colour-muted);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+
+    &[data-tone="soon"] {
+      color: var(--colour-warning);
+      font-weight: 600;
+    }
+
+    &[data-tone="expired"] {
+      color: var(--colour-error);
+      font-weight: 600;
+    }
+  }
+
+  .confirm {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .create {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: var(--border);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+
+    & .form-input {
+      max-width: 24rem;
+    }
+  }
+
+  .create-footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  @media (max-width: 40rem) {
+    .token-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+
+      & .expiry {
+        grid-row: 2;
+      }
+    }
   }
 </style>

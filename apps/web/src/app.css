@@ -67,6 +67,7 @@
   --colour-success-bg: color-mix(in oklab, var(--colour-success) 12%, var(--colour-paper) 88%);
   --colour-success-bg-hover: color-mix(in oklab, var(--colour-success) 16%, var(--colour-paper) 84%);
   --colour-success-border: color-mix(in oklab, var(--colour-success) 50%, var(--colour-paper) 50%);
+  --colour-warning: light-dark(#8a5a00, #e0b04a);
   --colour-error: light-dark(#b82a2a, #ff7373);
   --colour-error-bg: color-mix(in oklab, var(--colour-error) 12%, var(--colour-paper) 88%);
   --colour-error-bg-hover: color-mix(in oklab, var(--colour-error) 16%, var(--colour-paper) 84%);
