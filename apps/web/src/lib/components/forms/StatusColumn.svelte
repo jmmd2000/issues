@@ -3,7 +3,6 @@
   import { dndzone, type DndEvent } from "svelte-dnd-action";
   import { Plus } from "@lucide/svelte";
   import { client } from "$lib/api/client";
-  import Button from "$lib/components/ui/Button.svelte";
   import StatusRow from "./StatusRow.svelte";
 
   type Category = Status["category"];
@@ -36,6 +35,11 @@
   let newName = $state("");
   let addError = $state<string | null>(null);
   let submitting = $state(false);
+  let newInput: HTMLInputElement | null = $state(null);
+
+  $effect(() => {
+    if (adding) newInput?.focus();
+  });
 
   function handleConsider(e: CustomEvent<DndEvent<Status>>) {
     onConsider(e.detail.items);
@@ -45,8 +49,19 @@
     onFinalize(e.detail.items);
   }
 
+  function cancelAdd() {
+    adding = false;
+    newName = "";
+    addError = null;
+  }
+
   async function handleAdd() {
-    if (submitting || !newName.trim()) return;
+    if (submitting) return;
+    if (!newName.trim()) {
+      cancelAdd();
+      return;
+    }
+
     submitting = true;
     addError = null;
     try {
@@ -63,8 +78,7 @@
 
       const data = (await res.json()) as { status: Status };
       onAdd(data.status);
-      newName = "";
-      adding = false;
+      cancelAdd();
     } catch {
       addError = "Network error. Please try again.";
     } finally {
@@ -73,9 +87,14 @@
   }
 </script>
 
-<div class="column">
-  <div class="column-header">{label}</div>
-  <div class="cards" use:dndzone={{ items: statuses, type: "status", flipDurationMs: 150, dropTargetStyle: {} }} onconsider={handleConsider} onfinalize={handleFinalize}>
+<section class="group" data-category={category} aria-label={label}>
+  <h3 class="group-head">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="group-name">{label}</span>
+    <span class="count">{statuses.length}</span>
+  </h3>
+
+  <div class="rows" use:dndzone={{ items: statuses, type: "status", flipDurationMs: 150, dropTargetStyle: {} }} onconsider={handleConsider} onfinalize={handleFinalize}>
     {#each statuses as status (status.id)}
       <StatusRow {status} {projectKey} otherStatuses={allStatuses.filter(s => s.id !== status.id)} {onUpdate} {onDelete} />
     {/each}
@@ -90,91 +109,124 @@
         void handleAdd();
       }}
     >
-      <input type="text" class="form-input" bind:value={newName} placeholder="Status name..." maxlength="40" required disabled={submitting} />
-      <div class="add-actions">
-        <Button type="submit" size="sm" disabled={submitting}>{submitting ? "Adding..." : "Add"}</Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onclick={() => {
-            adding = false;
-            newName = "";
-            addError = null;
-          }}
-          disabled={submitting}
-        >
-          Cancel
-        </Button>
-      </div>
-      {#if addError}
-        <span class="field-error">{addError}</span>
-      {/if}
+      <input
+        bind:this={newInput}
+        type="text"
+        class="form-input add-input"
+        aria-label="New {label} status name"
+        bind:value={newName}
+        placeholder="Status name"
+        maxlength="40"
+        disabled={submitting}
+        aria-invalid={addError ? "true" : undefined}
+        onkeydown={event => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            cancelAdd();
+          }
+        }}
+        onblur={() => {
+          if (!newName.trim() && !submitting) cancelAdd();
+        }}
+      />
+      {#if addError}<span class="field-error">{addError}</span>{/if}
     </form>
   {:else}
     <button type="button" class="add-trigger" onclick={() => (adding = true)}>
-      <Plus size="14" /> Add status
+      <Plus size="13" /> Add status
     </button>
   {/if}
-</div>
+</section>
 
 <style>
-  .column {
+  .group {
     display: flex;
     flex-direction: column;
-    gap: 0.5em;
-    padding: 0.75em;
-    border: var(--border);
-    border-radius: var(--border-radius-outer);
-    background-color: var(--colour-bg);
-    min-height: 6em;
+    gap: 0.25rem;
+    min-width: 0;
+    min-height: 6rem;
+    padding: 0.75rem;
+    background: var(--colour-bg-lighter);
+
+    --dot: var(--colour-status-backlog);
+
+    &[data-category="active"] {
+      --dot: var(--colour-status-active);
+    }
+
+    &[data-category="done"] {
+      --dot: var(--colour-status-done);
+    }
+
+    &[data-category="cancelled"] {
+      --dot: var(--colour-status-cancelled);
+    }
   }
 
-  .column-header {
-    font-size: 0.75em;
+  .group-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.25rem;
+    padding: 0 0.25rem;
+    font-size: 0.8125rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--colour-muted);
-    padding: 0.25em 0.25em 0.5em;
   }
 
-  .cards {
+  .dot {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--dot);
+  }
+
+  .count {
+    margin-left: auto;
+    color: var(--colour-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .rows {
     display: flex;
     flex-direction: column;
-    gap: 0.4em;
-    min-height: 2em;
+    gap: 0.125rem;
+    min-height: 2rem;
   }
 
   .add-trigger {
     display: flex;
     align-items: center;
-    gap: 0.35em;
-    padding: 0.4em 0.6em;
-    border: 1px dashed var(--colour-border);
+    gap: 0.35rem;
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border: 0;
     border-radius: var(--border-radius-inner);
     background: transparent;
     color: var(--colour-muted);
-    font-size: 0.8em;
+    font: inherit;
+    font-size: 0.8125rem;
     cursor: pointer;
-    transition:
-      color var(--motion-fast) var(--ease-out-quart),
-      border-color var(--motion-fast) var(--ease-out-quart);
 
     &:hover {
-      color: var(--accent-base);
-      border-color: var(--accent-base);
+      background: var(--colour-bg-hover);
+      color: var(--colour-text);
     }
   }
 
   .add-form {
     display: flex;
     flex-direction: column;
-    gap: 0.4em;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    padding-left: 1.25rem;
   }
 
-  .add-actions {
-    display: flex;
-    gap: 0.4em;
+  .add-input {
+    font-size: 0.875em;
   }
 </style>

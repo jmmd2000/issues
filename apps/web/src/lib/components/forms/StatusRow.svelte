@@ -100,7 +100,7 @@
 </script>
 
 <form
-  class="status-card"
+  class="status-row"
   novalidate
   onsubmit={e => {
     e.preventDefault();
@@ -115,7 +115,8 @@
       type="text"
       class="form-input row-name"
       bind:value={form.name}
-      placeholder="Status name..."
+      placeholder="Status name"
+      aria-label="Status name"
       required
       maxLength="40"
       onchange={handleSubmit}
@@ -130,11 +131,12 @@
     <button
       type="button"
       class="delete-button"
+      aria-label={`Delete status ${lastSaved.name}`}
       onclick={() => (confirming = true)}
       disabled={submitting || deleting || otherStatuses.length === 0}
       title={otherStatuses.length === 0 ? "Cannot delete the only status" : "Delete"}
     >
-      <Trash2 size="14" color="var(--colour-error)" />
+      <Trash2 size="14" />
     </button>
   </div>
 
@@ -165,34 +167,38 @@
 </Modal>
 
 <style>
-  .status-card {
+  .status-row {
     display: flex;
     flex-direction: column;
-    gap: 0.4em;
-    padding: 0.5em 0.6em;
-    background: var(--colour-bg-lighter);
-    border: var(--border);
+    gap: 0.25em;
+    padding: 0.125rem 0;
     border-radius: var(--border-radius-inner);
-    box-shadow: var(--box-shadow);
+    background: var(--colour-bg-lighter);
   }
 
   .row {
     display: flex;
     align-items: center;
-    gap: 0.4em;
+    gap: 0.25rem;
   }
 
   .drag-handle {
-    cursor: grab;
-    color: var(--colour-muted);
     display: flex;
     align-items: center;
+    color: var(--colour-muted);
+    cursor: grab;
   }
 
   .row-name {
     flex: 1;
     min-width: 0;
     font-size: 0.875em;
+
+    &:not(:hover):not(:focus-visible):not([aria-invalid="true"]) {
+      border-color: transparent;
+      background: transparent;
+      box-shadow: none;
+    }
   }
 
   .row-status {
@@ -216,23 +222,51 @@
   }
 
   .delete-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--colour-error-bg);
-    border: var(--border);
-    border-color: var(--colour-error-border);
-    padding: 0.3em 0.45em;
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
     border-radius: var(--border-radius-inner);
+    background: transparent;
+    color: var(--colour-muted);
     cursor: pointer;
-    transition: background-color var(--motion-fast) var(--ease-out-quart);
+    opacity: 0;
+    transition:
+      opacity var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart),
+      color var(--motion-fast) var(--ease-out-quart);
+
+    &:hover:not(:disabled) {
+      background: var(--colour-error-bg);
+      color: var(--colour-error);
+    }
 
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.5;
     }
-    &:hover:not(:disabled) {
-      background-color: var(--colour-error-bg-hover);
+  }
+
+  .status-row:hover .delete-button,
+  .status-row:focus-within .delete-button,
+  .delete-button:focus-visible {
+    opacity: 1;
+  }
+
+  .delete-button:disabled {
+    opacity: 0;
+  }
+
+  .status-row:hover .delete-button:disabled,
+  .status-row:focus-within .delete-button:disabled {
+    opacity: 0.4;
+  }
+
+  @media (hover: none) {
+    .delete-button {
+      opacity: 1;
     }
   }
 

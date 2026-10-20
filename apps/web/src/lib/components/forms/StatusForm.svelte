@@ -96,7 +96,7 @@
 </script>
 
 <div class="settings-card">
-  <div class="kanban">
+  <div class="groups">
     {#each CATEGORIES as category (category)}
       <StatusColumn
         {category}
@@ -116,15 +116,28 @@
 </div>
 
 <style>
-  .kanban {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1em;
+  .settings-card {
+    container-type: inline-size;
+    padding: 0;
+    overflow: hidden;
   }
 
-  @media (max-width: 540px) {
-    .kanban {
-      grid-template-columns: 1fr;
+  .groups {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--colour-border);
+  }
+
+  @container (max-width: 44rem) {
+    .groups {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container (max-width: 24rem) {
+    .groups {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>
