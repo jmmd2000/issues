@@ -3,7 +3,6 @@
   import { client } from "$lib/api/client";
   import { formatAbsolute, timeAgo } from "$lib/time";
   import Button from "$lib/components/ui/Button.svelte";
-  import ShortcutHint from "$lib/components/ui/ShortcutHint.svelte";
   import MarkdownEditor from "$lib/components/markdown/MarkdownEditor.svelte";
   import MarkdownRenderer from "$lib/components/markdown/MarkdownRenderer.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
@@ -156,7 +155,6 @@
           {/if}
           <Button type="submit" aria-keyshortcuts="Control+Enter" disabled={posting || !draft.trim()}>
             {posting ? "Posting..." : "Comment"}
-            <ShortcutHint label="Ctrl+Enter" />
           </Button>
         </div>
       </form>
