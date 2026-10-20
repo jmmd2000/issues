@@ -1,9 +1,8 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import type { ProjectMember, Ticket } from "@issues/api";
-  import { UserRound } from "@lucide/svelte";
+  import type { ProjectMember, Status, Ticket } from "@issues/api";
+  import { CircleCheck, CircleSlash, UserRound } from "@lucide/svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
-  import CrossedOffText from "../tickets/CrossedOffText.svelte";
   import PriorityChip from "../tickets/PriorityChip.svelte";
   import { formatAbsolute, timeAgo } from "$lib/time";
 
@@ -11,13 +10,13 @@
     projectKey: string;
     ticket: Ticket;
     members: ProjectMember[];
-    /** True when the ticket sits in a done status. */
-    done?: boolean;
-    /** True right after the ticket was dropped into a done status, so the cross-off line draws in. */
-    justCompleted?: boolean;
+    /** The category of the column the card sits in. Done and cancelled cards are dimmed and show an icon. */
+    category?: Status["category"];
   }
 
-  let { projectKey, ticket, members, done = false, justCompleted = false }: TicketCardProps = $props();
+  let { projectKey, ticket, members, category }: TicketCardProps = $props();
+
+  const closedState = $derived(category === "done" || category === "cancelled" ? category : null);
 
   const assignee = $derived(ticket.assigneeID ? (members.find(member => member.userID === ticket.assigneeID) ?? null) : null);
 
@@ -44,14 +43,22 @@
 <a
   class="card"
   href={resolve("/projects/[key]/tickets/[num]", { key: projectKey, num: String(ticket.number) })}
-  aria-label={`${projectKey}-${ticket.number}: ${ticket.title}${done ? ", done" : ""}`}
+  data-state={closedState}
+  aria-label={`${projectKey}-${ticket.number}: ${ticket.title}${closedState ? `, ${closedState}` : ""}`}
   draggable="false"
   onpointerdown={handlePointerdown}
   onpointermove={handlePointermove}
   onclick={handleClick}
 >
-  <span class="number">{projectKey}-{ticket.number}</span>
-  <h4 class="title"><CrossedOffText crossed={done} drawOnMount={justCompleted}>{ticket.title}</CrossedOffText></h4>
+  <span class="number">
+    {#if closedState === "done"}<CircleCheck size={12} strokeWidth={2.25} aria-hidden="true" />{:else if closedState === "cancelled"}<CircleSlash
+        size={12}
+        strokeWidth={2.25}
+        aria-hidden="true"
+      />{/if}
+    {projectKey}-{ticket.number}
+  </span>
+  <h4 class="title">{ticket.title}</h4>
 
   <div class="footer">
     <div class="meta">
@@ -99,6 +106,9 @@
   }
 
   .number {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     font-family: var(--font-mono);
     font-size: 0.7rem;
     font-weight: 500;
@@ -119,6 +129,15 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
     line-clamp: 3;
+    transition: color var(--motion-base) var(--ease-out-quart);
+  }
+
+  .card[data-state="done"] .title {
+    color: var(--colour-text-secondary);
+  }
+
+  .card[data-state="cancelled"] .title {
+    color: var(--colour-muted);
   }
 
   .footer {

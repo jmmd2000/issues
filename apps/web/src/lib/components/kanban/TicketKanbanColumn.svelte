@@ -9,7 +9,6 @@
     tickets,
     members,
     canEdit = true,
-    justCompletedIDs,
     onConsider,
     onFinalize,
   }: {
@@ -18,7 +17,6 @@
     tickets: Ticket[];
     members: ProjectMember[];
     canEdit?: boolean;
-    justCompletedIDs: ReadonlySet<string>;
     onConsider: (statusID: string, items: Ticket[]) => void;
     onFinalize: (statusID: string, items: Ticket[], info: DndEvent<Ticket>["info"]) => void;
   } = $props();
@@ -64,7 +62,7 @@
       onfinalize={handleFinalize}
     >
       {#each tickets as ticket (ticket.id)}
-        <TicketCard {projectKey} {ticket} {members} done={status.category === "done"} justCompleted={justCompletedIDs.has(ticket.id)} />
+        <TicketCard {projectKey} {ticket} {members} category={status.category} />
       {/each}
     </div>
     {#if tickets.length === 0}
