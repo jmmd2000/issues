@@ -7,7 +7,6 @@
   import type { Priority } from "@issues/api";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Modal from "$lib/components/ui/Modal.svelte";
   import Popover from "$lib/components/ui/Popover.svelte";
   import VisibilityToggle from "$lib/components/ui/VisibilityToggle.svelte";
   import TicketChildren from "$lib/components/tickets/TicketChildren.svelte";
@@ -54,7 +53,6 @@
   let savingParent = $state(false);
   let parentSearchOpen = $state(false);
   let actionsOpen = $state(false);
-  let deleteConfirmOpen = $state(false);
   let deleting = $state(false);
   let cloneOpen = $state(false);
 
@@ -74,11 +72,9 @@
         return;
       }
 
-      deleteConfirmOpen = false;
-      actionsOpen = false;
       await goto(resolve("/projects/[key]", { key: projectKey }));
       pushToast({
-        message: `Deleted ${ticketKey}.`,
+        message: `Moved ${ticketKey} to trash.`,
         action: {
           label: "Undo",
           run: async () => {
@@ -334,10 +330,10 @@
               role="menuitem"
               onclick={() => {
                 actionsOpen = false;
-                deleteConfirmOpen = true;
+                void deleteTicket();
               }}
             >
-              <Trash2 size={14} strokeWidth={2} /> Delete ticket
+              <Trash2 size={14} strokeWidth={2} /> Move to trash
             </button>
           {/snippet}
         </Popover>
@@ -559,18 +555,6 @@
     onclose={() => (parentSearchOpen = false)}
   />
 
-  <Modal open={deleteConfirmOpen} title="Delete {project.key}-{ticket.number}?" onclose={() => (deleteConfirmOpen = false)} maxWidth="28rem">
-    <p class="confirm-body">
-      Soft delete <strong>{project.key}-{ticket.number}</strong>. The ticket can be restored from project settings -> Trash.
-    </p>
-    {#snippet footer()}
-      <Button type="button" variant="secondary" onclick={() => (deleteConfirmOpen = false)} disabled={deleting}>Cancel</Button>
-      <Button type="button" variant="danger" onclick={() => void deleteTicket()} disabled={deleting}>
-        {deleting ? "Deleting..." : "Delete ticket"}
-      </Button>
-    {/snippet}
-  </Modal>
-
   <TicketModal
     open={cloneOpen}
     mode="clone"
@@ -609,13 +593,6 @@
   .ticket-actions {
     display: flex;
     align-items: flex-start;
-  }
-
-  .confirm-body {
-    margin: 0;
-    color: var(--colour-text);
-    font-size: 0.9rem;
-    line-height: 1.5;
   }
 
   .ticket-topline {
