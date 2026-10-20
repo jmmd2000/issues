@@ -8,6 +8,9 @@ import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCou
 import { HTTPException } from "hono/http-exception";
 import type { ActivityLookup, ProjectWithCount, PublicProject } from "../lib/types";
 
+/** Public projects first, then private ones. Each group runs from A to Z, ignoring case. */
+const homePageOrder = [sql`${projects.visibility} = 'private'`, sql`lower(${projects.name})`, projects.key];
+
 export class ProjectService {
   /**
    * Creates a new project, seeds statuses and labels, and assigns the creator as the owner
@@ -59,7 +62,7 @@ export class ProjectService {
    * (repo, stack, owner, timestamps) are not exposed to anonymous viewers.
    * A public project counts only its public tickets. A listed private project
    * counts every open ticket, as a number only, and is marked `isLocked`.
-   * @returns Home page projects with their open ticket counts
+   * @returns Home page projects with their open ticket counts, in home page order
    */
   static async getPublicProjectsWithCounts(): Promise<PublicProject[]> {
     return await db
@@ -75,7 +78,8 @@ export class ProjectService {
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
       .leftJoin(statuses, eq(statuses.id, tickets.statusID))
       .where(requireCondition(or(eq(projects.visibility, "public"), listedPrivateWhere)))
-      .groupBy(projects.id);
+      .groupBy(projects.id)
+      .orderBy(...homePageOrder);
   }
 
   /**
@@ -86,7 +90,7 @@ export class ProjectService {
    * viewer who is not a member gets only the home page details of those, marked
    * `isLocked`, and their open count covers every ticket as a number only.
    * @param role The current user's resolved role
-   * @returns Project rows with an `openCount` column, or locked home page details
+   * @returns Project rows with an `openCount` column, or locked home page details, in home page order
    */
   static async getAllProjectsWithCounts(role: Role): Promise<(ProjectWithCount | PublicProject)[]> {
     const projectColumns = {
@@ -113,7 +117,8 @@ export class ProjectService {
         .from(projects)
         .leftJoin(tickets, eq(tickets.projectID, projects.id))
         .leftJoin(statuses, eq(statuses.id, tickets.statusID))
-        .groupBy(projects.id);
+        .groupBy(projects.id)
+        .orderBy(...homePageOrder);
       return rows.map(row => ({ ...row, isLocked: false as const }));
     }
 
@@ -136,7 +141,8 @@ export class ProjectService {
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
       .leftJoin(statuses, eq(statuses.id, tickets.statusID))
       .where(requireCondition(visibleProjects))
-      .groupBy(projects.id);
+      .groupBy(projects.id)
+      .orderBy(...homePageOrder);
 
     return rows.map(row => {
       const isLocked = row.visibility === "private" && !role.memberships.has(row.id);

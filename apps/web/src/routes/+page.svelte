@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import { Lock, Plus } from "@lucide/svelte";
+  import { Globe2, Lock, Plus } from "@lucide/svelte";
   import type { ProjectWithCount, PublicProject } from "@issues/api";
   import type { PageProps } from "./$types";
   import Button from "$lib/components/ui/Button.svelte";
@@ -9,6 +9,12 @@
   let { data }: PageProps = $props();
 
   type HomeProject = ProjectWithCount | PublicProject;
+
+  /** The signed-out list holds only public projects and locked ones, so a project that is not locked there is public. */
+  function isPublicProject(project: HomeProject): boolean {
+    if (project.isLocked) return false;
+    return "visibility" in project ? project.visibility === "public" : true;
+  }
 
   const projectCount = $derived(data.projects.length);
   const openTotal = $derived(data.projects.reduce((sum, project) => sum + project.openCount, 0));
@@ -24,7 +30,9 @@
   <header class="project-head">
     <code class="project-key">{project.key}</code>
     {#if project.isLocked}
-      <span class="project-private"><Lock size={12} strokeWidth={2} /> Private</span>
+      <span class="project-visibility"><Lock size={12} strokeWidth={2} /> Private</span>
+    {:else if isPublicProject(project)}
+      <span class="project-visibility"><Globe2 size={12} strokeWidth={2} /> Public</span>
     {/if}
     <span class="project-rule" aria-hidden="true"></span>
     <span class="project-count">
@@ -263,7 +271,7 @@
       background var(--motion-fast) var(--ease-out-quart);
   }
 
-  .project-private {
+  .project-visibility {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
