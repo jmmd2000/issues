@@ -23,6 +23,12 @@ const apiTest = {
 export default defineConfig({
   test: {
     reporters: ["dot"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      include: ["apps/*/src/**/*.{ts,svelte}", "packages/*/src/**/*.ts"],
+      exclude: ["**/__tests__/**", "**/*.test.ts", "**/*.test-d.ts", "**/*.d.ts"],
+    },
     projects: [
       "apps/web/vitest.client.config.ts",
       "apps/web/vitest.server.config.ts",
