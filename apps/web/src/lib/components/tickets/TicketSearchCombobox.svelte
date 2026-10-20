@@ -77,7 +77,7 @@
   {/if}
 {:else}
   <div class="search-wrap">
-    <input id={inputID} class="search-input" type="text" bind:value={query} {placeholder} autocomplete="off" aria-label={placeholder} {disabled} />
+    <input id={inputID} class="form-input compact" type="text" bind:value={query} {placeholder} autocomplete="off" aria-label={placeholder} {disabled} />
 
     {#if query.trim().length >= 2}
       {#if search.loading}
@@ -103,26 +103,6 @@
 <style>
   .search-wrap {
     position: relative;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 0.4em 0.6em;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg);
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.85em;
-
-    &::placeholder {
-      color: var(--colour-muted);
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.65;
-    }
   }
 
   .selected-pill {

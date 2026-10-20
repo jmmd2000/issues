@@ -145,11 +145,6 @@
     gap: 1rem;
   }
 
-  .form-textarea {
-    min-height: 7rem;
-    resize: vertical;
-  }
-
   @media (max-width: 640px) {
     .form-grid {
       grid-template-columns: 1fr;

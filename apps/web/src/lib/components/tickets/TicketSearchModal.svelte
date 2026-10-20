@@ -64,7 +64,7 @@
 
 <Modal {open} {title} {onclose} maxWidth="34rem">
   <div class="search-panel">
-    <input bind:this={inputElement} class="search-input" type="text" bind:value={query} placeholder="Search tickets by title..." autocomplete="off" aria-label="Search tickets by title" />
+    <input bind:this={inputElement} class="form-input" type="text" bind:value={query} placeholder="Search tickets by title..." autocomplete="off" aria-label="Search tickets by title" />
 
     <div class="results-area" aria-live="polite">
       {#if query.trim().length < 2}
@@ -106,21 +106,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 0.5rem 0.7rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg);
-    color: var(--colour-text);
-    font: inherit;
-    font-size: 0.85rem;
-
-    &::placeholder {
-      color: var(--colour-muted);
-    }
   }
 
   .results-area {

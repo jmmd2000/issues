@@ -1,0 +1,64 @@
+/* Shared look for text inputs, text areas and selects. */
+.form-input {
+  width: 100%;
+  padding: 0.4em 0.6em;
+  border: 1px solid var(--colour-border-control);
+  border-radius: var(--border-radius-inner);
+  background-color: var(--colour-bg-lighter);
+  box-shadow: var(--shadow-field);
+  color: var(--colour-text);
+  font-size: 1em;
+  transition:
+    border-color var(--motion-fast) var(--ease-out-quart),
+    box-shadow var(--motion-fast) var(--ease-out-quart);
+
+  &::placeholder {
+    color: var(--colour-muted);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--colour-border-control-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid transparent;
+    border-color: var(--colour-focus);
+    box-shadow: var(--shadow-field), var(--shadow-focus-halo);
+  }
+
+  &[aria-invalid="true"] {
+    border-color: var(--colour-error);
+
+    &:focus-visible {
+      box-shadow:
+        var(--shadow-field),
+        0 0 0 3px color-mix(in oklab, var(--colour-error) 28%, transparent);
+    }
+  }
+
+  &:disabled {
+    background-color: var(--colour-bg);
+    color: var(--colour-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  &:is(select) {
+    cursor: pointer;
+  }
+
+  &[type="file"] {
+    padding: 0.3em 0.5em;
+  }
+
+  &.compact {
+    padding: 0.35em 0.55em;
+    font-size: 0.85em;
+  }
+}
+
+.form-textarea {
+  min-height: 7rem;
+  max-height: 10rem;
+  resize: vertical;
+}

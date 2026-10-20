@@ -87,8 +87,8 @@
   }
 
   .native:focus-visible + .box {
-    outline: 2px solid var(--accent-tint-700);
-    outline-offset: 1px;
+    outline: 2px solid var(--colour-focus);
+    outline-offset: 2px;
   }
 
   .text {

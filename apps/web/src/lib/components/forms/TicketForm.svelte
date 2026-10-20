@@ -152,7 +152,7 @@
       bind:value={title}
       id="ticket-title"
       type="text"
-      class="title-input"
+      class="form-input title-input"
       placeholder="Short summary of the work"
       maxlength="200"
       required
@@ -254,28 +254,14 @@
   }
 
   .title-input {
-    width: 100%;
     padding: 0.55rem 0.7rem;
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
-    background: var(--colour-bg-lighter);
-    color: var(--colour-text);
-    font: inherit;
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: -0.01em;
-    box-shadow: 0 1px 2px rgb(from var(--colour-shadow) r g b / 0.05);
-  }
 
-  .title-input::placeholder {
-    color: var(--colour-muted);
-    font-weight: 500;
-  }
-
-  .title-input:focus-visible {
-    outline: none;
-    border-color: var(--accent-base);
-    box-shadow: 0 0 0 3px rgb(from var(--accent-base) r g b / 0.12);
+    &::placeholder {
+      font-weight: 500;
+    }
   }
 
   .meta-grid {

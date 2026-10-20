@@ -202,6 +202,19 @@
     flex-direction: column;
     overflow: hidden;
     padding: 0;
+    border-color: var(--colour-border-control);
+    transition:
+      border-color var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart);
+
+    &:hover {
+      border-color: var(--colour-border-control-hover);
+    }
+
+    &:focus-within {
+      border-color: var(--colour-focus);
+      box-shadow: var(--box-shadow), var(--shadow-focus-halo);
+    }
   }
 
   .editor-tabs {

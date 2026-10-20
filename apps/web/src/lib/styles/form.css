@@ -49,19 +49,6 @@
   color: var(--colour-muted);
 }
 
-.form-input {
-  width: 100%;
-  padding: 0.4em 0.6em;
-  border: var(--border);
-  border-radius: var(--border-radius-inner);
-  background-color: var(--colour-bg);
-  font-size: 1em;
-
-  &::placeholder {
-    color: var(--colour-muted);
-  }
-}
-
 .field-error {
   display: block;
   margin-top: 0.4em;
@@ -77,16 +64,6 @@
 
   &:empty {
     display: none;
-  }
-}
-
-.form-textarea {
-  min-height: 7rem;
-  max-height: 10rem;
-  resize: vertical;
-
-  &::placeholder {
-    color: var(--colour-muted);
   }
 }
 

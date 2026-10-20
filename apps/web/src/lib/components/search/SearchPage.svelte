@@ -209,7 +209,7 @@
         <div class="sort-controls" aria-label="Search result sorting">
           <label>
             <span>Sort</span>
-            <select value={searchState.sortBy} onchange={setSortColumn}>
+            <select class="form-input compact sort-select" value={searchState.sortBy} onchange={setSortColumn}>
               {#each sortColumns as option (option.value)}
                 <option value={option.value}>{option.label}</option>
               {/each}
@@ -218,7 +218,7 @@
 
           <label>
             <span>Direction</span>
-            <select value={searchState.sortDirection} onchange={setSortDirection}>
+            <select class="form-input compact sort-select" value={searchState.sortDirection} onchange={setSortDirection}>
               {#each sortDirections as option (option.value)}
                 <option value={option.value}>{option.label}</option>
               {/each}
@@ -366,19 +366,9 @@
       font-weight: 600;
     }
 
-    select {
-      min-height: 2rem;
-      padding: 0.25em 1.8em 0.25em 0.55em;
-      border: var(--border);
-      border-radius: var(--border-radius-inner);
-      background: var(--colour-bg-lighter);
-      color: var(--colour-text);
-      font-size: 0.8rem;
+    .sort-select {
+      width: auto;
       font-weight: 600;
-      box-shadow:
-        0 1px 2px rgb(from var(--colour-shadow) r g b / 0.07),
-        inset 0 1px 0 rgb(from var(--colour-bg-lighter) r g b / 0.9);
-      cursor: pointer;
     }
   }
 

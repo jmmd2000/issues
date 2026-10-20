@@ -90,7 +90,7 @@
 
     <div class="controls">
       <label for="avatarFile" class="form-label">Upload an image</label>
-      <input id="avatarFile" type="file" accept="image/*" class="form-input file-input" onchange={handleFileChange} />
+      <input id="avatarFile" type="file" accept="image/*" class="form-input" onchange={handleFileChange} />
       <p class="hint">Cropped to a 512x512 square. PNG, JPEG, or WebP.</p>
     </div>
   </div>
@@ -141,10 +141,6 @@
     font-size: 0.8rem;
     color: var(--colour-text-secondary);
     margin: 0;
-  }
-
-  .file-input {
-    padding: 0.3em 0.5em;
   }
 
   .settings-card-footer {
