@@ -692,6 +692,7 @@
 
   .ticket-main {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     min-width: 0;
   }
