@@ -1,42 +1,28 @@
 <script lang="ts">
+  import { Check, Copy, TriangleAlert } from "@lucide/svelte";
   import type { BuildInfo } from "@issues/api";
-  import FormMessage, { type FormMessage as FormMessageType } from "$lib/components/forms/FormMessage.svelte";
-  import { commitsDiffer, formatBuiltAt, shortHash, webBuild } from "$lib/buildInfo";
-
-  interface BuildRow {
-    label: string;
-    value: string;
-  }
+  import { apiBuildRows, buildDetailsText, buildStatement, webBuild, webBuildRows, type BuildRow } from "$lib/buildInfo";
+  import { pushToast } from "$lib/stores/toast.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
 
   let { apiBuild }: { apiBuild: BuildInfo | null } = $props();
 
-  const webRows = $derived<BuildRow[]>([
-    { label: "Commit", value: shortHash(webBuild.gitSha) },
-    { label: "Built", value: formatBuiltAt(webBuild.builtAt) },
-    ...webBuild.packages.map(item => ({ label: item.name, value: item.version })),
-  ]);
+  const webRows = $derived(webBuildRows(webBuild));
+  const apiRows = $derived(apiBuild ? apiBuildRows(apiBuild) : null);
+  const statement = $derived(buildStatement(webBuild, apiBuild));
 
-  const apiRows = $derived<BuildRow[]>(
-    apiBuild
-      ? [
-          { label: "Commit", value: shortHash(apiBuild.gitSha) },
-          { label: "Built", value: formatBuiltAt(apiBuild.builtAt) },
-          { label: "Node", value: apiBuild.nodeVersion },
-          { label: "Postgres", value: apiBuild.postgresVersion ?? "Unknown" },
-          ...apiBuild.packages.map(item => ({ label: item.name, value: item.version ?? "Unknown" })),
-        ]
-      : []
-  );
-
-  const message = $derived.by<FormMessageType | null>(() => {
-    if (!apiBuild) return { type: "error", text: "The API build could not be loaded. Only the web build is shown." };
-    if (commitsDiffer(webBuild.gitSha, apiBuild.gitSha)) return { type: "error", text: "The web app and the API were built from different commits." };
-    return null;
-  });
+  async function copyDetails() {
+    try {
+      await navigator.clipboard.writeText(buildDetailsText(webBuild.siteVersion, webRows, apiRows));
+      pushToast({ message: "Build details copied", kind: "success" });
+    } catch {
+      pushToast({ message: "The build details could not be copied", kind: "error" });
+    }
+  }
 </script>
 
-{#snippet buildCard(title: string, rows: BuildRow[])}
-  <section class="build-card" aria-label={title}>
+{#snippet buildColumn(title: string, rows: BuildRow[])}
+  <section class="build-column" aria-label={title}>
     <h3>{title}</h3>
     <dl>
       {#each rows as row (row.label)}
@@ -50,14 +36,24 @@
 {/snippet}
 
 <div class="build-info">
-  <p class="site-version">Site version <code>{webBuild.siteVersion}</code></p>
+  <div class="build-head">
+    <p class="site-version">Site version <code>{webBuild.siteVersion}</code></p>
+    <Button type="button" variant="secondary" size="sm" onclick={copyDetails}><Copy size={13} strokeWidth={2} /> Copy build details</Button>
+  </div>
 
-  <FormMessage {message} />
+  <p class="statement" data-type={statement.type}>
+    {#if statement.type === "success"}
+      <Check size={14} strokeWidth={2.5} />
+    {:else}
+      <TriangleAlert size={14} strokeWidth={2.5} />
+    {/if}
+    {statement.text}
+  </p>
 
   <div class="build-grid">
-    {@render buildCard("Web", webRows)}
-    {#if apiBuild}
-      {@render buildCard("API", apiRows)}
+    {@render buildColumn("Web", webRows)}
+    {#if apiRows}
+      {@render buildColumn("API", apiRows)}
     {/if}
   </div>
 </div>
@@ -66,6 +62,13 @@
   .build-info {
     display: flex;
     flex-direction: column;
+    gap: 1rem;
+  }
+
+  .build-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 1rem;
   }
 
@@ -80,18 +83,30 @@
     }
   }
 
+  .statement {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 0.875rem;
+
+    &[data-type="success"] {
+      color: var(--colour-success);
+    }
+
+    &[data-type="error"] {
+      color: var(--colour-error);
+    }
+  }
+
   .build-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
-  .build-card {
+  .build-column {
     min-width: 0;
-    padding: 1rem;
-    background: var(--colour-bg-lighter);
-    border: var(--border);
-    border-radius: var(--border-radius-inner);
 
     & h3 {
       margin: 0 0 0.5rem;
