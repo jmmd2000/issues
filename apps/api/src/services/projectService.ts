@@ -2,10 +2,11 @@ import { db } from "../db";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { LabelService } from "./labelService";
 import { StatusService } from "./statusService";
-import { canView, type Role } from "../lib/access";
+import { canView, listedPrivateWhere, type Role } from "../lib/access";
+import { requireCondition } from "../lib/sql";
 import { projectMembers, projects, safeUserColumns, statuses, tickets, ticketCounters } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
-import type { ActivityLookup } from "../lib/types";
+import type { ActivityLookup, ProjectWithCount, PublicProject } from "../lib/types";
 
 export class ProjectService {
   /**
@@ -51,25 +52,29 @@ export class ProjectService {
   }
 
   /**
-   * Lists every public project on the instance along with its count of open
-   * tickets. Used by the unauthenticated homepage; deliberately limited to
-   * `id`, `key`, `name`, `description`, and `openCount` so sensitive fields
+   * Lists every public project on the instance, plus every private project
+   * listed on the home page, along with each project's count of open tickets.
+   * Used by the unauthenticated homepage; deliberately limited to `id`, `key`,
+   * `name`, `description`, `openCount` and `isLocked` so sensitive fields
    * (repo, stack, owner, timestamps) are not exposed to anonymous viewers.
-   * @returns Public projects with their open ticket counts
+   * A public project counts only its public tickets. A listed private project
+   * counts every open ticket, as a number only, and is marked `isLocked`.
+   * @returns Home page projects with their open ticket counts
    */
-  static async getPublicProjectsWithCounts() {
+  static async getPublicProjectsWithCounts(): Promise<PublicProject[]> {
     return await db
       .select({
         id: projects.id,
         key: projects.key,
         name: projects.name,
         description: projects.description,
-        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and ${tickets.visibility} = 'public')::int`,
+        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${listedPrivateWhere}))::int`,
+        isLocked: sql<boolean>`${listedPrivateWhere}`,
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
       .leftJoin(statuses, eq(statuses.id, tickets.statusID))
-      .where(eq(projects.visibility, "public"))
+      .where(requireCondition(or(eq(projects.visibility, "public"), listedPrivateWhere)))
       .groupBy(projects.id);
   }
 
@@ -77,31 +82,39 @@ export class ProjectService {
    * Lists every project the user can see (their own + public projects) along
    * with each project's count of open tickets. A ticket is open when its
    * status category is `backlog` or `active` and it has not been soft-deleted.
-   * @param userID The current user's ID
-   * @returns Project rows newest-first with an `openCount` column
+   * Private projects listed on the home page are included for everyone. A
+   * viewer who is not a member gets only the home page details of those, marked
+   * `isLocked`, and their open count covers every ticket as a number only.
+   * @param role The current user's resolved role
+   * @returns Project rows with an `openCount` column, or locked home page details
    */
-  static async getAllProjectsWithCounts(role: Role) {
+  static async getAllProjectsWithCounts(role: Role): Promise<(ProjectWithCount | PublicProject)[]> {
+    const projectColumns = {
+      id: projects.id,
+      key: projects.key,
+      name: projects.name,
+      description: projects.description,
+      repo: projects.repo,
+      stack: projects.stack,
+      metadata: projects.metadata,
+      visibility: projects.visibility,
+      showOnHomePage: projects.showOnHomePage,
+      ownerID: projects.ownerID,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+    };
+
     if (role.isService) {
-      return await db
+      const rows = await db
         .select({
-          id: projects.id,
-          key: projects.key,
-          name: projects.name,
-          description: projects.description,
-          repo: projects.repo,
-          stack: projects.stack,
-          metadata: projects.metadata,
-          visibility: projects.visibility,
-          showOnHomePage: projects.showOnHomePage,
-          ownerID: projects.ownerID,
-          createdAt: projects.createdAt,
-          updatedAt: projects.updatedAt,
+          ...projectColumns,
           openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null)::int`,
         })
         .from(projects)
         .leftJoin(tickets, eq(tickets.projectID, projects.id))
         .leftJoin(statuses, eq(statuses.id, tickets.statusID))
         .groupBy(projects.id);
+      return rows.map(row => ({ ...row, isLocked: false as const }));
     }
 
     const memberProjects = Array.from(role.memberships.keys());
@@ -111,27 +124,25 @@ export class ProjectService {
           sql`, `
         )})`
       : sql`false`;
-    return await db
+    const visibleProjects = memberProjects.length
+      ? or(eq(projects.visibility, "public"), inArray(projects.id, memberProjects), listedPrivateWhere)
+      : or(eq(projects.visibility, "public"), listedPrivateWhere);
+    const rows = await db
       .select({
-        id: projects.id,
-        key: projects.key,
-        name: projects.name,
-        description: projects.description,
-        repo: projects.repo,
-        stack: projects.stack,
-        metadata: projects.metadata,
-        visibility: projects.visibility,
-        showOnHomePage: projects.showOnHomePage,
-        ownerID: projects.ownerID,
-        createdAt: projects.createdAt,
-        updatedAt: projects.updatedAt,
-        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause}))::int`,
+        ...projectColumns,
+        openCount: sql<number>`count(${tickets.id}) filter (where ${statuses.category} in ('backlog', 'active') and ${tickets.deletedAt} is null and (${tickets.visibility} = 'public' or ${memberClause} or ${listedPrivateWhere}))::int`,
       })
       .from(projects)
       .leftJoin(tickets, eq(tickets.projectID, projects.id))
       .leftJoin(statuses, eq(statuses.id, tickets.statusID))
-      .where(memberProjects.length ? or(eq(projects.visibility, "public"), inArray(projects.id, memberProjects)) : eq(projects.visibility, "public"))
+      .where(requireCondition(visibleProjects))
       .groupBy(projects.id);
+
+    return rows.map(row => {
+      const isLocked = row.visibility === "private" && !role.memberships.has(row.id);
+      if (!isLocked) return { ...row, isLocked: false as const };
+      return { id: row.id, key: row.key, name: row.name, description: row.description, openCount: row.openCount, isLocked: true };
+    });
   }
 
   /**

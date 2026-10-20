@@ -10,6 +10,12 @@ import { requireCondition } from "./sql";
  *   Authenticated members see everything in their projects.
  *   Service users see everything everywhere.
  *
+ * One exception widens what everyone sees, and only on the home page. A private
+ * project with `showOnHomePage` on is listed there with its name, description,
+ * ticket count and redacted activity. {@link listedPrivateWhere} describes it.
+ * It is not part of {@link canView} or {@link visibilityWhere}, so a listed
+ * project still never opens its routes, tickets or search results.
+ *
  * Every read path that gates on project or ticket visibility should consult
  * either {@link canView} (pure predicate) or {@link visibilityWhere} (SQL
  * fragment for filtered queries) rather than re-deriving the rule inline.
@@ -73,3 +79,10 @@ export function visibilityWhere(role: Role | undefined): SQL | undefined {
   if (memberIDs.length === 0) return publicClause;
   return requireCondition(or(publicClause, inArray(projects.id, memberIDs)));
 }
+
+/**
+ * Drizzle `where` fragment that matches a private project listed on the home
+ * page. Use it only for home page lists, counts and activity. Never use it to
+ * decide whether a viewer can read a project's tickets.
+ */
+export const listedPrivateWhere: SQL = requireCondition(and(eq(projects.visibility, "private"), eq(projects.showOnHomePage, true)));

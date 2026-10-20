@@ -33,8 +33,9 @@ export type Visibility = "public" | "private";
 
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
-export type ProjectWithCount = Project & { openCount: number };
-export type PublicProject = Pick<Project, "id" | "key" | "name" | "description"> & { openCount: number };
+export type ProjectWithCount = Project & { openCount: number; isLocked: false };
+/** The home page details of a project. `isLocked` is true for a private project the viewer cannot open. */
+export type PublicProject = Pick<Project, "id" | "key" | "name" | "description"> & { openCount: number; isLocked: boolean };
 export type CurrentUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type ApiToken = Jsonified<Pick<ApiTokenRow, "id" | "name" | "lastUsedAt" | "expiresAt" | "createdAt">>;
 export type CreatedApiToken = { token: string; apiToken: ApiToken };
@@ -70,7 +71,7 @@ export type ProjectActivity = TicketActivity & {
 };
 
 export type GlobalActivity = ProjectActivity & {
-  project: { key: string };
+  project: { key: string; isLocked: boolean };
 };
 
 /** The parts of a project an activity card needs to colour status and label chips and show member avatars. */

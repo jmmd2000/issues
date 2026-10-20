@@ -441,7 +441,7 @@ describe("GET /api/projects/public", () => {
     const body = await res.json();
     const project = body.projects[0];
 
-    expect(Object.keys(project).sort()).toEqual(["description", "id", "key", "name", "openCount"]);
+    expect(Object.keys(project).sort()).toEqual(["description", "id", "isLocked", "key", "name", "openCount"]);
     expect(project).not.toHaveProperty("repo");
     expect(project).not.toHaveProperty("stack");
     expect(project).not.toHaveProperty("ownerID");

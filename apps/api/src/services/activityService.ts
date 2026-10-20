@@ -1,13 +1,16 @@
 import { and, desc, eq, exists, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
 import { projects, ticketActivity, tickets } from "../db/schema";
-import { visibilityWhere, type Role } from "../lib/access";
-import type { LinkType, TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
+import { listedPrivateWhere, visibilityWhere, type Role } from "../lib/access";
+import { requireCondition } from "../lib/sql";
+import type { ActivityValue, LinkType, TicketSnapshot, ActivityInsert, Transaction } from "../lib/types";
 
 const VALUE_FIELDS = ["title", "description", "priority", "visibility"] as const;
 const REF_FIELDS = ["status", "assignee", "parent"] as const;
 
 const COMMENT_EXCERPT_LIMIT = 200;
+
+const LOCKED_VISIBLE_FIELDS: readonly string[] = ["statusID", "priority", "assigneeID"];
 
 /**
  * Builds a condition that leaves out link and "cloned from" entries when the
@@ -42,6 +45,29 @@ function excerpt(body: string): string {
   const lastSpace = slice.lastIndexOf(" ");
   const cut = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
   return `${cut.trimEnd()}...`;
+}
+
+/**
+ * Removes the text from an activity event in a locked project, so the home page
+ * feed can show it to viewers who cannot open the project. The event keeps its
+ * action, ticket number, user and time. It keeps the values only for status,
+ * priority, assignee and label changes. The ticket title and every other value
+ * are removed, because they hold ticket text such as titles, descriptions,
+ * comment excerpts, filenames and linked ticket titles.
+ * @param event An activity event that carries the ticket title and the old and new values
+ * @returns A copy of the event without ticket text
+ */
+function redactLockedEvent<T extends { action: string; fieldName: string | null; oldValue: ActivityValue | null; newValue: ActivityValue | null; ticket: { title: string } }>(event: T): T {
+  const isLabelChange = event.action === "label_added" || event.action === "label_removed";
+  const isVisibleFieldChange = event.action === "updated" && event.fieldName !== null && LOCKED_VISIBLE_FIELDS.includes(event.fieldName);
+  const keepsValues = isLabelChange || isVisibleFieldChange;
+
+  return {
+    ...event,
+    oldValue: keepsValues ? event.oldValue : null,
+    newValue: keepsValues ? event.newValue : null,
+    ticket: { ...event.ticket, title: "" },
+  };
 }
 
 export class ActivityService {
@@ -336,17 +362,20 @@ export class ActivityService {
 
   /**
    * Returns recent activity rows across every non-deleted ticket in every
-   * project. Each row carries the acting user, the parent ticket's number and
+   * project the viewer can see, plus every private project listed on the home
+   * page. Each row carries the acting user, the parent ticket's number and
    * title, and the project key so the homepage feed can link straight to the
-   * source ticket without any client-side join. When `publicOnly` is set,
-   * events from private projects are filtered out so the result is safe to
-   * expose to anonymous viewers.
+   * source ticket without any client-side join. A listed private project is
+   * `isLocked` for viewers who are not members. Its events pass through
+   * {@link redactLockedEvent}, so no ticket text leaves the API.
    * @param limit Maximum number of rows to return (default 20)
-   * @param options.publicOnly When true, restricts results to events whose project visibility is `public`
+   * @param options.role The viewer's role, or `undefined` for an anonymous viewer
    * @returns Activity rows newest-first with user, ticket, and project joins
    */
   static async listGlobal(limit = 20, options: { role?: Role } = {}) {
-    const visibilityClause = visibilityWhere(options.role);
+    const { role } = options;
+    const visibilityClause = visibilityWhere(role);
+    const feedClause = visibilityClause ? requireCondition(or(visibilityClause, listedPrivateWhere)) : undefined;
 
     const rows = await db.query.ticketActivity.findMany({
       where: activity =>
@@ -356,9 +385,9 @@ export class ActivityService {
               .select({ id: tickets.id })
               .from(tickets)
               .innerJoin(projects, eq(tickets.projectID, projects.id))
-              .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt), visibilityClause))
+              .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt), feedClause))
           ),
-          partnerVisibleCondition(activity, options.role)
+          partnerVisibleCondition(activity, role)
         ),
       orderBy: [desc(ticketActivity.createdAt)],
       limit,
@@ -366,15 +395,20 @@ export class ActivityService {
         user: { columns: { id: true, name: true, avatarURL: true } },
         ticket: {
           columns: { id: true, number: true, title: true },
-          with: { project: { columns: { key: true } } },
+          with: { project: { columns: { id: true, key: true, visibility: true } } },
         },
       },
     });
 
-    return rows.map(({ ticket, ...rest }) => ({
-      ...rest,
-      ticket: { id: ticket.id, number: ticket.number, title: ticket.title },
-      project: { key: ticket.project.key },
-    }));
+    return rows.map(({ ticket, ...rest }) => {
+      const hasFullAccess = role?.isService || role?.memberships.has(ticket.project.id);
+      const isLocked = ticket.project.visibility === "private" && !hasFullAccess;
+      const event = {
+        ...rest,
+        ticket: { id: ticket.id, number: ticket.number, title: ticket.title },
+        project: { key: ticket.project.key, isLocked },
+      };
+      return isLocked ? redactLockedEvent(event) : event;
+    });
   }
 }
