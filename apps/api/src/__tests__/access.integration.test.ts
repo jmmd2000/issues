@@ -3,7 +3,7 @@ import app from "../index";
 import { db } from "../db";
 import { statuses } from "../db/schema";
 import { and, eq } from "drizzle-orm";
-import { createAuthenticatedUser, createExtraUser, createProject, createServiceUser, createTokenForUser, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createProject, createServiceUser, createTokenForUser, resetDatabase, updateProject } from "./helpers";
 
 type Viewer = "anon" | "nonMember" | "member" | "service";
 
@@ -20,20 +20,20 @@ type Fixture = {
 
 let fixture: Fixture;
 
-async function statusIDFor(projectID: string): Promise<string> {
+async function statusIDFor(projectID: string, slug = "backlog"): Promise<string> {
   const [row] = await db
     .select({ id: statuses.id })
     .from(statuses)
-    .where(and(eq(statuses.projectID, projectID), eq(statuses.slug, "backlog")))
+    .where(and(eq(statuses.projectID, projectID), eq(statuses.slug, slug)))
     .limit(1);
   return row.id;
 }
 
-async function createTicket(cookies: string, projectKey: string, title: string, visibility: "public" | "private", statusID: string) {
+async function createTicket(cookies: string, projectKey: string, title: string, visibility: "public" | "private", statusID: string, description = "") {
   const res = await app.request(`/api/projects/${projectKey}/tickets`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookies },
-    body: JSON.stringify({ title, description: "", statusID, visibility }),
+    body: JSON.stringify({ title, description, statusID, visibility }),
   });
   const body = await res.json();
   return body.ticket as { id: string; number: number };
@@ -283,5 +283,107 @@ describe("access matrix: search GET /api/search", () => {
     const res = await app.request("/api/search?q=ticket", viewerInit("service"));
     const titles = (await res.json()).tickets.map((t: { title: string }) => t.title);
     expect(titles).toEqual(expect.arrayContaining(["Public ticket text", "Private ticket text", "Private project ticket"]));
+  });
+});
+
+describe("access matrix: private project listed on the home page", () => {
+  type FeedEvent = {
+    action: string;
+    fieldName: string | null;
+    oldValue: unknown;
+    newValue: { name?: string } | null;
+    ticket: { number: number; title: string };
+    project: { key: string; isLocked: boolean };
+  };
+
+  let secretTicket: { id: string; number: number };
+
+  async function getFeedEvents(viewer: Viewer): Promise<{ events: FeedEvent[]; text: string }> {
+    const res = await app.request("/api/feed?limit=50", viewerInit(viewer));
+    const text = await res.text();
+    return { events: JSON.parse(text).events, text };
+  }
+
+  beforeEach(async () => {
+    await updateProject(fixture.memberCookies, "PRIV", { name: "Priv", visibility: "private", showOnHomePage: true });
+    const backlogID = await statusIDFor(fixture.privProjectID);
+    const inProgressID = await statusIDFor(fixture.privProjectID, "in-progress");
+
+    secretTicket = await createTicket(fixture.memberCookies, "PRIV", "Secret title", "private", backlogID, "Secret description");
+    await addComment(fixture.memberCookies, "PRIV", secretTicket.number, "Secret comment");
+    await app.request(`/api/projects/PRIV/tickets/${secretTicket.number}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: fixture.memberCookies },
+      body: JSON.stringify({ title: "Secret renamed", description: "Secret edited", statusID: inProgressID }),
+    });
+  });
+
+  it.each(["anon", "nonMember"] as const)("%s still cannot open the project or read any ticket", async viewer => {
+    const paths = [
+      "/api/projects/PRIV",
+      "/api/projects/PRIV/tickets",
+      `/api/projects/PRIV/tickets/${secretTicket.number}`,
+      `/api/projects/PRIV/tickets/${secretTicket.number}/comments`,
+      `/api/projects/PRIV/tickets/${secretTicket.number}/activity`,
+      "/api/projects/PRIV/activity",
+      "/api/projects/PRIV/stats",
+    ];
+    for (const path of paths) {
+      const res = await app.request(path, viewerInit(viewer));
+      expect(res.status, path).toBe(404);
+    }
+
+    const search = await app.request("/api/search?q=Secret", viewerInit(viewer));
+    expect((await search.json()).tickets).toEqual([]);
+  });
+
+  it.each(["anon", "nonMember"] as const)("%s sees the listed project in the feed without any ticket text", async viewer => {
+    const { events, text } = await getFeedEvents(viewer);
+
+    const listedEvents = events.filter(event => event.project.key === "PRIV");
+    expect(listedEvents.length).toBeGreaterThan(0);
+    for (const event of listedEvents) {
+      expect(event.project.isLocked).toBe(true);
+      expect(event.ticket.title).toBe("");
+    }
+    expect(text).not.toContain("Secret");
+    expect(text).not.toContain("Private project ticket");
+    expect(text).not.toContain("Hello on priv");
+  });
+
+  it("keeps status changes in the redacted feed", async () => {
+    const { events } = await getFeedEvents("anon");
+
+    const statusChange = events.find(event => event.project.key === "PRIV" && event.fieldName === "statusID");
+    expect(statusChange?.newValue?.name).toBe("In Progress");
+    expect(statusChange?.ticket.number).toBe(secretTicket.number);
+  });
+
+  it("shows members the full events of the listed project", async () => {
+    const { events } = await getFeedEvents("member");
+
+    const listedEvents = events.filter(event => event.project.key === "PRIV");
+    expect(listedEvents.every(event => !event.project.isLocked)).toBe(true);
+    expect(listedEvents.some(event => event.ticket.title === "Secret renamed")).toBe(true);
+  });
+
+  it("leaves the project out of the feed when show on home page is off", async () => {
+    await updateProject(fixture.memberCookies, "PRIV", { name: "Priv", visibility: "private", showOnHomePage: false });
+
+    const { events } = await getFeedEvents("anon");
+
+    expect(events.some(event => event.project.key === "PRIV")).toBe(false);
+  });
+
+  it("does not expose private tickets of a public project that has show on home page on", async () => {
+    await updateProject(fixture.memberCookies, "PUB", { name: "Pub", visibility: "public", showOnHomePage: true });
+
+    const { events, text } = await getFeedEvents("anon");
+
+    const publicEvents = events.filter(event => event.project.key === "PUB");
+    expect(publicEvents.length).toBeGreaterThan(0);
+    expect(publicEvents.every(event => !event.project.isLocked)).toBe(true);
+    expect(text).toContain("Public ticket text");
+    expect(text).not.toContain("Private ticket text");
   });
 });

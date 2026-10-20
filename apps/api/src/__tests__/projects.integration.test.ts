@@ -313,6 +313,39 @@ describe("GET /api/projects/with-counts", () => {
     expect(mix.openCount).toBe(3);
   });
 
+  it("gives a non-member only the home page details of a listed private project", async () => {
+    const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private", showOnHomePage: true, repo: "https://example.com/repo", stack: ["ts"] });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("PRIV", backlog, "Private ticket", "private");
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: otherCookies } });
+    const body = await res.json();
+
+    expect(body.projects).toHaveLength(1);
+    expect(Object.keys(body.projects[0]).sort()).toEqual(["description", "id", "isLocked", "key", "name", "openCount"]);
+    expect(body.projects[0]).toMatchObject({ key: "PRIV", openCount: 1, isLocked: true });
+  });
+
+  it("gives a member the full listed private project, unlocked", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: true, repo: "https://example.com/repo" });
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    expect(body.projects[0]).toMatchObject({ key: "PRIV", isLocked: false, repo: "https://example.com/repo", showOnHomePage: true });
+  });
+
+  it("hides a private project with show on home page off from a non-member", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: false });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: otherCookies } });
+    const body = await res.json();
+
+    expect(body.projects).toEqual([]);
+  });
+
   it("excludes soft-deleted tickets from the count", async () => {
     const project = await createProject(cookies, { key: "DEL" });
     const [{ id: backlog }] = await db
@@ -432,6 +465,40 @@ describe("GET /api/projects/public", () => {
     const res = await app.request("/api/projects/public", { method: "GET" });
     const body = await res.json();
     expect(body.projects[0].openCount).toBe(1);
+  });
+
+  it("lists a private project with show on home page as locked and counts all its open tickets", async () => {
+    const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private", showOnHomePage: true });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("PRIV", backlog, "Public ticket", "public");
+    await createTicket("PRIV", backlog, "Private ticket", "private");
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.projects).toHaveLength(1);
+    expect(body.projects[0]).toMatchObject({ key: "PRIV", openCount: 2, isLocked: true });
+  });
+
+  it("does not list a private project with show on home page off", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: false });
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.projects).toEqual([]);
+  });
+
+  it("counts only public tickets of a public project even when show on home page is on", async () => {
+    const project = await createProject(cookies, { key: "PUB", visibility: "public", showOnHomePage: true });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("PUB", backlog, "Public ticket", "public");
+    await createTicket("PUB", backlog, "Private ticket", "private");
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.projects[0]).toMatchObject({ key: "PUB", openCount: 1, isLocked: false });
   });
 
   it("returns only the whitelisted fields", async () => {
