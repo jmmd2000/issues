@@ -1,5 +1,8 @@
-import "dotenv/config";
+import path from "node:path";
+import dotenv from "dotenv";
 import { z } from "zod";
+
+dotenv.config({ path: path.resolve(import.meta.dirname, "../../../.env"), quiet: true });
 
 const testEnvironmentSchema = z.object({
   DATABASE_URL_TEST: z.url(),

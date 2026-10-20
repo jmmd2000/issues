@@ -5,3 +5,4 @@ drizzle
 pnpm-lock.yaml
 .claude
 docs/*.html
+.impeccable
