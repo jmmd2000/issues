@@ -2,6 +2,7 @@ import { and, eq, getTableColumns, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { labels, ticketLabels, tickets } from "../db/schema";
+import { isUniqueViolation } from "../lib/sql";
 import type { Transaction } from "../lib/types";
 
 const DEFAULT_LABELS = [
@@ -11,6 +12,10 @@ const DEFAULT_LABELS = [
   { name: "Task", colour: "#059669" },
   { name: "Chore", colour: "#6b7280" },
 ] as const;
+
+function duplicateNameError(name: string) {
+  return new HTTPException(409, { message: `A label named ${name} already exists.` });
+}
 
 export class LabelService {
   /**
@@ -30,8 +35,13 @@ export class LabelService {
    * @returns The created label
    */
   static async createLabel(name: string, colour: string, projectID: string) {
-    const [label] = await db.insert(labels).values({ name, colour, projectID }).returning();
-    return label;
+    try {
+      const [label] = await db.insert(labels).values({ name, colour, projectID }).returning();
+      return label;
+    } catch (error) {
+      if (isUniqueViolation(error)) throw duplicateNameError(name);
+      throw error;
+    }
   }
   /**
    * Gets all labels belonging to a given project, each with the number of tickets that carry it.
@@ -59,11 +69,17 @@ export class LabelService {
    * @returns The updated label row, or undefined if no label matched
    */
   static async patchLabel(labelID: string, projectID: string, name: string, colour: string) {
-    const [label] = await db
-      .update(labels)
-      .set({ name, colour })
-      .where(and(eq(labels.id, labelID), eq(labels.projectID, projectID)))
-      .returning();
+    let label;
+    try {
+      [label] = await db
+        .update(labels)
+        .set({ name, colour })
+        .where(and(eq(labels.id, labelID), eq(labels.projectID, projectID)))
+        .returning();
+    } catch (error) {
+      if (isUniqueViolation(error)) throw duplicateNameError(name);
+      throw error;
+    }
     if (!label) throw new HTTPException(404, { message: `Label with id ${labelID} not found.` });
     return label;
   }
