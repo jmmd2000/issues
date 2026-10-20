@@ -9,6 +9,7 @@
   import AvatarForm from "$lib/components/forms/AvatarForm.svelte";
   import PasswordForm from "$lib/components/forms/PasswordForm.svelte";
   import ServiceUsersForm from "$lib/components/forms/ServiceUsersForm.svelte";
+  import BuildInfo from "$lib/components/settings/BuildInfo.svelte";
 
   let { data }: PageProps = $props();
 
@@ -67,6 +68,12 @@
       <ServiceUsersForm serviceUsers={data.serviceUsers} />
     </section>
   {/if}
+
+  <section class="settings-card-container">
+    <h2>Build</h2>
+    <p class="section-description">The version of the site and the commits the web app and the API were built from.</p>
+    <BuildInfo apiBuild={data.apiBuild} />
+  </section>
 </div>
 
 <style>
