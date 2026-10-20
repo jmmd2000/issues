@@ -49,6 +49,17 @@ describe("StatusColumn", () => {
     await expect.element(screen.getByRole("button", { name: "Add status" })).toBeInTheDocument();
   });
 
+  it("renders exactly one element per status in the drag zone", async () => {
+    const statuses = [
+      makeStatus({ id: "s-1", name: "Todo", category: "backlog" }),
+      makeStatus({ id: "s-2", name: "Icebox", category: "backlog" }),
+      makeStatus({ id: "s-3", name: "Later", category: "backlog" }),
+    ];
+    await render(StatusColumn, { ...props(), statuses, allStatuses: statuses });
+
+    expect(document.querySelector(".rows")?.children).toHaveLength(statuses.length);
+  });
+
   it("closes the new row on Escape without sending anything", async () => {
     const post = vi.mocked(client.api.projects[":key"].statuses.$post);
     const screen = await render(StatusColumn, props());

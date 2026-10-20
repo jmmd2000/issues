@@ -99,72 +99,75 @@
   }
 </script>
 
-<form
-  class="status-row"
-  novalidate
-  onsubmit={e => {
-    e.preventDefault();
-    void handleSubmit();
-  }}
->
-  <div class="row">
-    <span class="drag-handle" aria-hidden="true">
-      <GripVertical size="14" />
-    </span>
-    <input
-      type="text"
-      class="form-input row-name"
-      bind:value={form.name}
-      placeholder="Status name"
-      aria-label="Status name"
-      required
-      maxLength="40"
-      onchange={handleSubmit}
-      onblur={handleSubmit}
-      disabled={submitting || deleting}
-    />
-    {#if justSaved}
-      <span class="row-status" data-type="success" transition:fade={{ duration: 300 }}>
-        <Check size="14" />
+<!-- The drag zone in StatusColumn treats every direct child as one draggable item, so a row must render a single root element. -->
+<div>
+  <form
+    class="status-row"
+    novalidate
+    onsubmit={e => {
+      e.preventDefault();
+      void handleSubmit();
+    }}
+  >
+    <div class="row">
+      <span class="drag-handle" aria-hidden="true">
+        <GripVertical size="14" />
       </span>
+      <input
+        type="text"
+        class="form-input row-name"
+        bind:value={form.name}
+        placeholder="Status name"
+        aria-label="Status name"
+        required
+        maxLength="40"
+        onchange={handleSubmit}
+        onblur={handleSubmit}
+        disabled={submitting || deleting}
+      />
+      {#if justSaved}
+        <span class="row-status" data-type="success" transition:fade={{ duration: 300 }}>
+          <Check size="14" />
+        </span>
+      {/if}
+      <button
+        type="button"
+        class="delete-button"
+        aria-label={`Delete status ${lastSaved.name}`}
+        onclick={() => (confirming = true)}
+        disabled={submitting || deleting || otherStatuses.length === 0}
+        title={otherStatuses.length === 0 ? "Cannot delete the only status" : "Delete"}
+      >
+        <Trash2 size="14" />
+      </button>
+    </div>
+
+    {#if networkError}
+      <span class="row-status" data-type="error">{networkError}</span>
     {/if}
-    <button
-      type="button"
-      class="delete-button"
-      aria-label={`Delete status ${lastSaved.name}`}
-      onclick={() => (confirming = true)}
-      disabled={submitting || deleting || otherStatuses.length === 0}
-      title={otherStatuses.length === 0 ? "Cannot delete the only status" : "Delete"}
-    >
-      <Trash2 size="14" />
-    </button>
-  </div>
+    {#if fieldErrors.name}
+      <span class="field-error">{fieldErrors.name}</span>
+    {/if}
+  </form>
 
-  {#if networkError}
-    <span class="row-status" data-type="error">{networkError}</span>
-  {/if}
-  {#if fieldErrors.name}
-    <span class="field-error">{fieldErrors.name}</span>
-  {/if}
-</form>
-
-<Modal open={confirming} title={`Delete "${lastSaved.name}"?`} onclose={() => (confirming = false)} maxWidth="28rem">
-  <div class="confirm-body">
-    <p>Tickets currently in <strong>{lastSaved.name}</strong> need a new home. Pick where they should move.</p>
-    <label class="form-label" for="reassign-{status.id}">Move existing tickets to</label>
-    <select id="reassign-{status.id}" class="form-input" bind:value={reassignTo} disabled={deleting}>
-      {#each otherStatuses as opt (opt.id)}
-        <option value={opt.id}>{opt.name}</option>
-      {/each}
-    </select>
-  </div>
-  {#snippet footer()}
-    <Button type="button" variant="secondary" onclick={() => (confirming = false)} disabled={deleting}>Cancel</Button>
-    <Button type="button" variant="danger" onclick={() => void confirmDelete()} disabled={deleting}>
-      {deleting ? "Deleting..." : "Delete status"}
-    </Button>
-  {/snippet}
-</Modal>
+  <Modal open={confirming} title={`Delete "${lastSaved.name}"?`} onclose={() => (confirming = false)} maxWidth="28rem">
+    <div class="confirm-body">
+      <p>Tickets currently in <strong>{lastSaved.name}</strong> need a new home. Pick where they should move.</p>
+      <label class="form-label" for="reassign-{status.id}">Move existing tickets to</label>
+      <select id="reassign-{status.id}" class="form-input" bind:value={reassignTo} disabled={deleting}>
+        {#each otherStatuses as opt (opt.id)}
+          <option value={opt.id}>{opt.name}</option>
+        {/each}
+      </select>
+    </div>
+    {#snippet footer()}
+      <Button type="button" variant="secondary" onclick={() => (confirming = false)} disabled={deleting}>Cancel</Button>
+      <Button type="button" variant="danger" onclick={() => void confirmDelete()} disabled={deleting}>
+        {deleting ? "Deleting..." : "Delete status"}
+      </Button>
+    {/snippet}
+  </Modal>
+</div>
 
 <style>
   .status-row {
