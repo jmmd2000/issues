@@ -12,8 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm test:unit && pnpm test:integration",
-    "test:unit": "pnpm -r --if-present test:unit",
-    "test:integration": "pnpm -r --if-present test:integration",
+    "test:unit": "vitest run --project api-unit --project mcp-unit --project web-server --project web-client",
+    "test:integration": "NODE_ENV=test vitest run --project api-integration",
     "test:e2e": "pnpm -r --if-present test:e2e",
     "db:generate": "pnpm --filter @issues/api db:generate",
     "db:migrate": "pnpm --filter @issues/api db:migrate",
@@ -38,6 +38,7 @@
     "lint-staged": "17.6.0",
     "prettier": "3.9.9",
     "prettier-plugin-svelte": "4.1.1",
-    "typescript-eslint": "8.71.0"
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.3"
   }
 }

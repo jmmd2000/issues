@@ -16,9 +16,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/scripts/seed.ts",
-    "db:sweep": "tsx src/scripts/sweep-uploads.ts",
-    "test:unit": "vitest run --project unit",
-    "test:integration": "NODE_ENV=test vitest run --project integration"
+    "db:sweep": "tsx src/scripts/sweep-uploads.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.3",

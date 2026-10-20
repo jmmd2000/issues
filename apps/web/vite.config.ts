@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { defineConfig } from "vitest/config";
-import { playwright } from "@vitest/browser-playwright";
+import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 
 const require = createRequire(import.meta.url);
@@ -28,33 +27,5 @@ export default defineConfig({
   build: {
     // "hidden" writes the maps without linking them from the bundles. The Docker build uploads them, then deletes them.
     sourcemap: "hidden",
-  },
-  test: {
-    expect: { requireAssertions: true },
-    projects: [
-      {
-        extends: "./vite.config.ts",
-        test: {
-          name: "client",
-          browser: {
-            enabled: true,
-            provider: playwright(),
-            instances: [{ browser: "chromium", headless: true }],
-          },
-          include: ["src/**/*.svelte.{test,spec}.{js,ts}"],
-          exclude: ["src/lib/server/**"],
-        },
-      },
-
-      {
-        extends: "./vite.config.ts",
-        test: {
-          name: "server",
-          environment: "node",
-          include: ["src/**/*.{test,spec}.{js,ts}"],
-          exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
-        },
-      },
-    ],
   },
 });
