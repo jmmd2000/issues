@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { commitsDiffer, formatBuiltAt, shortHash } from "./buildInfo";
+import { apiBuildRows, buildDetailsText, buildStatement, commitsDiffer, formatBuiltAt, shortHash } from "./buildInfo";
 
 describe("shortHash", () => {
   it("shortens a full commit hash to seven characters", () => {
@@ -40,5 +40,41 @@ describe("formatBuiltAt", () => {
 
   it("formats a build time", () => {
     expect(formatBuiltAt("2026-10-20T09:30:00Z")).toMatch(/2026/);
+  });
+});
+
+describe("buildStatement", () => {
+  const web = { siteVersion: "1.0.0", gitSha: "abc1234def", builtAt: null, packages: [] };
+  const api = { gitSha: "abc1234", builtAt: null, nodeVersion: "26.0.0", postgresVersion: null, packages: [] };
+
+  it("says the builds match when the commits are the same", () => {
+    expect(buildStatement(web, api)).toEqual({ type: "success", text: "The web app and the API were built from the same commit." });
+  });
+
+  it("flags different commits", () => {
+    expect(buildStatement(web, { ...api, gitSha: "def5678" }).type).toBe("error");
+  });
+
+  it("says so when the API build could not be loaded", () => {
+    expect(buildStatement(web, null)).toEqual({ type: "error", text: "The API build could not be loaded. Only the web build is shown." });
+  });
+});
+
+describe("buildDetailsText", () => {
+  it("lists the site version and each build, skipping the API when it is missing", () => {
+    const web = [{ label: "Commit", value: "abc1234" }];
+    const api = [{ label: "Commit", value: "abc1234" }];
+
+    expect(buildDetailsText("1.0.0", web, api)).toBe("Site version: 1.0.0\n\nWeb\n  Commit: abc1234\n\nAPI\n  Commit: abc1234");
+    expect(buildDetailsText("1.0.0", web, null)).toBe("Site version: 1.0.0\n\nWeb\n  Commit: abc1234");
+  });
+});
+
+describe("apiBuildRows", () => {
+  it("shows Unknown for a Postgres or package version the API could not report", () => {
+    const rows = apiBuildRows({ gitSha: "abc1234", builtAt: null, nodeVersion: "26.0.0", postgresVersion: null, packages: [{ name: "hono", version: null }] });
+
+    expect(rows).toContainEqual({ label: "Postgres", value: "Unknown" });
+    expect(rows).toContainEqual({ label: "hono", value: "Unknown" });
   });
 });
