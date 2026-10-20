@@ -61,6 +61,12 @@ describe("parseEnv", () => {
     expect(env.GIT_SHA).toBe("dev");
   });
 
+  it("reads the build time and treats a blank one as unset", () => {
+    expect(parseEnv({ ...validEnv, BUILT_AT: "2026-10-20T09:00:00Z" }).BUILT_AT).toBe("2026-10-20T09:00:00Z");
+    expect(parseEnv({ ...validEnv, BUILT_AT: "" }).BUILT_AT).toBeUndefined();
+    expect(parseEnv(validEnv).BUILT_AT).toBeUndefined();
+  });
+
   it("rejects a DSN that is not a DSN", () => {
     expect(() => parseEnv({ ...validEnv, GLITCHTIP_DSN: "nonsense", GLITCHTIP_ENVIRONMENT: "production" })).toThrow(/GLITCHTIP_DSN/);
     expect(() => parseEnv({ ...validEnv, GLITCHTIP_DSN: "https://glitchtip.example.com/3", GLITCHTIP_ENVIRONMENT: "production" })).toThrow(/GLITCHTIP_DSN/);

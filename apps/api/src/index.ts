@@ -23,6 +23,7 @@ import { uploads } from "./routes/uploads";
 import { search } from "./routes/search";
 import { users } from "./routes/users";
 import { serviceUsers } from "./routes/serviceUsers";
+import { build } from "./routes/build";
 export type {
   Jsonified,
   UserRow,
@@ -70,6 +71,7 @@ export type {
   Attachment,
   AttachmentRow,
   Visibility,
+  BuildInfo,
 } from "./lib/types";
 
 const app = new Hono();
@@ -107,6 +109,7 @@ const routes = app
   .route("", search)
   .route("", users)
   .route("", serviceUsers)
+  .route("", build)
   .route("", uploads)
   .route("", mcp);
 
