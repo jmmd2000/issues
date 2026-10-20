@@ -358,6 +358,49 @@ describe("GET /api/projects/with-counts", () => {
     const pub = body.projects.find((p: { key: string }) => p.key === "PUB");
     expect(pub.openCount).toBe(2);
   });
+
+  it("returns the latest ticket update as lastActivityAt, or null when a project has no tickets", async () => {
+    const project = await createProject(cookies, { key: "BUSY" });
+    await createProject(cookies, { key: "IDLE" });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("BUSY", backlog, "Older");
+    const newest = await createTicket("BUSY", backlog, "Newest");
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    const busy = body.projects.find((p: { key: string }) => p.key === "BUSY");
+    const idle = body.projects.find((p: { key: string }) => p.key === "IDLE");
+
+    expect(Date.parse(busy.lastActivityAt)).toBe(Date.parse(newest.updatedAt));
+    expect(idle.lastActivityAt).toBeNull();
+  });
+
+  it("ignores soft-deleted tickets in lastActivityAt", async () => {
+    const project = await createProject(cookies, { key: "DEL" });
+    const backlog = await getStatusID(project.id, "backlog");
+    const kept = await createTicket("DEL", backlog, "Kept");
+    const deleted = await createTicket("DEL", backlog, "Deleted");
+    await app.request(`/api/projects/DEL/tickets/${deleted.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    expect(Date.parse(body.projects[0].lastActivityAt)).toBe(Date.parse(kept.updatedAt));
+  });
+
+  it("leaves private ticket activity out of lastActivityAt for a non-member and includes it for a member", async () => {
+    const project = await createProject(cookies, { key: "PUB", visibility: "public" });
+    const backlog = await getStatusID(project.id, "backlog");
+    const publicTicket = await createTicket("PUB", backlog, "Public ticket");
+    const privateTicket = await createTicket("PUB", backlog, "Private ticket", "private");
+    const { cookies: outsider } = await createExtraUser("Outsider", "outsider@test.com");
+
+    const asOutsider = await (await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: outsider } })).json();
+    const asMember = await (await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } })).json();
+
+    expect(Date.parse(asOutsider.projects[0].lastActivityAt)).toBe(Date.parse(publicTicket.updatedAt));
+    expect(Date.parse(asMember.projects[0].lastActivityAt)).toBe(Date.parse(privateTicket.updatedAt));
+  });
 });
 
 describe("GET /api/projects/public", () => {
@@ -427,6 +470,7 @@ describe("GET /api/projects/public", () => {
 
     expect(body.projects).toHaveLength(1);
     expect(body.projects[0]).toMatchObject({ key: "PRIV", openCount: 2, isLocked: true });
+    expect(body.projects[0]).not.toHaveProperty("lastActivityAt");
   });
 
   it("does not list a private project with show on home page off", async () => {
@@ -457,7 +501,7 @@ describe("GET /api/projects/public", () => {
     const body = await res.json();
     const project = body.projects[0];
 
-    expect(Object.keys(project).sort()).toEqual(["description", "id", "isLocked", "key", "name", "openCount"]);
+    expect(Object.keys(project).sort()).toEqual(["description", "id", "isLocked", "key", "lastActivityAt", "name", "openCount"]);
     expect(project).not.toHaveProperty("repo");
     expect(project).not.toHaveProperty("stack");
     expect(project).not.toHaveProperty("ownerID");
@@ -479,6 +523,22 @@ describe("GET /api/projects/public", () => {
     const res = await app.request("/api/projects/public", { method: "GET" });
     const body = await res.json();
     expect(body.projects[0].openCount).toBe(1);
+  });
+
+  it("returns lastActivityAt from public tickets only, and null for a project with no tickets", async () => {
+    const project = await createProject(cookies, { key: "BUSY", name: "Busy", visibility: "public" });
+    await createProject(cookies, { key: "IDLE", name: "Idle", visibility: "public" });
+    const backlog = await getStatusID(project.id, "backlog");
+    const publicTicket = await createTicket("BUSY", backlog, "Public ticket");
+    await createTicket("BUSY", backlog, "Private ticket", "private");
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+    const busy = body.projects.find((p: { key: string }) => p.key === "BUSY");
+    const idle = body.projects.find((p: { key: string }) => p.key === "IDLE");
+
+    expect(Date.parse(busy.lastActivityAt)).toBe(Date.parse(publicTicket.updatedAt));
+    expect(idle.lastActivityAt).toBeNull();
   });
 });
 
