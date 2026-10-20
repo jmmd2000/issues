@@ -42,9 +42,9 @@ export type BuildInfo = {
 
 export type User = Jsonified<UserRow>;
 export type Project = Jsonified<ProjectRow>;
-export type ProjectWithCount = Project & { openCount: number; isLocked: false };
+export type ProjectWithCount = Project & { openCount: number; isLocked: false; lastActivityAt: string | null };
 /** The home page details of a project. `isLocked` is true for a private project the viewer cannot open. */
-export type PublicProject = Pick<Project, "id" | "key" | "name" | "description"> & { openCount: number; isLocked: boolean };
+export type PublicProject = Pick<Project, "id" | "key" | "name" | "description"> & { openCount: number; isLocked: boolean; lastActivityAt?: string | null };
 export type CurrentUser = Jsonified<Pick<UserRow, "id" | "name" | "email" | "avatarURL" | "createdAt">>;
 export type ApiToken = Jsonified<Pick<ApiTokenRow, "id" | "name" | "lastUsedAt" | "expiresAt" | "createdAt">>;
 export type CreatedApiToken = { token: string; apiToken: ApiToken };
