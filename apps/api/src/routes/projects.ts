@@ -23,6 +23,7 @@ const createProjectSchema = projectBaseSchema
     key: projectKeySchema,
     repo: z.url().nullable().default(null),
     stack: z.array(z.string()).default([]),
+    showOnHomePage: z.boolean().default(false),
   })
   .strict();
 
@@ -31,6 +32,7 @@ const patchProjectSchema = projectBaseSchema
     repo: z.url().nullable(),
     stack: z.array(z.string()),
     metadata: z.record(z.string(), z.unknown()),
+    showOnHomePage: z.boolean().optional(),
   })
   .strict();
 

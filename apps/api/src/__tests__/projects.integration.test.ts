@@ -139,6 +139,22 @@ describe("POST /api/projects/create", () => {
     expect(body.project.visibility).toBe("private");
   });
 
+  it("turns show on home page off by default", async () => {
+    const res = await app.request("/api/projects/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ key: "PRIV", name: "Private Project", description: "No setting given", visibility: "private" }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.project.showOnHomePage).toBe(false);
+  });
+
+  it("persists show on home page", async () => {
+    const project = await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: true });
+    expect(project.showOnHomePage).toBe(true);
+  });
+
   it("rejects invalid repo URL", async () => {
     const res = await app.request("/api/projects/create", {
       method: "POST",
@@ -297,6 +313,39 @@ describe("GET /api/projects/with-counts", () => {
     expect(mix.openCount).toBe(3);
   });
 
+  it("gives a non-member only the home page details of a listed private project", async () => {
+    const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private", showOnHomePage: true, repo: "https://example.com/repo", stack: ["ts"] });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("PRIV", backlog, "Private ticket", "private");
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: otherCookies } });
+    const body = await res.json();
+
+    expect(body.projects).toHaveLength(1);
+    expect(Object.keys(body.projects[0]).sort()).toEqual(["description", "id", "isLocked", "key", "name", "openCount"]);
+    expect(body.projects[0]).toMatchObject({ key: "PRIV", openCount: 1, isLocked: true });
+  });
+
+  it("gives a member the full listed private project, unlocked", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: true, repo: "https://example.com/repo" });
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+
+    expect(body.projects[0]).toMatchObject({ key: "PRIV", isLocked: false, repo: "https://example.com/repo", showOnHomePage: true });
+  });
+
+  it("hides a private project with show on home page off from a non-member", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: false });
+    const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
+
+    const res = await app.request("/api/projects/with-counts", { method: "GET", headers: { Cookie: otherCookies } });
+    const body = await res.json();
+
+    expect(body.projects).toEqual([]);
+  });
+
   it("excludes soft-deleted tickets from the count", async () => {
     const project = await createProject(cookies, { key: "DEL" });
     const [{ id: backlog }] = await db
@@ -418,6 +467,40 @@ describe("GET /api/projects/public", () => {
     expect(body.projects[0].openCount).toBe(1);
   });
 
+  it("lists a private project with show on home page as locked and counts all its open tickets", async () => {
+    const project = await createProject(cookies, { key: "PRIV", name: "Private", visibility: "private", showOnHomePage: true });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("PRIV", backlog, "Public ticket", "public");
+    await createTicket("PRIV", backlog, "Private ticket", "private");
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.projects).toHaveLength(1);
+    expect(body.projects[0]).toMatchObject({ key: "PRIV", openCount: 2, isLocked: true });
+  });
+
+  it("does not list a private project with show on home page off", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: false });
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.projects).toEqual([]);
+  });
+
+  it("counts only public tickets of a public project even when show on home page is on", async () => {
+    const project = await createProject(cookies, { key: "PUB", visibility: "public", showOnHomePage: true });
+    const backlog = await getStatusID(project.id, "backlog");
+    await createTicket("PUB", backlog, "Public ticket", "public");
+    await createTicket("PUB", backlog, "Private ticket", "private");
+
+    const res = await app.request("/api/projects/public", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.projects[0]).toMatchObject({ key: "PUB", openCount: 1, isLocked: false });
+  });
+
   it("returns only the whitelisted fields", async () => {
     await createProject(cookies, { key: "PUB", name: "Public", description: "Hello", visibility: "public", repo: "https://example.com/repo", stack: ["ts"] });
 
@@ -425,7 +508,7 @@ describe("GET /api/projects/public", () => {
     const body = await res.json();
     const project = body.projects[0];
 
-    expect(Object.keys(project).sort()).toEqual(["description", "id", "key", "name", "openCount"]);
+    expect(Object.keys(project).sort()).toEqual(["description", "id", "isLocked", "key", "name", "openCount"]);
     expect(project).not.toHaveProperty("repo");
     expect(project).not.toHaveProperty("stack");
     expect(project).not.toHaveProperty("ownerID");
@@ -639,6 +722,37 @@ describe("PATCH /api/projects/:key", () => {
 
     expect(updated.name).toBe("Renamed");
     expect(updated.visibility).toBe("private");
+  });
+
+  it("updates show on home page", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const turnedOn = await updateProject(cookies, "PRIV", { visibility: "private", showOnHomePage: true });
+    expect(turnedOn.showOnHomePage).toBe(true);
+
+    const turnedOff = await updateProject(cookies, "PRIV", { visibility: "private", showOnHomePage: false });
+    expect(turnedOff.showOnHomePage).toBe(false);
+  });
+
+  it("keeps show on home page when the field is left out", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private", showOnHomePage: true });
+
+    const updated = await updateProject(cookies, "PRIV", { name: "Renamed", visibility: "private" });
+
+    expect(updated.name).toBe("Renamed");
+    expect(updated.showOnHomePage).toBe(true);
+  });
+
+  it("rejects a show on home page value that is not a boolean", async () => {
+    await createProject(cookies, { key: "PRIV", visibility: "private" });
+
+    const res = await app.request("/api/projects/PRIV", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ name: "X", description: "X", repo: null, stack: [], metadata: {}, visibility: "private", showOnHomePage: "yes" }),
+    });
+
+    expect(res.status).toBe(400);
   });
 
   it("rejects attempt to change key via body", async () => {

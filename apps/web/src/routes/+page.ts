@@ -15,7 +15,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
   if (user) {
     const projectsRes = await api.api.projects["with-counts"].$get();
     if (!projectsRes.ok) error(projectsRes.status, "Failed to load projects");
-    const { projects }: { projects: ProjectWithCount[] } = await projectsRes.json();
+    const { projects }: { projects: (ProjectWithCount | PublicProject)[] } = await projectsRes.json();
 
     const feedRes = await feedPromise;
     const feed: HomeFeed = feedRes && feedRes.ok ? { ...(await feedRes.json()), error: false } : { events: null, error: true };

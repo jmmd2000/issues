@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "show_on_home_page" boolean DEFAULT false NOT NULL;

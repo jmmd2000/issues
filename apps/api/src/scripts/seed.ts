@@ -36,6 +36,7 @@ type ProjectSeed = {
   name: string;
   description: string;
   visibility: "public" | "private";
+  showOnHomePage: boolean;
   repo: string | null;
   stack: string[];
 };
@@ -46,6 +47,7 @@ const DEV_PROJECTS = [
     name: "Dashboard Rewrite",
     description: "A full rewrite of the dashboard using modern tooling. Focuses on performance, accessibility, and developer experience across all screen sizes.",
     visibility: "public",
+    showOnHomePage: false,
     repo: "https://github.com/jamesmddoyle/issues-dashboard",
     stack: ["React", "TypeScript", "Tailwind", "PostgreSQL", "Hono"],
   },
@@ -54,6 +56,7 @@ const DEV_PROJECTS = [
     name: "Issue Tracker Core",
     description: "The main product surface for projects, tickets, workflow statuses, labels, membership, and activity history. Prioritises fast triage and clear ownership.",
     visibility: "public",
+    showOnHomePage: false,
     repo: "https://github.com/jamesmddoyle/issues",
     stack: ["SvelteKit", "TypeScript", "Hono", "Drizzle", "PostgreSQL", "Zod"],
   },
@@ -62,6 +65,7 @@ const DEV_PROJECTS = [
     name: "Album Review Library",
     description: "A private music review workspace for importing Spotify albums, writing long-form reviews, and tracking catalogue clean-up work across artists and releases.",
     visibility: "private",
+    showOnHomePage: true,
     repo: "https://github.com/jamesmddoyle/album-reviews",
     stack: ["SvelteKit", "Node.js", "Spotify API", "PostgreSQL", "Docker"],
   },
@@ -70,6 +74,7 @@ const DEV_PROJECTS = [
     name: "Release Infrastructure",
     description: "Deployment, observability, backups, and local development tooling for the issue tracker. Covers the path from commit to running production service.",
     visibility: "private",
+    showOnHomePage: false,
     repo: "https://github.com/jamesmddoyle/issues-infra",
     stack: ["Docker", "GitHub Actions", "PostgreSQL", "Grafana", "Terraform"],
   },
@@ -78,6 +83,7 @@ const DEV_PROJECTS = [
     name: "Contributor Docs",
     description: "A documentation refresh covering architecture notes, API conventions, database migrations, testing workflows, and onboarding for new contributors.",
     visibility: "public",
+    showOnHomePage: false,
     repo: "https://github.com/jamesmddoyle/issues-docs",
     stack: ["Markdown", "SvelteKit", "TypeScript", "Playwright", "Mermaid"],
   },
