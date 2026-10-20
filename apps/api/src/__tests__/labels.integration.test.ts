@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import app from "../index";
 import { db } from "../db";
 import { labels, projectMembers } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase } from "./helpers";
+import { statuses } from "../db/schema";
 
 let cookies: string;
 let projectID: string;
@@ -122,6 +123,50 @@ describe("GET /api/projects/:key/labels", () => {
     const { cookies: otherCookies } = await createExtraUser("Other", "other@test.com");
     const res = await app.request("/api/projects/TEST/labels", { headers: { Cookie: otherCookies } });
     expect(res.status).toBe(404);
+  });
+
+  describe("ticket counts", () => {
+    async function createLabelledTicket(title: string, labelIDs: string[], visibility?: "public" | "private") {
+      const [status] = await db.select({ id: statuses.id }).from(statuses).where(eq(statuses.projectID, projectID)).limit(1);
+      const res = await app.request("/api/projects/TEST/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookies },
+        body: JSON.stringify({ title, statusID: status.id, labelIDs, visibility }),
+      });
+      return (await res.json()).ticket;
+    }
+
+    async function findLabel(name: string) {
+      const [row] = await db
+        .select()
+        .from(labels)
+        .where(and(eq(labels.projectID, projectID), eq(labels.name, name)));
+      return row;
+    }
+
+    async function counts() {
+      const res = await app.request("/api/projects/TEST/labels", { headers: { Cookie: cookies } });
+      const body = await res.json();
+      return Object.fromEntries(body.labels.map((label: { name: string; ticketCount: number }) => [label.name, label.ticketCount]));
+    }
+
+    it("counts the tickets that carry each label, with zero for an unused one", async () => {
+      const bug = await findLabel("Bug");
+      const feature = await findLabel("Feature");
+      await createLabelledTicket("One", [bug.id, feature.id]);
+      await createLabelledTicket("Two", [bug.id]);
+
+      expect(await counts()).toMatchObject({ Bug: 2, Feature: 1, Chore: 0 });
+    });
+
+    it("leaves soft-deleted tickets out and counts private tickets for a member", async () => {
+      const bug = await findLabel("Bug");
+      const gone = await createLabelledTicket("Gone", [bug.id]);
+      await createLabelledTicket("Hidden", [bug.id], "private");
+      await app.request(`/api/projects/TEST/tickets/${gone.number}`, { method: "DELETE", headers: { Cookie: cookies } });
+
+      expect((await counts()).Bug).toBe(1);
+    });
   });
 });
 
