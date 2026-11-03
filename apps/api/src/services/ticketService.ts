@@ -170,21 +170,6 @@ export class TicketService {
   }
 
   /**
-   * Gets a ticket by its id.
-   * @param ticketID The uuid of the ticket
-   * @throws HTTPException 404
-   * @returns The ticket.
-   */
-  static async getTicketByID(ticketID: string) {
-    const ticket = await db.query.tickets.findFirst({
-      where: and(eq(tickets.id, ticketID), isNull(tickets.deletedAt)),
-    });
-
-    if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found` });
-    return ticket;
-  }
-
-  /**
    * Gets a ticket by its project-specific number i.e. XXXX-42
    * @param projectID The ID of the project the ticket belongs to.
    * @param number The project-specific ticket number
