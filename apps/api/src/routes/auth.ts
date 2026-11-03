@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { getEnv } from "../lib/env";
 import { validationHook } from "../lib/validation";
 import { requireAuth } from "../middleware/auth";
+import { loginRateLimit } from "../middleware/loginRateLimit";
 
 const passwordSchema = z.string().min(8);
 
@@ -28,7 +29,7 @@ export const auth = new Hono()
 
     return c.json({ user: user }, 201);
   })
-  .post("/api/auth/login", zValidator("json", loginSchema, validationHook), async c => {
+  .post("/api/auth/login", loginRateLimit, zValidator("json", loginSchema, validationHook), async c => {
     const { email, password } = c.req.valid("json");
     const { success, session } = await AuthService.loginUser(email, password);
 
