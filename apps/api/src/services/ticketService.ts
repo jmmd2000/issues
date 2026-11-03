@@ -1,10 +1,11 @@
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
-import { attachments, labels, projectMembers, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels } from "../db/schema";
+import { attachments, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
 import type { Priority, StatusCategory, TicketSnapshot, Transaction } from "../lib/types";
 import { ActivityService } from "./activityService";
+import { TicketValidation } from "./tickets/validation";
 
 const CLOSED_CATEGORIES: readonly StatusCategory[] = ["done", "cancelled"];
 
@@ -42,11 +43,11 @@ export class TicketService {
    * link + activity rows on the same transaction so a clone is atomic.
    */
   private static async insertTicket(tx: Transaction, data: TicketCreateInput) {
-    await this.assertVisibilityAllowed(tx, data.projectID, data.visibility);
-    await this.assertStatusInProject(tx, data.projectID, data.statusID);
-    if (data.assigneeID) await this.assertAssigneeIsMember(tx, data.projectID, data.assigneeID);
-    if (data.labelIDs) await this.assertLabelsInProject(tx, data.projectID, data.labelIDs);
-    if (data.parentTicketID) await this.assertParentInProject(tx, data.projectID, data.parentTicketID);
+    await TicketValidation.assertVisibilityAllowed(tx, data.projectID, data.visibility);
+    await TicketValidation.assertStatusInProject(tx, data.projectID, data.statusID);
+    if (data.assigneeID) await TicketValidation.assertAssigneeIsMember(tx, data.projectID, data.assigneeID);
+    if (data.labelIDs) await TicketValidation.assertLabelsInProject(tx, data.projectID, data.labelIDs);
+    if (data.parentTicketID) await TicketValidation.assertParentInProject(tx, data.projectID, data.parentTicketID);
 
     const [counter] = await tx
       .update(ticketCounters)
@@ -264,17 +265,17 @@ export class TicketService {
       const { labelIDs, ...fields } = data;
       let ticket: typeof tickets.$inferSelect | undefined;
 
-      await this.assertVisibilityAllowed(tx, projectID, fields.visibility);
-      if (fields.statusID) await this.assertStatusInProject(tx, projectID, fields.statusID);
-      if (fields.assigneeID) await this.assertAssigneeIsMember(tx, projectID, fields.assigneeID);
-      if (labelIDs) await this.assertLabelsInProject(tx, projectID, labelIDs);
+      await TicketValidation.assertVisibilityAllowed(tx, projectID, fields.visibility);
+      if (fields.statusID) await TicketValidation.assertStatusInProject(tx, projectID, fields.statusID);
+      if (fields.assigneeID) await TicketValidation.assertAssigneeIsMember(tx, projectID, fields.assigneeID);
+      if (labelIDs) await TicketValidation.assertLabelsInProject(tx, projectID, labelIDs);
 
       if (fields.parentTicketID !== undefined && fields.parentTicketID !== null) {
         if (fields.parentTicketID === ticketID) {
           throw new HTTPException(400, { message: "A ticket cannot be its own parent." });
         }
-        await this.assertParentInProject(tx, projectID, fields.parentTicketID);
-        await this.assertNoParentCycle(tx, ticketID, fields.parentTicketID);
+        await TicketValidation.assertParentInProject(tx, projectID, fields.parentTicketID);
+        await TicketValidation.assertNoParentCycle(tx, ticketID, fields.parentTicketID);
       }
 
       if (Object.keys(fields).length) {
@@ -334,7 +335,7 @@ export class TicketService {
     return await db.transaction(async tx => {
       const before = await this.loadSnapshot(tx, { ticketID });
 
-      if (data.statusID) await this.assertStatusInProject(tx, projectID, data.statusID);
+      if (data.statusID) await TicketValidation.assertStatusInProject(tx, projectID, data.statusID);
 
       const targetStatusID = data.statusID ?? before.status.id;
       const [beforePosition, afterPosition] = await Promise.all([
@@ -441,115 +442,6 @@ export class TicketService {
     });
     if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found.` });
     return ticket;
-  }
-
-  /**
-   * Walks up the proposed parent's ancestor chain. Throws 400 if `ticketID`
-   * (the ticket being patched) appears anywhere above the proposed parent --
-   * setting that parent would form a cycle. Bounded by tree depth, with a
-   * hard cap on hops as a safety net against malformed data.
-   * @param tx Active transaction
-   * @param ticketID The ticket whose parent is being changed
-   * @param proposedParentID The candidate new parent
-   */
-  private static async assertNoParentCycle(tx: Transaction, ticketID: string, proposedParentID: string) {
-    const MAX_DEPTH = 100;
-    let cursor: string | null = proposedParentID;
-    for (let depth = 0; depth < MAX_DEPTH && cursor; depth += 1) {
-      if (cursor === ticketID) {
-        throw new HTTPException(400, { message: "Setting this parent would create a cycle." });
-      }
-      const [row] = await tx.select({ parentTicketID: tickets.parentTicketID }).from(tickets).where(eq(tickets.id, cursor)).limit(1);
-      if (!row) return;
-      cursor = row.parentTicketID;
-    }
-  }
-
-  /**
-   * Checks that a request may set a ticket's visibility. Every ticket in a
-   * private project is already hidden, so the project refuses any visibility
-   * value. A request that leaves visibility out is always valid.
-   * @param tx The active transaction
-   * @param projectID The project the ticket belongs to
-   * @param visibility The visibility from the request, if any
-   * @throws HTTPException 400 if the project is private and the request sets visibility
-   */
-  private static async assertVisibilityAllowed(tx: Transaction, projectID: string, visibility: "public" | "private" | undefined) {
-    if (visibility === undefined) return;
-    const [project] = await tx.select({ visibility: projects.visibility }).from(projects).where(eq(projects.id, projectID)).limit(1);
-    if (project?.visibility === "private") {
-      throw new HTTPException(400, { message: "Ticket visibility cannot be set in a private project." });
-    }
-  }
-
-  /**
-   * Checks that a status belongs to the project.
-   * @param tx The active transaction
-   * @param projectID The project the ticket belongs to
-   * @param statusID The status ID from the request
-   * @throws HTTPException 400
-   */
-  private static async assertStatusInProject(tx: Transaction, projectID: string, statusID: string) {
-    const [status] = await tx
-      .select({ id: statuses.id })
-      .from(statuses)
-      .where(and(eq(statuses.id, statusID), eq(statuses.projectID, projectID)))
-      .limit(1);
-    if (!status) throw new HTTPException(400, { message: "Status not found in this project." });
-  }
-
-  /**
-   * Checks that every label belongs to the project and that no label ID is
-   * repeated. An empty list is valid.
-   * @param tx The active transaction
-   * @param projectID The project the ticket belongs to
-   * @param labelIDs The label IDs from the request
-   * @throws HTTPException 400
-   */
-  private static async assertLabelsInProject(tx: Transaction, projectID: string, labelIDs: string[]) {
-    if (!labelIDs.length) return;
-    if (new Set(labelIDs).size !== labelIDs.length) {
-      throw new HTTPException(400, { message: "Label IDs must be unique." });
-    }
-    const found = await tx
-      .select({ id: labels.id })
-      .from(labels)
-      .where(and(inArray(labels.id, labelIDs), eq(labels.projectID, projectID)));
-    if (found.length !== labelIDs.length) {
-      throw new HTTPException(400, { message: "One or more labels not found in this project." });
-    }
-  }
-
-  /**
-   * Checks that the assignee is a member of the project.
-   * @param tx The active transaction
-   * @param projectID The project the ticket belongs to
-   * @param assigneeID The user ID from the request
-   * @throws HTTPException 400
-   */
-  private static async assertAssigneeIsMember(tx: Transaction, projectID: string, assigneeID: string) {
-    const [member] = await tx
-      .select({ userID: projectMembers.userID })
-      .from(projectMembers)
-      .where(and(eq(projectMembers.projectID, projectID), eq(projectMembers.userID, assigneeID)))
-      .limit(1);
-    if (!member) throw new HTTPException(400, { message: "Assignee is not a member of this project." });
-  }
-
-  /**
-   * Checks that the parent ticket exists in the project and is not deleted.
-   * @param tx The active transaction
-   * @param projectID The project the ticket belongs to
-   * @param parentTicketID The parent ticket ID from the request
-   * @throws HTTPException 400
-   */
-  private static async assertParentInProject(tx: Transaction, projectID: string, parentTicketID: string) {
-    const [parent] = await tx
-      .select({ id: tickets.id })
-      .from(tickets)
-      .where(and(eq(tickets.id, parentTicketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt)))
-      .limit(1);
-    if (!parent) throw new HTTPException(400, { message: "Parent ticket not found in this project." });
   }
 
   /**
