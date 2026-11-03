@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { ActivityService } from "../services/activityService";
 import { TicketService } from "../services/ticketService";
 import type { TicketSnapshot } from "../lib/types";
-import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, createTicketInProject, resetDatabase } from "./helpers";
 
 let cookies: string;
 let userID: string;
@@ -360,6 +360,36 @@ describe("GET /api/projects/:key/activity", () => {
     const ticketIDs = new Set(body.activity.map((row: { ticket: { id: string } }) => row.ticket.id));
     expect(ticketIDs.has(visible.id)).toBe(true);
     expect(ticketIDs.has(deleted.id)).toBe(false);
+  });
+
+  it("leaves out activity from other projects", async () => {
+    const own = await createTicket({ title: "Own" });
+    await createProject(cookies, { key: "OTHER", name: "Other project" });
+    const other = await createTicketInProject(cookies, "OTHER", "Elsewhere");
+
+    const res = await app.request("/api/projects/TEST/activity", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    const ticketIDs = new Set(body.activity.map((row: { ticket: { id: string } }) => row.ticket.id));
+    expect(ticketIDs.has(own.id)).toBe(true);
+    expect(ticketIDs.has(other.id)).toBe(false);
+  });
+
+  it("stores each side of a cross-project link under its own ticket's project", async () => {
+    const source = await createTicket({ title: "Source" });
+    const otherProject = await createProject(cookies, { key: "OTHER", name: "Other project" });
+    const target = await createTicketInProject(cookies, "OTHER", "Target");
+
+    const linkRes = await app.request(`/api/projects/TEST/tickets/${source.number}/links`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookies },
+      body: JSON.stringify({ targetRef: `OTHER-${target.number}`, linkType: "relates_to", direction: "outgoing" }),
+    });
+    expect(linkRes.status).toBe(201);
+
+    const linkRows = await db.select({ ticketID: ticketActivity.ticketID, projectID: ticketActivity.projectID }).from(ticketActivity).where(eq(ticketActivity.action, "link_added"));
+    expect(linkRows).toHaveLength(2);
+    expect(linkRows.find(row => row.ticketID === source.id)?.projectID).toBe(projectID);
+    expect(linkRows.find(row => row.ticketID === target.id)?.projectID).toBe(otherProject.id);
   });
 
   it("respects the limit query param", async () => {
