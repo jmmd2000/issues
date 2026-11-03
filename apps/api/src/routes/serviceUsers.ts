@@ -6,7 +6,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { apiTokens, users } from "../db/schema";
 import { validationHook } from "../lib/validation";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireSession } from "../middleware/auth";
 import { AuthService } from "../services/authService";
 import { TokenService, TOKEN_EXPIRY_DEFAULT_DAYS, TOKEN_EXPIRY_MAX_DAYS, TOKEN_EXPIRY_MIN_DAYS } from "../services/tokenService";
 import { UserService } from "../services/userService";
@@ -61,7 +61,7 @@ export const serviceUsers = new Hono()
     const list = await db.select(serviceTokenColumns).from(apiTokens).where(eq(apiTokens.userID, id)).orderBy(desc(apiTokens.createdAt));
     return c.json({ apiTokens: list }, 200);
   })
-  .post("/api/users/service/:id/tokens", requireAuth, zValidator("param", userIdParam, validationHook), zValidator("json", createTokenSchema, validationHook), async c => {
+  .post("/api/users/service/:id/tokens", requireAuth, requireSession, zValidator("param", userIdParam, validationHook), zValidator("json", createTokenSchema, validationHook), async c => {
     await requireHuman(c.get("userID"));
     const { id } = c.req.valid("param");
     await requireServiceUser(id);

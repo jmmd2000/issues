@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { validationHook } from "../lib/validation";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireSession } from "../middleware/auth";
 import { TokenService, TOKEN_EXPIRY_DEFAULT_DAYS, TOKEN_EXPIRY_MAX_DAYS, TOKEN_EXPIRY_MIN_DAYS } from "../services/tokenService";
 
 const createSchema = z
@@ -17,7 +17,7 @@ const idParamSchema = z.object({
 });
 
 export const tokens = new Hono()
-  .post("/api/auth/tokens", requireAuth, zValidator("json", createSchema, validationHook), async c => {
+  .post("/api/auth/tokens", requireAuth, requireSession, zValidator("json", createSchema, validationHook), async c => {
     const userID = c.get("userID");
     const { name, expiresInDays } = c.req.valid("json");
     const result = await TokenService.createToken(userID, name, expiresInDays);

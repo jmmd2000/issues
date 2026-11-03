@@ -7,7 +7,9 @@ import { eq, and, gt } from "drizzle-orm";
 import { TokenService } from "../services/tokenService";
 import { loadRole, type Role } from "../lib/access";
 
-type Env = { Variables: { userID: string; role: Role } };
+type AuthMethod = "session" | "token";
+
+type Env = { Variables: { userID: string; role: Role; authMethod: AuthMethod } };
 type OptionalEnv = { Variables: { userID?: string; role?: Role } };
 
 const BEARER_PREFIX = "Bearer ";
@@ -35,7 +37,7 @@ function extractBearer(authHeader: string | undefined) {
  * token. Cookie wins if both are present so cookie-authenticated routes are
  * unaffected by stray bearer headers from non-browser clients.
  *
- * Sets `userID` and `role` on the context for downstream handlers.
+ * Sets `userID`, `role` and `authMethod` on the context for downstream handlers.
  */
 export const requireAuth = createMiddleware<Env>(async (c, next) => {
   const sessionID = getCookie(c, "session_id");
@@ -44,6 +46,7 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
     if (!session) throw new HTTPException(401, { message: "Session expired." });
     c.set("userID", session.userID);
     c.set("role", await loadRole(session.userID));
+    c.set("authMethod", "session");
     await next();
     return;
   }
@@ -54,11 +57,23 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
     if (!token) throw new HTTPException(401, { message: "Invalid or expired token." });
     c.set("userID", token.userID);
     c.set("role", await loadRole(token.userID));
+    c.set("authMethod", "token");
     await next();
     return;
   }
 
   throw new HTTPException(401, { message: "Not authenticated." });
+});
+
+/**
+ * Refuses a request that signed in with a bearer token, so a leaked token
+ * can't create more tokens. Must run after `requireAuth`. Service users have
+ * no usable password, so only a human can hold a session.
+ * @throws HTTPException 403 when the request used a bearer token
+ */
+export const requireSession = createMiddleware<Env>(async (c, next) => {
+  if (c.get("authMethod") !== "session") throw new HTTPException(403, { message: "Sign in to create a token." });
+  await next();
 });
 
 /**
