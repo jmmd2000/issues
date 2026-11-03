@@ -4,7 +4,7 @@ import { db } from "../db";
 import { comments, labels, projects, statuses, ticketActivity, users } from "../db/schema";
 import { and, eq } from "drizzle-orm";
 import { ActivityService } from "../services/activityService";
-import { TicketService } from "../services/ticketService";
+import { TicketSnapshots } from "../services/tickets/snapshot";
 import type { TicketSnapshot } from "../lib/types";
 import { createAuthenticatedUser, createExtraUser, createLinkTargets, createProject, createTicketInProject, resetDatabase } from "./helpers";
 
@@ -49,7 +49,7 @@ describe("logUpdate", () => {
 
   it("writes nothing when before and after are equal", async () => {
     const ticket = await createTicket({ title: "Stable" });
-    const snapshot = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
+    const snapshot = await TicketSnapshots.load(db, { ticketID: ticket.id });
 
     await db.transaction(async tx => {
       await ActivityService.logUpdate(tx, userID, snapshot, snapshot);
@@ -64,7 +64,7 @@ describe("logUpdate", () => {
 
   it("writes a row for each changed scalar field", async () => {
     const ticket = await createTicket({ title: "Before", priority: "medium" });
-    const before = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
+    const before = await TicketSnapshots.load(db, { ticketID: ticket.id });
     const after: TicketSnapshot = { ...before, title: "After", description: "New body", priority: "high" };
 
     await db.transaction(async tx => {
@@ -85,7 +85,7 @@ describe("logUpdate", () => {
 
   it("writes ref-field changes with {id, name} snapshots", async () => {
     const ticket = await createTicket({ title: "Ref test" });
-    const before = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
+    const before = await TicketSnapshots.load(db, { ticketID: ticket.id });
     const { cookies: otherCookies, user: other } = await createExtraUser("Other", "other@test.com");
     void otherCookies;
     const after: TicketSnapshot = {
@@ -115,7 +115,7 @@ describe("logUpdate", () => {
     const [keep, remove, add] = allLabels;
 
     const ticket = await createTicket({ title: "Labels", labelIDs: [keep.id, remove.id] });
-    const before = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
+    const before = await TicketSnapshots.load(db, { ticketID: ticket.id });
     const after: TicketSnapshot = {
       ...before,
       labels: [
@@ -145,7 +145,7 @@ describe("logUpdate", () => {
 
   it("rolls back all activity rows when the transaction throws", async () => {
     const ticket = await createTicket({ title: "Rollback" });
-    const before = await TicketService.loadSnapshot(db, { ticketID: ticket.id });
+    const before = await TicketSnapshots.load(db, { ticketID: ticket.id });
     const after: TicketSnapshot = { ...before, title: "Would be lost" };
 
     await expect(

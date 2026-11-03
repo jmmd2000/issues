@@ -3,10 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { attachments, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
-import type { Priority, TicketSnapshot, Transaction } from "../lib/types";
+import type { Priority, Transaction } from "../lib/types";
 import { ActivityService } from "./activityService";
 import { TicketKanban } from "./tickets/kanban";
 import { CLOSED_CATEGORIES, TicketLifecycle } from "./tickets/lifecycle";
+import { TicketSnapshots } from "./tickets/snapshot";
 import { TicketValidation } from "./tickets/validation";
 
 export type TicketCreateInput = {
@@ -260,7 +261,7 @@ export class TicketService {
     }
   ) {
     return await db.transaction(async tx => {
-      const before = await this.loadSnapshot(tx, { ticketID });
+      const before = await TicketSnapshots.load(tx, { ticketID });
 
       const { labelIDs, ...fields } = data;
       let ticket: typeof tickets.$inferSelect | undefined;
@@ -299,7 +300,7 @@ export class TicketService {
         }
       }
 
-      const after = await this.loadSnapshot(tx, { ticketID });
+      const after = await TicketSnapshots.load(tx, { ticketID });
       await ActivityService.logUpdate(tx, userID, before, after);
 
       if (!ticket) {
@@ -333,7 +334,7 @@ export class TicketService {
     }
   ) {
     return await db.transaction(async tx => {
-      const before = await this.loadSnapshot(tx, { ticketID });
+      const before = await TicketSnapshots.load(tx, { ticketID });
 
       if (data.statusID) await TicketValidation.assertStatusInProject(tx, projectID, data.statusID);
 
@@ -360,7 +361,7 @@ export class TicketService {
 
       if (!ticket) throw new HTTPException(404, { message: `Ticket with id ${ticketID} not found.` });
 
-      const after = await this.loadSnapshot(tx, { ticketID });
+      const after = await TicketSnapshots.load(tx, { ticketID });
       await ActivityService.logUpdate(tx, userID, before, after);
 
       return ticket;
@@ -442,51 +443,5 @@ export class TicketService {
     });
     if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found.` });
     return ticket;
-  }
-
-  /**
-   * Loads a {@link TicketSnapshot} from the DB or active transaction.
-   * Accepts either `{ ticketID }` or `{ projectID, number }` as locator. Normalises FK
-   * references to `{ id, name }` pairs so the activity differ can compare them directly
-   * without a separate resolver.
-   * @param handle The db or transaction to query through
-   * @param locator Either the ticketID or the (projectID, number) pair
-   * @returns The snapshot
-   */
-  static async loadSnapshot(handle: typeof db | Transaction, locator: { ticketID: string } | { projectID: string; number: number }): Promise<TicketSnapshot> {
-    const where =
-      "ticketID" in locator
-        ? and(eq(tickets.id, locator.ticketID), isNull(tickets.deletedAt))
-        : and(eq(tickets.projectID, locator.projectID), eq(tickets.number, locator.number), isNull(tickets.deletedAt));
-
-    const row = await handle.query.tickets.findFirst({
-      where,
-      with: {
-        status: { columns: { id: true, name: true } },
-        reporter: { columns: { id: true, name: true } },
-        assignee: { columns: { id: true, name: true } },
-        parent: { columns: { id: true, title: true, deletedAt: true } },
-        labels: { with: { label: { columns: { id: true, name: true } } } },
-      },
-    });
-
-    if (!row) {
-      const errorMessage = "ticketID" in locator ? `with id ${locator.ticketID}` : `#${locator.number}`;
-      throw new HTTPException(404, { message: `Ticket ${errorMessage} not found.` });
-    }
-
-    return {
-      id: row.id,
-      number: row.number,
-      title: row.title,
-      description: row.description,
-      priority: row.priority,
-      visibility: row.visibility,
-      status: { id: row.status.id, name: row.status.name },
-      reporter: { id: row.reporter.id, name: row.reporter.name },
-      assignee: row.assignee ? { id: row.assignee.id, name: row.assignee.name } : null,
-      parent: row.parent && !row.parent.deletedAt ? { id: row.parent.id, name: row.parent.title } : null,
-      labels: row.labels.map(l => ({ id: l.label.id, name: l.label.name })),
-    };
   }
 }
