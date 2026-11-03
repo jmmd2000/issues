@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { PRIORITIES, SEARCH_SORT_COLUMNS, SEARCH_SORT_DIRECTIONS } from "../lib/constants";
+import { PRIORITIES, SEARCH_SORT_COLUMNS, SEARCH_SORT_DIRECTIONS, VISIBILITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
 import { optionalAuth } from "../middleware/auth";
 import { SearchService } from "../services/searchService";
@@ -32,6 +32,7 @@ const searchQuerySchema = z.object({
   priority: listParam(z.enum(PRIORITIES)),
   label: listParam(z.string().trim().min(1).max(80)),
   assignee: listParam(z.uuid()),
+  visibility: listParam(z.enum(VISIBILITIES)),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
   sortBy: z.enum(SEARCH_SORT_COLUMNS).optional(),
@@ -58,6 +59,7 @@ export const search = new Hono()
         priorities: query.priority,
         labelNames: query.label,
         assigneeIDs: query.assignee,
+        visibility: query.visibility,
         page: query.page,
         perPage: query.perPage,
         sortBy: query.sortBy,

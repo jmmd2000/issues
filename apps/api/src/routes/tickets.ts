@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { TICKET_REF_LOOKUP_MAX, TICKET_REF_REGEX } from "@issues/shared";
-import { PRIORITIES } from "../lib/constants";
+import { PRIORITIES, VISIBILITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
 import { HTTPException } from "hono/http-exception";
 import { optionalAuth, requireAuth } from "../middleware/auth";
@@ -73,6 +73,7 @@ const ticketFilterQuerySchema = z.object({
   priority: arrayParam(z.enum(PRIORITIES)),
   assigneeID: arrayParam(z.uuid()),
   labelID: arrayParam(z.uuid()),
+  visibility: arrayParam(z.enum(VISIBILITIES)),
   titleSearch: z.string().trim().min(1).max(200).optional(),
   includeClosed: boolParam,
 });
@@ -89,6 +90,7 @@ const backlogQuerySchema = ticketFilterQuerySchema.pick({
   priority: true,
   assigneeID: true,
   labelID: true,
+  visibility: true,
   titleSearch: true,
 });
 
