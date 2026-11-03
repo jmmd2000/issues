@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import app from "../index";
 import { db } from "../db";
 import { apiTokens } from "../db/schema";
-import { createAuthenticatedUser, createExtraUser, createTokenForUser, resetDatabase } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createServiceUser, createTokenForUser, resetDatabase } from "./helpers";
 
 const RAW_TOKEN_HEX = /^[a-f0-9]{64}$/;
 
@@ -60,6 +60,34 @@ describe("POST /api/auth/tokens", () => {
     const expectedExpiry = Date.now() + 1000 * 60 * 60 * 24 * 90;
     const actualExpiry = new Date(body.apiToken.expiresAt).getTime();
     expect(Math.abs(actualExpiry - expectedExpiry)).toBeLessThan(5000);
+  });
+
+  it("returns 403 when a human's bearer token tries to create a token", async () => {
+    const { user } = await createExtraUser("Bearer Human", "bearer@test.com");
+    const { token } = await createTokenForUser(user.id);
+
+    const res = await app.request("/api/auth/tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...bearer(token) },
+      body: JSON.stringify({ name: "Another" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(await db.select().from(apiTokens).where(eq(apiTokens.userID, user.id))).toHaveLength(1);
+  });
+
+  it("returns 403 when a service user's bearer token tries to create a token", async () => {
+    const { user } = await createServiceUser("Claude");
+    const { token } = await createTokenForUser(user.id);
+
+    const res = await app.request("/api/auth/tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...bearer(token) },
+      body: JSON.stringify({ name: "Another", expiresInDays: 365 }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(await db.select().from(apiTokens).where(eq(apiTokens.userID, user.id))).toHaveLength(1);
   });
 
   it("returns 400 for empty name", async () => {

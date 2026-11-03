@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import app from "../index";
 import { db } from "../db";
-import { users } from "../db/schema";
+import { apiTokens, users } from "../db/schema";
 import { createAuthenticatedUser, createProject, createServiceUser, createTokenForUser, resetDatabase } from "./helpers";
 
 const RAW_TOKEN_HEX = /^[a-f0-9]{64}$/;
@@ -102,6 +102,20 @@ describe("Service user tokens", () => {
     const body = await res.json();
     expect(body.token).toMatch(RAW_TOKEN_HEX);
     expect(body.apiToken).toMatchObject({ name: "MCP local", lastUsedAt: null });
+  });
+
+  it("returns 403 when a bearer token tries to mint a token", async () => {
+    const [human] = await db.select({ id: users.id }).from(users).where(eq(users.isService, false));
+    const { token } = await createTokenForUser(human.id);
+
+    const res = await app.request(`/api/users/service/${serviceUserID}/tokens`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...bearer(token) },
+      body: JSON.stringify({ name: "MCP local" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(await db.select().from(apiTokens).where(eq(apiTokens.userID, serviceUserID))).toHaveLength(0);
   });
 
   it("lists tokens for the service user", async () => {
