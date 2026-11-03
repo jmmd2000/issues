@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import app from "../index";
 import { db } from "../db";
 import { sessions, users } from "../db/schema";
 import { eq } from "drizzle-orm";
 import argon2 from "argon2";
+import { resetLoginRateLimit } from "../middleware/loginRateLimit";
 import { createAuthenticatedUser, resetDatabase } from "./helpers";
 
 describe("POST /api/auth/register", () => {
@@ -86,6 +87,100 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({ email: "nobody@example.com", password: "password123" }),
     });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/auth/login rate limit", () => {
+  const REAL_CLIENT = "203.0.113.9";
+
+  function login(email: string, password: string, forwardedFor = REAL_CLIENT) {
+    return app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": forwardedFor },
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async function failLogins(times: number, forwardedFor = REAL_CLIENT) {
+    for (let attempt = 0; attempt < times; attempt++) {
+      const res = await login("j@example.com", "wrongpassword", forwardedFor);
+      expect(res.status).toBe(401);
+    }
+  }
+
+  beforeEach(async () => {
+    resetLoginRateLimit();
+    await resetDatabase();
+    await app.request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "James", email: "j@example.com", password: "password123" }),
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns 429 after 5 failed logins, even with the right password", async () => {
+    await failLogins(5);
+
+    const res = await login("j@example.com", "password123");
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("counts a wrong email the same as a wrong password", async () => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await login("nobody@example.com", "password123");
+      expect(res.status).toBe(401);
+    }
+
+    const res = await login("j@example.com", "password123");
+    expect(res.status).toBe(429);
+  });
+
+  it("uses the last X-Forwarded-For entry, so a forged entry doesn't escape the limit", async () => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await login("j@example.com", "wrongpassword", `198.51.100.${attempt}, ${REAL_CLIENT}`);
+      expect(res.status).toBe(401);
+    }
+
+    const forged = await login("j@example.com", "wrongpassword", `198.51.100.99, ${REAL_CLIENT}`);
+    expect(forged.status).toBe(429);
+  });
+
+  it("keeps a separate count for each client", async () => {
+    await failLogins(5);
+
+    const res = await login("j@example.com", "password123", "192.0.2.1");
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses parallel attempts past the limit", async () => {
+    const responses = await Promise.all(Array.from({ length: 8 }, () => login("j@example.com", "wrongpassword")));
+    const statuses = responses.map(res => res.status);
+
+    expect(statuses.filter(status => status === 401)).toHaveLength(5);
+    expect(statuses.filter(status => status === 429)).toHaveLength(3);
+  });
+
+  it("clears the count after a successful login", async () => {
+    await failLogins(4);
+    expect((await login("j@example.com", "password123")).status).toBe(200);
+
+    await failLogins(5);
+  });
+
+  it("allows logins again once the 15 minute window passes", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    await failLogins(5);
+    expect((await login("j@example.com", "password123")).status).toBe(429);
+
+    vi.setSystemTime(Date.now() + 15 * 60 * 1000);
+
+    expect((await login("j@example.com", "password123")).status).toBe(200);
   });
 });
 
