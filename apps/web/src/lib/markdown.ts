@@ -79,9 +79,8 @@ export function extractTicketRefs(source: string): Array<{ projectKey: string; n
   return refs;
 }
 
-// Walks rendered markdown and turns bare `PROJ-123` occurrences into anchor tags.
-// Done as a post-process (rather than in marked) so it works on text that was already sanitised.
-export function decorateTicketRefs(root: HTMLElement) {
+// Text nodes in rendered markdown that hold a `PROJ-123` ref, leaving out links and code.
+function findTicketRefTextNodes(root: HTMLElement): Text[] {
   // collect matching text nodes, can't mutate while the walker is live
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const textNodes: Text[] = [];
@@ -94,14 +93,31 @@ export function decorateTicketRefs(root: HTMLElement) {
     textNodes.push(node);
   }
 
+  return textNodes;
+}
+
+// Deduped `PROJ-123` strings in rendered markdown, to check against the API before linking them.
+export function collectTicketRefs(root: HTMLElement): string[] {
+  const text = findTicketRefTextNodes(root)
+    .map(node => node.nodeValue)
+    .join(" ");
+  return extractTicketRefs(text).map(({ projectKey, number }) => `${projectKey}-${number}`);
+}
+
+// Walks rendered markdown and turns bare `PROJ-123` occurrences into anchor tags, for the refs in `existingRefs` only.
+// Text like `UTF-8` or `SHA-256` matches the pattern, so anything else stays plain text.
+// Done as a post-process (rather than in marked) so it works on text that was already sanitised.
+export function decorateTicketRefs(root: HTMLElement, existingRefs: ReadonlySet<string>) {
   // rebuild each text node as a fragment of [text, <a>, text, <a>, ...] and swap it in
-  for (const node of textNodes) {
+  for (const node of findTicketRefTextNodes(root)) {
     const fragment = document.createDocumentFragment();
     const text = node.nodeValue ?? "";
     let lastIndex = 0;
 
     for (const match of text.matchAll(TICKET_REF_RE)) {
       const full = match[0];
+      if (!existingRefs.has(full)) continue;
+
       const projectKey = match[1];
       const number = match[2];
       const index = match.index ?? 0;

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { TICKET_REF_LOOKUP_MAX, TICKET_REF_REGEX } from "@issues/shared";
 import { PRIORITIES } from "../lib/constants";
 import { validationHook } from "../lib/validation";
 import { HTTPException } from "hono/http-exception";
@@ -12,6 +13,7 @@ import { TicketCreation } from "../services/tickets/creation";
 import { TicketTrash } from "../services/tickets/trash";
 import { TICKET_LIST_SORT_COLUMNS } from "../services/tickets/filters";
 import { TicketListing } from "../services/tickets/listing";
+import { TicketRefs } from "../services/tickets/refs";
 import { projectKeyParamSchema } from "./projects";
 
 const ticketParamSchema = projectKeyParamSchema.extend({
@@ -90,6 +92,8 @@ const backlogQuerySchema = ticketFilterQuerySchema.pick({
   titleSearch: true,
 });
 
+const ticketRefLookupSchema = z.object({ refs: z.array(z.string().regex(TICKET_REF_REGEX)).max(TICKET_REF_LOOKUP_MAX) }).strict();
+
 export const tickets = new Hono()
   .post(
     "/api/projects/:key/tickets",
@@ -110,6 +114,11 @@ export const tickets = new Hono()
       return c.json({ ticket }, 201);
     }
   )
+  .post("/api/ticket-refs", optionalAuth, zValidator("json", ticketRefLookupSchema, validationHook), async c => {
+    const { refs } = c.req.valid("json");
+    const visibleRefs = await TicketRefs.findVisible(refs, c.get("role"));
+    return c.json({ refs: visibleRefs }, 200);
+  })
   .get("/api/projects/:key/tickets", optionalAuth, zValidator("param", projectKeyParamSchema, validationHook), zValidator("query", listQuerySchema, validationHook), requireProjectRead, async c => {
     const project = c.get("project");
     const query = c.req.valid("query");

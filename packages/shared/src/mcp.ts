@@ -159,6 +159,9 @@ export function parseTicketRef(value: string): { projectKey: string; number: num
   return { projectKey: match[1], number: Number(match[2]) };
 }
 
+/** The most ticket refs one lookup can check. */
+export const TICKET_REF_LOOKUP_MAX = 100;
+
 /** Formats a project key and ticket number into the canonical ref form. */
 export function formatTicketRef(projectKey: string, number: number): string {
   return `${projectKey}-${number}`;

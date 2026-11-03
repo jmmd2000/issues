@@ -1,6 +1,7 @@
 <script lang="ts">
   import { X } from "@lucide/svelte";
-  import { decorateTicketRefs, renderMarkdown } from "$lib/markdown";
+  import { findVisibleTicketRefs } from "$lib/api/ticketRefs";
+  import { collectTicketRefs, decorateTicketRefs, renderMarkdown } from "$lib/markdown";
 
   let { source }: { source: string } = $props();
   let container: HTMLDivElement | null = $state(null);
@@ -11,8 +12,21 @@
   $effect(() => {
     void html;
     if (!container) return;
-    decorateTicketRefs(container);
-    return attachCopyHandlers(container);
+    const root = container;
+    const removeCopyHandlers = attachCopyHandlers(root);
+
+    let stale = false;
+    const refs = collectTicketRefs(root);
+    if (refs.length) {
+      void findVisibleTicketRefs(refs).then(existingRefs => {
+        if (!stale) decorateTicketRefs(root, existingRefs);
+      });
+    }
+
+    return () => {
+      stale = true;
+      removeCopyHandlers();
+    };
   });
 
   function attachCopyHandlers(root: HTMLElement) {
