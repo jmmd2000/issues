@@ -31,6 +31,8 @@ import { ProjectService } from "./projectService";
 import { SearchService } from "./searchService";
 import { TicketLinkService } from "./ticketLinkService";
 import { TicketService } from "./ticketService";
+import { TicketCreation } from "./tickets/creation";
+import { TicketTrash } from "./tickets/trash";
 
 const DESCRIPTION_EXCERPT_LENGTH = 200;
 const SEARCH_PER_PAGE_DEFAULT = 25;
@@ -209,7 +211,7 @@ export class McpService {
 
   /**
    * Creates a ticket. Resolves the status slug, label names, and assignee name
-   * to IDs before delegating to {@link TicketService.createTicket}.
+   * to IDs before delegating to {@link TicketCreation.createTicket}.
    * @param userID Authenticated user (used as reporter)
    * @param input Compact create payload
    * @returns Compact ticket summary
@@ -222,7 +224,7 @@ export class McpService {
     const assigneeID = input.assignee === undefined ? undefined : input.assignee === null ? undefined : await McpService.resolveAssigneeName(input.assignee);
     const parentTicketID = await McpService.resolveParentTicketRef(project.id, input.parentTicketRef);
 
-    const row = await TicketService.createTicket({
+    const row = await TicketCreation.createTicket({
       projectID: project.id,
       reporterID: userID,
       title: input.title,
@@ -463,7 +465,7 @@ export class McpService {
    */
   static async softDeleteTicket(role: Role, userID: string, ref: string): Promise<{ ref: string }> {
     const context = await McpService.resolveTicketRef(role, ref);
-    await TicketService.softDeleteTicket(context.ticketID, context.project.id, userID);
+    await TicketTrash.softDeleteTicket(context.ticketID, context.project.id, userID);
     return { ref: formatTicketRef(context.project.key, context.number) };
   }
 
@@ -473,7 +475,7 @@ export class McpService {
    */
   static async restoreTicket(role: Role, userID: string, ref: string): Promise<{ ticket: CompactTicket }> {
     const context = await McpService.resolveDeletedTicketRef(role, ref);
-    await TicketService.restoreTicket(context.ticketID, context.project.id, userID);
+    await TicketTrash.restoreTicket(context.ticketID, context.project.id, userID);
     return await McpService.compactSummaryFor(context.project, context.number);
   }
 
@@ -490,7 +492,7 @@ export class McpService {
     const labelIDs = input.labels ? await McpService.resolveLabelNames(context.project.id, input.labels) : source.labels.map(label => label.id);
     const assigneeID = input.assignee === undefined ? (source.assignee?.id ?? undefined) : input.assignee === null ? undefined : await McpService.resolveAssigneeName(input.assignee);
 
-    const clone = await TicketService.cloneTicket(source.id, context.project.id, userID, {
+    const clone = await TicketCreation.cloneTicket(source.id, context.project.id, userID, {
       projectID: context.project.id,
       reporterID: userID,
       title: input.title,
