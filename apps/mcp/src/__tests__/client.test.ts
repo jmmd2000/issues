@@ -60,12 +60,13 @@ describe("IssuesClient", () => {
 
   it("serialises search filters as repeated query params", async () => {
     const fetchMock = mockFetch({ body: { tickets: [], total: 0, page: 1, perPage: 10, hasNextPage: false } });
-    await client.searchTickets({ project: "DASH", status: ["in-progress", "in-review"], priority: ["high"], perPage: 10, page: 2 });
+    await client.searchTickets({ project: "DASH", status: ["in-progress", "in-review"], priority: ["high"], parent: "DASH-1", perPage: 10, page: 2 });
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toContain("project=DASH");
     expect(url).toContain("status=in-progress");
     expect(url).toContain("status=in-review");
     expect(url).toContain("priority=high");
+    expect(url).toContain("parent=DASH-1");
     expect(url).toContain("perPage=10");
     expect(url).toContain("page=2");
   });

@@ -45,6 +45,15 @@ async function createTicketRow(overrides: { title?: string; statusSlug?: string;
   return body.ticket;
 }
 
+async function setParent(ref: string, parentTicketRef: string) {
+  const res = await app.request(`/api/mcp/tickets/${ref}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: cookies },
+    body: JSON.stringify({ parentTicketRef }),
+  });
+  expect(res.status).toBe(200);
+}
+
 async function setupProject() {
   await resetDatabase();
   const auth = await createAuthenticatedUser();
@@ -192,6 +201,30 @@ describe("GET /api/mcp/tickets", () => {
     expect(body.tickets.map((t: { title: string }) => t.title)).toEqual(["Bug A"]);
   });
 
+  it("filters by parent and returns only direct children", async () => {
+    await createTicketRow({ title: "Epic" });
+    await createTicketRow({ title: "Child" });
+    await createTicketRow({ title: "Grandchild" });
+    await createTicketRow({ title: "Unrelated" });
+    await setParent("TEST-2", "TEST-1");
+    await setParent("TEST-3", "TEST-2");
+
+    const res = await app.request("/api/mcp/tickets?parent=TEST-1", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tickets.map((t: { title: string }) => t.title)).toEqual(["Child"]);
+  });
+
+  it("returns 404 when the parent filter names an unknown ticket", async () => {
+    const res = await app.request("/api/mcp/tickets?parent=TEST-999", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when the parent filter is not a ticket ref", async () => {
+    const res = await app.request("/api/mcp/tickets?parent=not-a-ref", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(400);
+  });
+
   it("filters by priority", async () => {
     await createTicketRow({ title: "Critical thing", priority: "critical" });
     await createTicketRow({ title: "Low thing", priority: "low" });
@@ -253,6 +286,36 @@ describe("GET /api/mcp/tickets/:ref", () => {
     expect(body.ticket.reporter).toBe("Test User");
     expect(body.ticket.assignee).toBeNull();
     expect(body.ticket).not.toHaveProperty("comments");
+  });
+
+  it("returns a null parentTicketRef when the ticket has no parent", async () => {
+    await createTicketRow({ title: "No parent" });
+
+    const res = await app.request("/api/mcp/tickets/TEST-1", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.ticket.parentTicketRef).toBeNull();
+  });
+
+  it("returns the parentTicketRef in the compact and full forms", async () => {
+    await createTicketRow({ title: "Epic" });
+    await createTicketRow({ title: "Child" });
+    await setParent("TEST-2", "TEST-1");
+
+    const compact = await (await app.request("/api/mcp/tickets/TEST-2", { method: "GET", headers: { Cookie: cookies } })).json();
+    const full = await (await app.request("/api/mcp/tickets/TEST-2?full=true", { method: "GET", headers: { Cookie: cookies } })).json();
+    expect(compact.ticket.parentTicketRef).toBe("TEST-1");
+    expect(full.ticket.parentTicketRef).toBe("TEST-1");
+  });
+
+  it("returns a null parentTicketRef when the parent is deleted", async () => {
+    await createTicketRow({ title: "Epic" });
+    await createTicketRow({ title: "Child" });
+    await setParent("TEST-2", "TEST-1");
+    await app.request("/api/mcp/tickets/TEST-1", { method: "DELETE", headers: { Cookie: cookies } });
+
+    const res = await app.request("/api/mcp/tickets/TEST-2", { method: "GET", headers: { Cookie: cookies } });
+    const body = await res.json();
+    expect(body.ticket.parentTicketRef).toBeNull();
   });
 
   it("returns 404 for an unknown ref", async () => {
@@ -520,6 +583,21 @@ describe("GET /api/mcp/tickets/:ref/comments", () => {
     const res = await app.request("/api/mcp/tickets/TEST-1/comments", { method: "GET", headers: { Cookie: cookies } });
     const body = await res.json();
     expect(body.comments).toEqual([]);
+  });
+});
+
+describe("GET /api/mcp/tickets/:ref/activity", () => {
+  beforeEach(setupProject);
+
+  it("records a parent change", async () => {
+    await createTicketRow({ title: "Epic" });
+    await createTicketRow({ title: "Child" });
+    await setParent("TEST-2", "TEST-1");
+
+    const res = await app.request("/api/mcp/tickets/TEST-2/activity", { method: "GET", headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.activity.find((entry: { field: string | null }) => entry.field === "parentID")).toBeDefined();
   });
 });
 
