@@ -3,11 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import { db } from "../db";
 import { attachments, projects, statuses, ticketActivity, ticketLinks, tickets, ticketCounters, ticketLabels } from "../db/schema";
 import { positionAfter, positionBetween } from "../lib/position";
-import type { Priority, StatusCategory, TicketSnapshot, Transaction } from "../lib/types";
+import type { Priority, TicketSnapshot, Transaction } from "../lib/types";
 import { ActivityService } from "./activityService";
+import { TicketKanban } from "./tickets/kanban";
+import { CLOSED_CATEGORIES, TicketLifecycle } from "./tickets/lifecycle";
 import { TicketValidation } from "./tickets/validation";
-
-const CLOSED_CATEGORIES: readonly StatusCategory[] = ["done", "cancelled"];
 
 export type TicketCreateInput = {
   projectID: string;
@@ -281,7 +281,7 @@ export class TicketService {
       if (Object.keys(fields).length) {
         const setData: Record<string, unknown> = { ...fields };
         if (fields.statusID && fields.statusID !== before.status.id) {
-          Object.assign(setData, await this.completedAtUpdate(tx, fields.statusID));
+          Object.assign(setData, await TicketLifecycle.completedAtUpdate(tx, fields.statusID));
         }
 
         [ticket] = await tx
@@ -339,8 +339,8 @@ export class TicketService {
 
       const targetStatusID = data.statusID ?? before.status.id;
       const [beforePosition, afterPosition] = await Promise.all([
-        this.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.beforeID }),
-        this.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.afterID }),
+        TicketKanban.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.beforeID }),
+        TicketKanban.loadNeighbourPosition(tx, { projectID, statusID: targetStatusID, ticketID, neighbourID: data.afterID }),
       ]);
       const newPosition = positionBetween(beforePosition, afterPosition);
 
@@ -348,7 +348,7 @@ export class TicketService {
       if (data.statusID) {
         setData.statusID = data.statusID;
         if (data.statusID !== before.status.id) {
-          Object.assign(setData, await this.completedAtUpdate(tx, data.statusID));
+          Object.assign(setData, await TicketLifecycle.completedAtUpdate(tx, data.statusID));
         }
       }
 
@@ -442,48 +442,6 @@ export class TicketService {
     });
     if (!ticket) throw new HTTPException(404, { message: `Ticket #${number} not found.` });
     return ticket;
-  }
-
-  /**
-   * Loads the position of a move neighbour. The neighbour must be an active
-   * ticket in the project and in the status the ticket is moving to, and it
-   * cannot be the ticket being moved.
-   * @param tx The active transaction
-   * @param locator The project, the target status, the ticket being moved and the neighbour ID from the request
-   * @throws HTTPException 400
-   * @returns The neighbour's position, or `null` when no neighbour was given
-   */
-  private static async loadNeighbourPosition(tx: Transaction, locator: { projectID: string; statusID: string; ticketID: string; neighbourID?: string | null }) {
-    const { projectID, statusID, ticketID, neighbourID } = locator;
-    if (!neighbourID) return null;
-    if (neighbourID === ticketID) {
-      throw new HTTPException(400, { message: "A ticket cannot be moved relative to itself." });
-    }
-
-    const [neighbour] = await tx
-      .select({ position: tickets.position })
-      .from(tickets)
-      .where(and(eq(tickets.id, neighbourID), eq(tickets.projectID, projectID), eq(tickets.statusID, statusID), isNull(tickets.deletedAt)))
-      .limit(1);
-    if (!neighbour) throw new HTTPException(400, { message: "Neighbour ticket not found in the target status." });
-
-    return neighbour.position;
-  }
-
-  /**
-   * Resolves how `completedAt` should change when a ticket moves to a new
-   * status. Closed-category targets stamp `now()` on first entry and preserve
-   * existing timestamps; open-category targets clear the field.
-   * @param tx The active transaction
-   * @param newStatusID The destination status ID
-   */
-  private static async completedAtUpdate(tx: Transaction, newStatusID: string) {
-    const [next] = await tx.select({ category: statuses.category }).from(statuses).where(eq(statuses.id, newStatusID)).limit(1);
-    if (!next) return {};
-    if (CLOSED_CATEGORIES.includes(next.category)) {
-      return { completedAt: sql`coalesce(${tickets.completedAt}, now())` };
-    }
-    return { completedAt: null };
   }
 
   /**
