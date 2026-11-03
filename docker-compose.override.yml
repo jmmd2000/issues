@@ -4,8 +4,10 @@ services:
     ports:
       - "5436:5432"
     environment:
-      POSTGRES_DB: issues
+      POSTGRES_DB: issues_dev
       POSTGRES_USER: issues
       POSTGRES_PASSWORD: issues
+    volumes:
+      - ./scripts/init-test-databases.sql:/docker-entrypoint-initdb.d/init-test-databases.sql:ro
     healthcheck:
       disable: true

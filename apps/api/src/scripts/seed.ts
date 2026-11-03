@@ -4,8 +4,11 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "../db";
 import { apiTokens, labels, projectMembers, statuses, tickets, users } from "../db/schema";
+import { wipeDatabase } from "../db/wipe";
 import { loadRole } from "../lib/access";
 import { LINK_TYPES } from "../lib/constants";
+import { assertWipeableDatabase } from "../lib/databaseGuard";
+import { getEnv } from "../lib/env";
 import type { LinkType, Priority } from "../lib/types";
 import { AuthService } from "../services/authService";
 import { CommentService } from "../services/commentService";
@@ -345,10 +348,9 @@ async function seedLinksForProject(projectKey: string, ownerID: string, projectT
 }
 
 async function seed() {
+  assertWipeableDatabase(getEnv().DATABASE_URL);
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await db.execute(
-    sql`TRUNCATE TABLE api_tokens, ticket_links, comments, ticket_activity, ticket_labels, ticket_counters, tickets, labels, statuses, project_members, projects, sessions, users CASCADE`
-  );
+  await wipeDatabase();
 
   await AuthService.createUser(DEV_USER.name, DEV_USER.email, DEV_USER.password);
   const [{ id: ownerID }] = await db.select({ id: users.id }).from(users).limit(1);

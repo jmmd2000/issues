@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "1.27.5",
+  "version": "1.27.6",
   "type": "module",
   "description": "",
   "scripts": {
@@ -18,7 +18,9 @@
     "test:e2e": "pnpm -r --if-present test:e2e",
     "db:generate": "pnpm --filter @issues/api db:generate",
     "db:migrate": "pnpm --filter @issues/api db:migrate",
-    "db:seed": "pnpm --filter @issues/api db:seed"
+    "db:seed": "pnpm --filter @issues/api db:seed",
+    "db:wipe": "pnpm --filter @issues/api db:wipe",
+    "db:reset": "pnpm --filter @issues/api db:reset"
   },
   "keywords": [],
   "author": "",
