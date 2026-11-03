@@ -1,5 +1,4 @@
-const localHosts = ["localhost", "127.0.0.1", "[::1]"];
-const testDatabaseSuffix = "_test";
+import { assertWipeableDatabase } from "../../lib/databaseGuard";
 
 /**
  * Throws unless tests are running (NODE_ENV=test) against a local database whose
@@ -14,14 +13,5 @@ export function assertTestDatabase(databaseURL: string, nodeEnv: string | undefi
     throw new Error(`Refusing to wipe for tests: NODE_ENV is "${nodeEnv}", not "test"`);
   }
 
-  const url = new URL(databaseURL);
-  const databaseName = url.pathname.slice(1);
-
-  if (!localHosts.includes(url.hostname)) {
-    throw new Error(`Refusing to wipe "${databaseName}": host "${url.hostname}" is not local`);
-  }
-
-  if (!databaseName.endsWith(testDatabaseSuffix)) {
-    throw new Error(`Refusing to wipe "${databaseName}": the name must end in ${testDatabaseSuffix}`);
-  }
+  assertWipeableDatabase(databaseURL, ["_test"]);
 }
