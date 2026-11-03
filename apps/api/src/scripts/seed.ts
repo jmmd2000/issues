@@ -14,7 +14,7 @@ import { AuthService } from "../services/authService";
 import { CommentService } from "../services/commentService";
 import { ProjectService } from "../services/projectService";
 import { TicketLinkService } from "../services/ticketLinkService";
-import { TicketService } from "../services/ticketService";
+import { TicketCreation } from "../services/tickets/creation";
 
 const DEV_USER = { name: "James", email: "james@test.com", password: "password123" };
 
@@ -279,7 +279,7 @@ async function seedTicketsForProject(projectID: string, projectKey: string, owne
     const reporterID = memberIDs[(ticketIndex * 7 + projectKey.length) % memberIDs.length];
     const assigneeID = seed.assignSelf ? memberIDs[(ticketIndex * 13 + projectKey.length * 3) % memberIDs.length] : undefined;
 
-    const ticket = await TicketService.createTicket({
+    const ticket = await TicketCreation.createTicket({
       projectID,
       reporterID,
       title: seed.title,

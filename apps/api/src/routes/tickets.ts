@@ -7,7 +7,11 @@ import { HTTPException } from "hono/http-exception";
 import { optionalAuth, requireAuth } from "../middleware/auth";
 import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 import { canView } from "../lib/access";
-import { TicketService, TICKET_LIST_SORT_COLUMNS } from "../services/ticketService";
+import { TicketService } from "../services/ticketService";
+import { TicketCreation } from "../services/tickets/creation";
+import { TicketTrash } from "../services/tickets/trash";
+import { TICKET_LIST_SORT_COLUMNS } from "../services/tickets/filters";
+import { TicketListing } from "../services/tickets/listing";
 import { projectKeyParamSchema } from "./projects";
 
 const ticketParamSchema = projectKeyParamSchema.extend({
@@ -98,7 +102,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const userID = c.get("userID");
 
-      const ticket = await TicketService.createTicket({
+      const ticket = await TicketCreation.createTicket({
         ...body,
         projectID: project.id,
         reporterID: userID,
@@ -110,7 +114,7 @@ export const tickets = new Hono()
     const project = c.get("project");
     const query = c.req.valid("query");
 
-    const result = await TicketService.listForProject(project.id, query, c.get("role"));
+    const result = await TicketListing.listForProject(project.id, query, c.get("role"));
     return c.json(result);
   })
   .get(
@@ -123,7 +127,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const result = await TicketService.listTrashForProject(project.id, query);
+      const result = await TicketListing.listTrashForProject(project.id, query);
       return c.json(result);
     }
   )
@@ -137,7 +141,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBoardForProject(project.id, query, c.get("role"));
+      const tickets = await TicketListing.listBoardForProject(project.id, query, c.get("role"));
       return c.json({ tickets });
     }
   )
@@ -151,7 +155,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBacklogForProject(project.id, query, c.get("role"));
+      const tickets = await TicketListing.listBacklogForProject(project.id, query, c.get("role"));
       return c.json({ tickets });
     }
   )
@@ -205,7 +209,7 @@ export const tickets = new Hono()
     const { num } = c.req.valid("param");
 
     const existing = await TicketService.getTicketByNumber(project.id, num);
-    await TicketService.softDeleteTicket(existing.id, project.id, userID);
+    await TicketTrash.softDeleteTicket(existing.id, project.id, userID);
     return c.body(null, 204);
   })
   .post("/api/projects/:key/tickets/:num/restore", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("member"), async c => {
@@ -213,16 +217,16 @@ export const tickets = new Hono()
     const userID = c.get("userID");
     const { num } = c.req.valid("param");
 
-    const deleted = await TicketService.getDeletedByNumber(project.id, num);
-    const ticket = await TicketService.restoreTicket(deleted.id, project.id, userID);
+    const deleted = await TicketTrash.getDeletedByNumber(project.id, num);
+    const ticket = await TicketTrash.restoreTicket(deleted.id, project.id, userID);
     return c.json({ ticket });
   })
   .delete("/api/projects/:key/tickets/:num/permanent", requireAuth, zValidator("param", ticketParamSchema, validationHook), requireProjectAccess("owner"), async c => {
     const project = c.get("project");
     const { num } = c.req.valid("param");
 
-    const deleted = await TicketService.getDeletedByNumber(project.id, num);
-    await TicketService.hardDeleteTicket(deleted.id, project.id);
+    const deleted = await TicketTrash.getDeletedByNumber(project.id, num);
+    await TicketTrash.hardDeleteTicket(deleted.id, project.id);
     return c.body(null, 204);
   })
   .post(
@@ -238,7 +242,7 @@ export const tickets = new Hono()
       const { ticket: input, copyAttachments } = c.req.valid("json");
 
       const source = await TicketService.getTicketByNumber(project.id, num);
-      const clone = await TicketService.cloneTicket(source.id, project.id, userID, {
+      const clone = await TicketCreation.cloneTicket(source.id, project.id, userID, {
         ...input,
         projectID: project.id,
         reporterID: userID,

@@ -87,7 +87,7 @@ async function ticketProjectID(tx: Transaction, ticketID: string): Promise<strin
 export class ActivityService {
   /**
    * Emits a `created` row for a freshly inserted ticket. Called from inside
-   * `TicketService.createTicket` with the post-insert row.
+   * `TicketCreation.insertTicket` with the post-insert row.
    * @param tx Active transaction - must be the same one the insert ran on.
    * @param userID The ID of the user creating the ticket.
    * @param ticket The newly inserted ticket's id and title.
@@ -106,7 +106,7 @@ export class ActivityService {
 
   /**
    * Emits a `deleted` row when a ticket is soft-deleted. Called from inside
-   * `TicketService.softDeleteTicket` with the pre-delete row so the title is
+   * `TicketTrash.softDeleteTicket` with the pre-delete row so the title is
    * preserved even after the ticket disappears from default queries.
    * @param tx Active transaction - must be the same one the soft-delete ran on.
    * @param userID The ID of the user deleting the ticket.
