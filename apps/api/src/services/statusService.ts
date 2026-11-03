@@ -155,6 +155,7 @@ export class StatusService {
       if (affected.length) {
         const rows: ActivityInsert[] = affected.map(({ id }) => ({
           ticketID: id,
+          projectID,
           userID,
           action: "updated",
           fieldName: "statusID",

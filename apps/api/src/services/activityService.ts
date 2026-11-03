@@ -70,6 +70,20 @@ function redactLockedEvent<T extends { action: string; fieldName: string | null;
   };
 }
 
+/**
+ * Reads the project a ticket belongs to, so each activity row is stored with
+ * its own ticket's project. The two sides of a link can be in different projects.
+ * @param tx Active transaction
+ * @param ticketID The ticket the activity is about
+ * @returns The ticket's project ID
+ * @throws Error when the ticket does not exist
+ */
+async function ticketProjectID(tx: Transaction, ticketID: string): Promise<string> {
+  const [ticket] = await tx.select({ projectID: tickets.projectID }).from(tickets).where(eq(tickets.id, ticketID)).limit(1);
+  if (!ticket) throw new Error(`Ticket ${ticketID} does not exist`);
+  return ticket.projectID;
+}
+
 export class ActivityService {
   /**
    * Emits a `created` row for a freshly inserted ticket. Called from inside
@@ -81,6 +95,7 @@ export class ActivityService {
   static async logCreate(tx: Transaction, userID: string, ticket: Pick<TicketSnapshot, "id" | "title">) {
     await tx.insert(ticketActivity).values({
       ticketID: ticket.id,
+      projectID: await ticketProjectID(tx, ticket.id),
       userID,
       action: "created",
       fieldName: null,
@@ -100,6 +115,7 @@ export class ActivityService {
   static async logDelete(tx: Transaction, userID: string, ticket: Pick<TicketSnapshot, "id" | "title">) {
     await tx.insert(ticketActivity).values({
       ticketID: ticket.id,
+      projectID: await ticketProjectID(tx, ticket.id),
       userID,
       action: "deleted",
       fieldName: null,
@@ -117,6 +133,7 @@ export class ActivityService {
   static async logRestore(tx: Transaction, userID: string, ticket: Pick<TicketSnapshot, "id" | "title">) {
     await tx.insert(ticketActivity).values({
       ticketID: ticket.id,
+      projectID: await ticketProjectID(tx, ticket.id),
       userID,
       action: "restored",
       fieldName: null,
@@ -134,7 +151,7 @@ export class ActivityService {
    */
   static async logUpdate(tx: Transaction, userID: string, before: TicketSnapshot, after: TicketSnapshot) {
     const rows: ActivityInsert[] = [];
-    const base = { ticketID: after.id, userID } as const;
+    const base = { ticketID: after.id, projectID: await ticketProjectID(tx, after.id), userID } as const;
 
     for (const field of VALUE_FIELDS) {
       if (before[field] === after[field]) continue;
@@ -202,7 +219,7 @@ export class ActivityService {
     }
   ) {
     const { userID, ticketID, kind, comment, prevBody } = event;
-    const base = { ticketID, userID } as const;
+    const base = { ticketID, projectID: await ticketProjectID(tx, ticketID), userID } as const;
 
     if (kind === "added") {
       await tx.insert(ticketActivity).values({
@@ -265,6 +282,7 @@ export class ActivityService {
     await tx.insert(ticketActivity).values([
       {
         ticketID: source.ticketID,
+        projectID: await ticketProjectID(tx, source.ticketID),
         userID,
         action,
         fieldName: linkType,
@@ -273,6 +291,7 @@ export class ActivityService {
       },
       {
         ticketID: target.ticketID,
+        projectID: await ticketProjectID(tx, target.ticketID),
         userID,
         action,
         fieldName: linkType,
@@ -305,6 +324,7 @@ export class ActivityService {
     const value = { id: attachment.id, filename: attachment.filename };
     await tx.insert(ticketActivity).values({
       ticketID,
+      projectID: await ticketProjectID(tx, ticketID),
       userID,
       action: kind === "added" ? "attachment_added" : "attachment_removed",
       fieldName: null,
@@ -343,11 +363,12 @@ export class ActivityService {
     return db.query.ticketActivity.findMany({
       where: activity =>
         and(
+          eq(activity.projectID, projectID),
           exists(
             db
               .select({ id: tickets.id })
               .from(tickets)
-              .where(and(eq(tickets.id, activity.ticketID), eq(tickets.projectID, projectID), isNull(tickets.deletedAt), memberOrService ? undefined : eq(tickets.visibility, "public")))
+              .where(and(eq(tickets.id, activity.ticketID), isNull(tickets.deletedAt), memberOrService ? undefined : eq(tickets.visibility, "public")))
           ),
           partnerVisibleCondition(activity, role)
         ),
