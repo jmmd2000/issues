@@ -45,6 +45,7 @@ services:
       - "traefik.http.routers.${APP_NAME}-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/uploads`))"
       - "traefik.http.routers.${APP_NAME}-api.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}-api.tls.certresolver=myresolver"
+      - "traefik.http.routers.${APP_NAME}-api.middlewares=${APP_NAME}-security-headers"
 
   web:
     image: ghcr.io/${GITHUB_USER}/issues-web:${IMAGE_TAG}
@@ -70,6 +71,13 @@ services:
       - "traefik.http.routers.${APP_NAME}-web.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.${APP_NAME}-web.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}-web.tls.certresolver=myresolver"
+      - "traefik.http.routers.${APP_NAME}-web.middlewares=${APP_NAME}-security-headers"
+      # The app's static files skip its own code, so the proxy sets the headers every response needs. The apps set the CSP.
+      - "traefik.http.middlewares.${APP_NAME}-security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.${APP_NAME}-security-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.${APP_NAME}-security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.${APP_NAME}-security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.${APP_NAME}-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
 
 networks:
   app_network:

@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { secureHeaders } from "hono/secure-headers";
 import { HTTPException } from "hono/http-exception";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./db";
@@ -82,6 +83,18 @@ if (getEnv().NODE_ENV !== "test") {
 }
 
 app.use("*", cors({ origin: getEnv().WEB_ORIGIN, credentials: true }));
+
+// The API serves JSON and uploads, never pages, so its policy allows nothing. That also stops scripts in an uploaded SVG.
+// The web app loads uploads from another port in dev, which is still the same site.
+app.use(
+  "*",
+  secureHeaders({
+    contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+    crossOriginResourcePolicy: "same-site",
+    referrerPolicy: "strict-origin-when-cross-origin",
+    xFrameOptions: "DENY",
+  })
+);
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
