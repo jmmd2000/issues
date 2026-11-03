@@ -3,7 +3,7 @@ import app from "../index";
 import { db } from "../db";
 import { attachments, labels, projectMembers, statuses, ticketActivity, ticketLabels, ticketLinks, tickets } from "../db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { createAuthenticatedUser, createExtraUser, createProject, resetDatabase, updateProject } from "./helpers";
+import { createAuthenticatedUser, createExtraUser, createProject, createTicketInProject, resetDatabase, updateProject } from "./helpers";
 
 let cookies: string;
 let projectID: string;
@@ -369,6 +369,50 @@ describe("GET /api/projects/:key/tickets/backlog", () => {
     const body = await res.json();
     const titles = body.tickets.map((ticket: { title: string }) => ticket.title);
     expect(titles).toEqual(expect.arrayContaining(["Public ticket", "Private ticket"]));
+  });
+});
+
+describe("ticket list visibility filter", () => {
+  async function titles(path: string): Promise<string[]> {
+    const res = await app.request(path, { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    return body.tickets.map((ticket: { title: string }) => ticket.title);
+  }
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    await createProject(cookies);
+    await createTicketInProject(cookies, "TEST", "Public ticket", "public");
+    await createTicketInProject(cookies, "TEST", "Private ticket", "private");
+  });
+
+  it("filters the list", async () => {
+    expect(await titles("/api/projects/TEST/tickets?visibility=private")).toEqual(["Private ticket"]);
+  });
+
+  it("filters the backlog", async () => {
+    expect(await titles("/api/projects/TEST/tickets/backlog?visibility=public")).toEqual(["Public ticket"]);
+  });
+
+  it("filters the board", async () => {
+    const [active] = await db.select({ id: statuses.id }).from(statuses).where(eq(statuses.category, "active")).limit(1);
+    await db.update(tickets).set({ statusID: active.id });
+
+    expect(await titles("/api/projects/TEST/tickets/board?visibility=private")).toEqual(["Private ticket"]);
+  });
+
+  it("filters the trash", async () => {
+    await app.request("/api/projects/TEST/tickets/1", { method: "DELETE", headers: { Cookie: cookies } });
+    await app.request("/api/projects/TEST/tickets/2", { method: "DELETE", headers: { Cookie: cookies } });
+
+    expect(await titles("/api/projects/TEST/tickets/trash?visibility=public")).toEqual(["Public ticket"]);
+  });
+
+  it("returns 400 for an unknown visibility", async () => {
+    const res = await app.request("/api/projects/TEST/tickets?visibility=secret", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(400);
   });
 });
 

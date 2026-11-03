@@ -61,6 +61,7 @@ function makeState(overrides: Partial<SearchPageState> = {}): SearchPageState {
     priorities: [],
     labelNames: [],
     assigneeIDs: [],
+    visibility: [],
     page: 1,
     perPage: 25,
     sortBy,
@@ -92,7 +93,9 @@ beforeEach(() => {
 
 describe("parseSearchPageState", () => {
   it("parses query text, list filters, and pagination from URL params", () => {
-    const url = makeUrl("/search?q=%20api%20&project=core&status=todo,done&status=review&priority=high&priority=invalid&label=bug,api&assignee=u-1&assignee=u-2&page=2&perPage=50");
+    const url = makeUrl(
+      "/search?q=%20api%20&project=core&status=todo,done&status=review&priority=high&priority=invalid&label=bug,api&assignee=u-1&assignee=u-2&visibility=private,invalid&page=2&perPage=50"
+    );
 
     expect(parseSearchPageState(url)).toEqual({
       searchTerm: "api",
@@ -101,6 +104,7 @@ describe("parseSearchPageState", () => {
       priorities: ["high"],
       labelNames: ["bug", "api"],
       assigneeIDs: ["u-1", "u-2"],
+      visibility: ["private"],
       page: 2,
       perPage: 50,
       sortBy: "relevance",
@@ -128,6 +132,10 @@ describe("parseSearchPageState", () => {
 });
 
 describe("serialiseSearchPageState", () => {
+  it("writes the visibility filter into the URL", () => {
+    expect(serialiseSearchPageState(makeState({ visibility: ["public", "private"] })).get("visibility")).toBe("public,private");
+  });
+
   it("serialises compact list params and omits default pagination", () => {
     const params = serialiseSearchPageState(
       makeState({
@@ -159,6 +167,10 @@ describe("serialiseSearchPageState", () => {
 });
 
 describe("hasSearchCriteria", () => {
+  it("treats a visibility filter as search criteria", () => {
+    expect(hasSearchCriteria(makeState({ visibility: ["private"] }))).toBe(true);
+  });
+
   it("treats a global project filter as criteria", () => {
     expect(hasSearchCriteria(makeState({ projectKey: "CORE" }))).toBe(true);
   });
@@ -188,7 +200,7 @@ describe("loadSearchPageResult", () => {
   });
 
   it("forwards text, filters, pagination, and locked project scope to the search endpoint", async () => {
-    const url = makeUrl("/projects/core/search?q=api&status=todo&priority=high&label=bug&assignee=u-1&page=2&sortBy=updatedAt&sortDirection=asc");
+    const url = makeUrl("/projects/core/search?q=api&status=todo&priority=high&label=bug&assignee=u-1&visibility=public&page=2&sortBy=updatedAt&sortDirection=asc");
     const result = await loadSearchPageResult({ fetch: fetchStub(), url, lockedProjectKey: "core" });
 
     expect(mockClientState.filtersGet).toHaveBeenCalledWith({ query: { project: "CORE" } });
@@ -200,6 +212,7 @@ describe("loadSearchPageResult", () => {
         priority: ["high"],
         label: ["bug"],
         assignee: ["u-1"],
+        visibility: ["public"],
         page: "2",
         perPage: "25",
         sortBy: "updatedAt",
@@ -214,6 +227,7 @@ describe("loadSearchPageResult", () => {
         priorities: ["high"],
         labelNames: ["bug"],
         assigneeIDs: ["u-1"],
+        visibility: ["public"],
         page: 2,
         sortBy: "updatedAt",
         sortDirection: "asc",

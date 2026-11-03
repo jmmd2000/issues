@@ -273,6 +273,42 @@ describe("GET /api/search", () => {
   });
 });
 
+describe("GET /api/search visibility filter", () => {
+  async function searchTitles(query: string): Promise<string[]> {
+    const res = await app.request(`/api/search?${query}`, { headers: { Cookie: cookies } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    return body.tickets.map((ticket: { title: string }) => ticket.title).sort();
+  }
+
+  beforeEach(async () => {
+    await resetDatabase();
+    ({ cookies } = await createAuthenticatedUser());
+    const publicProject = await createProject(cookies, { key: "OPEN", name: "Open project" });
+    const privateProject = await createProject(cookies, { key: "SHUT", name: "Shut project", visibility: "private" });
+    await createTicket("OPEN", { title: "Public one", statusID: await getStatusID(publicProject.id, "backlog"), visibility: "public" });
+    await createTicket("OPEN", { title: "Private one", statusID: await getStatusID(publicProject.id, "backlog"), visibility: "private" });
+    await createTicket("SHUT", { title: "In private project", statusID: await getStatusID(privateProject.id, "backlog") });
+  });
+
+  it("returns only public tickets in public projects for public", async () => {
+    expect(await searchTitles("visibility=public")).toEqual(["Public one"]);
+  });
+
+  it("includes tickets in private projects for private", async () => {
+    expect(await searchTitles("visibility=private")).toEqual(["In private project", "Private one"]);
+  });
+
+  it("returns everything when both are selected", async () => {
+    expect(await searchTitles("visibility=public,private")).toHaveLength(3);
+  });
+
+  it("returns 400 for an unknown visibility", async () => {
+    const res = await app.request("/api/search?visibility=secret", { headers: { Cookie: cookies } });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("GET /api/search/filters", () => {
   beforeEach(async () => {
     await resetDatabase();
