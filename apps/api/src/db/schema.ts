@@ -213,6 +213,9 @@ export const ticketActivity = pgTable(
     ticketID: uuid("ticket_id")
       .notNull()
       .references(() => tickets.id, { onDelete: "cascade" }),
+    projectID: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     userID: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "set null" }),
@@ -222,7 +225,11 @@ export const ticketActivity = pgTable(
     newValue: jsonb("new_value").$type<ActivityValue | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  table => [index("idx_activity_ticket_time").on(table.ticketID, table.createdAt), index("idx_activity_project_time").on(table.createdAt)]
+  table => [
+    index("idx_activity_ticket_time").on(table.ticketID, table.createdAt),
+    index("idx_activity_project_time").on(table.projectID, table.createdAt.desc()),
+    index("idx_activity_time").on(table.createdAt),
+  ]
 );
 
 export const ticketActivityRelations = relations(ticketActivity, ({ one }) => ({

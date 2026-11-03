@@ -219,6 +219,7 @@ export class TicketService {
 
       await tx.insert(ticketActivity).values({
         ticketID: clone.id,
+        projectID,
         userID,
         action: "cloned_from",
         fieldName: null,
