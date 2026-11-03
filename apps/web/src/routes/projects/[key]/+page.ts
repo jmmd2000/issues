@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
 import { z } from "zod";
-import type { Priority, ProjectActivity, ProjectDetail, ProjectStats, Ticket } from "@issues/api";
-import { PRIORITIES } from "@issues/shared";
+import type { Priority, ProjectActivity, ProjectDetail, ProjectStats, Ticket, Visibility } from "@issues/api";
+import { PRIORITIES, VISIBILITIES } from "@issues/shared";
 import { createClient } from "$lib/api/client";
 import { LIST_COLUMN_IDS } from "$lib/components/tickets/TicketList.svelte";
 import type { PageLoad } from "./$types";
@@ -17,6 +17,7 @@ const searchSchema = z.object({
   priority: z.string().nullable().catch(null),
   assignee: z.string().nullable().catch(null),
   label: z.string().nullable().catch(null),
+  visibility: z.string().nullable().catch(null),
   showClosed: z.enum(["true", "false"]).nullable().catch(null),
   includeBacklog: z.enum(["true", "false"]).nullable().catch(null),
 });
@@ -31,6 +32,10 @@ function parseList(value: string | null): string[] {
 
 function parsePriorities(value: string | null): Priority[] {
   return parseList(value).filter((p): p is Priority => (PRIORITIES as readonly string[]).includes(p));
+}
+
+function parseVisibility(value: string | null): Visibility[] {
+  return parseList(value).filter((v): v is Visibility => (VISIBILITIES as readonly string[]).includes(v));
 }
 
 export const load: PageLoad = async ({ fetch, params, parent, url }) => {
@@ -48,6 +53,7 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
     priority: url.searchParams.get("priority"),
     assignee: url.searchParams.get("assignee"),
     label: url.searchParams.get("label"),
+    visibility: url.searchParams.get("visibility"),
     showClosed: url.searchParams.get("showClosed"),
     includeBacklog: url.searchParams.get("includeBacklog"),
   });
@@ -62,6 +68,7 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
     priority: parsePriorities(parsed.priority),
     assigneeID: parseList(parsed.assignee),
     labelID: parseList(parsed.label),
+    visibility: parseVisibility(parsed.visibility),
   };
 
   const sharedQuery: Record<string, string | string[]> = {};
@@ -70,6 +77,7 @@ export const load: PageLoad = async ({ fetch, params, parent, url }) => {
   if (filters.priority.length) sharedQuery.priority = filters.priority;
   if (filters.assigneeID.length) sharedQuery.assigneeID = filters.assigneeID;
   if (filters.labelID.length) sharedQuery.labelID = filters.labelID;
+  if (filters.visibility.length) sharedQuery.visibility = filters.visibility;
 
   const boardRequest =
     view === "kanban"

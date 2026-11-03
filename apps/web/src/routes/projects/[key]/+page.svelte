@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import type { PageProps } from "./$types";
-  import type { Priority, Ticket } from "@issues/api";
+  import type { Priority, Ticket, Visibility } from "@issues/api";
   import { PRIORITIES } from "@issues/shared";
   import ActiveFilterChips, { type ActiveFilter } from "$lib/components/projectDetail/ActiveFilterChips.svelte";
   import FilterPanel from "$lib/components/projectDetail/FilterPanel.svelte";
@@ -32,6 +32,7 @@
   const selectedPriorities = $derived(data.filters.priority);
   const selectedAssigneeIDs = $derived(data.filters.assigneeID);
   const selectedLabelIDs = $derived(data.filters.labelID);
+  const selectedVisibility = $derived(data.filters.visibility);
   const sortBy = $derived(data.sort.by);
   const sortDir = $derived(data.sort.dir);
   const listPage = $derived(data.pagination.page);
@@ -75,11 +76,15 @@
     const next = toggleEntry(selectedLabelIDs, id);
     updateParams({ label: next.length ? next.join(",") : null, page: null });
   }
+  function toggleVisibilityFilter(visibility: Visibility) {
+    const next = toggleEntry(selectedVisibility, visibility);
+    updateParams({ visibility: next.length ? next.join(",") : null, page: null });
+  }
   function clearAllFilters() {
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = null;
     searchInput = "";
-    updateParams({ q: null, status: null, priority: null, assignee: null, label: null, showClosed: null, includeBacklog: null, page: null });
+    updateParams({ q: null, status: null, priority: null, assignee: null, label: null, visibility: null, showClosed: null, includeBacklog: null, page: null });
   }
   function handleSortChange(column: TicketListColumnID | null, direction: TicketListSortDirection | null) {
     updateParams({ sortBy: column, sortDir: direction });
@@ -213,6 +218,10 @@
       if (!selectedLabelIDs.includes(label.id)) continue;
       filters.push({ id: `label:${label.id}`, group: "Label", label: label.name, remove: () => toggleLabelFilter(label.id) });
     }
+    for (const visibility of selectedVisibility) {
+      const label = visibility === "public" ? "Public" : "Private";
+      filters.push({ id: `visibility:${visibility}`, group: "Visibility", label, remove: () => toggleVisibilityFilter(visibility) });
+    }
     if (showClosed) {
       filters.push({ id: "option:closed", group: "Show", label: "Closed", remove: () => setShowClosed(false) });
     }
@@ -258,6 +267,8 @@
           {selectedPriorities}
           {selectedAssigneeIDs}
           {selectedLabelIDs}
+          {selectedVisibility}
+          showVisibility={project.visibility === "public"}
           statuses={project.statuses}
           members={project.members}
           labels={project.labels}
@@ -267,6 +278,7 @@
           onTogglePriority={togglePriorityFilter}
           onToggleAssignee={toggleAssigneeFilter}
           onToggleLabel={toggleLabelFilter}
+          onToggleVisibility={toggleVisibilityFilter}
         />
       {/snippet}
     </WorkHeader>
