@@ -7,7 +7,9 @@ import { HTTPException } from "hono/http-exception";
 import { optionalAuth, requireAuth } from "../middleware/auth";
 import { requireProjectAccess, requireProjectRead } from "../middleware/projectAccess";
 import { canView } from "../lib/access";
-import { TicketService, TICKET_LIST_SORT_COLUMNS } from "../services/ticketService";
+import { TicketService } from "../services/ticketService";
+import { TICKET_LIST_SORT_COLUMNS } from "../services/tickets/filters";
+import { TicketListing } from "../services/tickets/listing";
 import { projectKeyParamSchema } from "./projects";
 
 const ticketParamSchema = projectKeyParamSchema.extend({
@@ -110,7 +112,7 @@ export const tickets = new Hono()
     const project = c.get("project");
     const query = c.req.valid("query");
 
-    const result = await TicketService.listForProject(project.id, query, c.get("role"));
+    const result = await TicketListing.listForProject(project.id, query, c.get("role"));
     return c.json(result);
   })
   .get(
@@ -123,7 +125,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const result = await TicketService.listTrashForProject(project.id, query);
+      const result = await TicketListing.listTrashForProject(project.id, query);
       return c.json(result);
     }
   )
@@ -137,7 +139,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBoardForProject(project.id, query, c.get("role"));
+      const tickets = await TicketListing.listBoardForProject(project.id, query, c.get("role"));
       return c.json({ tickets });
     }
   )
@@ -151,7 +153,7 @@ export const tickets = new Hono()
       const project = c.get("project");
       const query = c.req.valid("query");
 
-      const tickets = await TicketService.listBacklogForProject(project.id, query, c.get("role"));
+      const tickets = await TicketListing.listBacklogForProject(project.id, query, c.get("role"));
       return c.json({ tickets });
     }
   )
