@@ -18,6 +18,7 @@ export type SearchParams = {
   priorities?: Priority[];
   labelNames?: string[];
   assigneeIDs?: string[];
+  parentTicketID?: string;
   page?: number;
   perPage?: number;
   sortBy?: SearchSortColumn;
@@ -219,7 +220,8 @@ export class SearchService {
       statusCondition(params.statusSlugs),
       priorityCondition(params.priorities),
       assigneeCondition(params.assigneeIDs),
-      labelCondition(params.labelNames)
+      labelCondition(params.labelNames),
+      params.parentTicketID ? eq(tickets.parentTicketID, params.parentTicketID) : undefined
     );
 
     const orderBy = buildSearchOrderBy(sortBy, sortDirection, rank, Boolean(query));

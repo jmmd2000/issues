@@ -41,6 +41,8 @@ export type CompactTicketDetail = CompactTicket & {
   assignee: string | null;
   /** Reporter name. */
   reporter: string;
+  /** Ref of the parent ticket, or `null` when the ticket has no parent. */
+  parentTicketRef: string | null;
 };
 
 /** One comment on a ticket, returned by `list_comments`. */

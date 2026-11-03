@@ -19,6 +19,7 @@ const searchSchema = z.object({
   priority: z.array(priorityEnum).optional().describe("Priority levels to filter by."),
   label: z.array(labelName).optional().describe("Label names to filter by."),
   assignee: z.array(assigneeName).optional().describe("Assignee names to filter by."),
+  parent: ticketRefSchema.optional().describe("Ticket ref, e.g. 'DASH-12'. Returns only that ticket's direct children."),
   page: z.number().int().min(1).optional().describe("Page number (1-based). Defaults to 1."),
   perPage: z.number().int().min(1).max(50).optional().describe("Page size. Default 25, max 50. Response includes total + hasNextPage."),
   sortBy: sortColumn.optional().describe("Sort column. Defaults to 'relevance' when q is set, else 'updatedAt'."),
@@ -91,9 +92,12 @@ function renderTicketDetail(detail: CompactTicketDetail): string {
   const headerParts = [`Status: ${detail.status}`, `Priority: ${detail.priority}`, `Created: ${detail.created}`, `Updated: ${detail.updated}`];
   const labels = detail.labels.length ? `Labels: ${detail.labels.join(", ")}` : "Labels: (none)";
   const assignee = detail.assignee ?? "(unassigned)";
+  const parent = detail.parentTicketRef ?? "(none)";
   const bodyLines = detail.description ? [detail.description] : ["(no description)"];
   if (detail.descriptionTruncated) bodyLines.push("", "_Description truncated — call get_ticket with full: true for the full body._");
-  return [`# ${detail.ref}  ${detail.title}`, "", headerParts.join("  |  "), labels, `Reporter: ${detail.reporter}  |  Assignee: ${assignee}`, "", "---", "", ...bodyLines].join("\n");
+  return [`# ${detail.ref}  ${detail.title}`, "", headerParts.join("  |  "), labels, `Reporter: ${detail.reporter}  |  Assignee: ${assignee}`, `Parent: ${parent}`, "", "---", "", ...bodyLines].join(
+    "\n"
+  );
 }
 
 export function handleSearchTickets(client: IssuesClient, args: SearchArgs) {
@@ -138,7 +142,7 @@ export function registerTicketTools(server: McpServer, client: IssuesClient) {
     "search_tickets",
     {
       description:
-        "Search tickets visible to the user. Supports optional full-text query, filters (project, status, priority, label, assignee), and sorting by relevance / updatedAt / createdAt / title. Returns compact summaries (max 50).",
+        "Search tickets visible to the user. Supports optional full-text query, filters (project, status, priority, label, assignee, parent), and sorting by relevance / updatedAt / createdAt / title. Returns compact summaries (max 50).",
       inputSchema: searchSchema.shape,
     },
     args => handleSearchTickets(client, args)
