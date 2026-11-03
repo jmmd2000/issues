@@ -47,6 +47,7 @@ export type McpSearchParams = {
   priorities?: Priority[];
   labelNames?: string[];
   assigneeNames?: string[];
+  parentTicketRef?: string;
   page?: number;
   perPage?: number;
   sortBy?: SearchSortColumn;
@@ -137,13 +138,15 @@ export class McpService {
    * mapped to the compact ticket shape so MCP consumers see human-readable
    * status/label/priority strings instead of UUIDs.
    * @param userID Authenticated user
-   * @param params Query, project key, and filters
+   * @param params Query, project key, and filters. `parentTicketRef` keeps only that ticket's direct children.
+   * @throws HTTPException 404 if the parent ticket is not found
    * @returns Compact ticket list
    */
   static async searchTickets(role: Role, params: McpSearchParams): Promise<CompactSearchPage> {
     const perPage = Math.min(params.perPage ?? SEARCH_PER_PAGE_DEFAULT, SEARCH_PER_PAGE_MAX);
     const page = params.page ?? 1;
     const assigneeIDs = params.assigneeNames?.length ? await McpService.resolveAssigneeNames(params.assigneeNames) : undefined;
+    const parent = params.parentTicketRef ? await McpService.resolveTicketRef(role, params.parentTicketRef) : undefined;
 
     const result = await SearchService.search(
       {
@@ -153,6 +156,7 @@ export class McpService {
         priorities: params.priorities,
         labelNames: params.labelNames,
         assigneeIDs,
+        parentTicketID: parent?.ticketID,
         page,
         perPage,
         sortBy: params.sortBy,
@@ -205,6 +209,7 @@ export class McpService {
         descriptionTruncated: truncated,
         assignee: ticket.assignee?.name ?? null,
         reporter: ticket.reporter.name,
+        parentTicketRef: ticket.parent ? formatTicketRef(project.key, ticket.parent.number) : null,
       },
     };
   }

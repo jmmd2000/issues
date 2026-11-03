@@ -76,6 +76,25 @@ describe("get_ticket handler", () => {
     expect(rendered).toContain("(no description)");
   });
 
+  it("renders the parent ref, or (none) when there is no parent", () => {
+    const detail = {
+      ref: "DASH-2",
+      title: "x",
+      status: "Backlog",
+      priority: "medium" as const,
+      labels: [],
+      created: "2026-05-15",
+      updated: "2026-05-15",
+      description: "",
+      descriptionTruncated: false,
+      assignee: null,
+      reporter: "James",
+    };
+
+    expect(ticketsTesting.renderTicketDetail({ ...detail, parentTicketRef: "DASH-1" })).toContain("Parent: DASH-1");
+    expect(ticketsTesting.renderTicketDetail({ ...detail, parentTicketRef: null })).toContain("Parent: (none)");
+  });
+
   it("surfaces errors as isError content", async () => {
     const getTicket = vi.fn().mockRejectedValue(new IssuesApiError(404, "Ticket DASH-999 not found."));
     const client = makeClient({ getTicket });

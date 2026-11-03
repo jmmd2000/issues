@@ -26,6 +26,7 @@ export type SearchArgs = {
   priority?: Priority[];
   label?: string[];
   assignee?: string[];
+  parent?: string;
   page?: number;
   perPage?: number;
   sortBy?: SortColumn;
@@ -154,6 +155,7 @@ export class IssuesClient {
     for (const priority of args.priority ?? []) params.append("priority", priority);
     for (const name of args.label ?? []) params.append("label", name);
     for (const name of args.assignee ?? []) params.append("assignee", name);
+    if (args.parent) params.set("parent", args.parent);
     if (args.page !== undefined) params.set("page", String(args.page));
     if (args.perPage !== undefined) params.set("perPage", String(args.perPage));
     if (args.sortBy) params.set("sortBy", args.sortBy);
