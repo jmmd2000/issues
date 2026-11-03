@@ -7,6 +7,10 @@ describe("assertTestDatabase", () => {
     expect(() => assertTestDatabase("postgresql://user:pass@127.0.0.1:5436/issues_test", "test")).not.toThrow();
   });
 
+  it("allows a test worker's copy of the test database", () => {
+    expect(() => assertTestDatabase("postgresql://user:pass@localhost:5436/issues_test_w2", "test")).not.toThrow();
+  });
+
   it("refuses the dev database", () => {
     expect(() => assertTestDatabase("postgresql://user:pass@localhost:5436/issues", "test")).toThrow(/must end in _test/);
   });
