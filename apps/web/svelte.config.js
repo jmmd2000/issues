@@ -20,6 +20,23 @@ const config = {
     // If your environment is not supported, or you settled on a specific environment, switch out the adapter.
     // See https://svelte.dev/docs/kit/adapters for more information about adapters.
     adapter: adapter(),
+    // The GlitchTip host is only known when the server starts, so hooks.server.ts adds it to connect-src.
+    // Markdown can show images from any https address, so img-src allows https:.
+    csp: {
+      mode: "auto",
+      directives: {
+        "default-src": ["self"],
+        "script-src": ["self"],
+        "style-src": ["self", "unsafe-inline", "https://fonts.googleapis.com"],
+        "font-src": ["self", "https://fonts.gstatic.com"],
+        "img-src": ["self", "data:", "blob:", "https:"],
+        "connect-src": ["self"],
+        "frame-ancestors": ["none"],
+        "base-uri": ["self"],
+        "form-action": ["self"],
+        "object-src": ["none"],
+      },
+    },
   },
 };
 

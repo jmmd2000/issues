@@ -1,5 +1,6 @@
 import type { ClientInit, HandleClientError } from "@sveltejs/kit";
 import { env } from "$env/dynamic/public";
+import "$lib/zodSettings";
 import { parseErrorReportingConfig } from "$lib/errorReportingConfig";
 import { reportBrowserError, startBrowserErrorReporting } from "$lib/errorReporting";
 
