@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
 import { defineConfig } from "vitest/config";
+import { INTEGRATION_WORKER_COUNT } from "./apps/api/src/__tests__/setup/workers";
 
 const apiRoot = path.resolve(import.meta.dirname, "apps/api");
 const mcpRoot = path.resolve(import.meta.dirname, "apps/mcp");
@@ -51,7 +52,10 @@ export default defineConfig({
           ...apiTest,
           name: "api-integration",
           include: ["src/**/*.integration.test.ts"],
-          fileParallelism: false,
+          // Each worker uses its own copy of the test database, made in globalSetup.
+          // Its own group order keeps its worker numbers within its maxWorkers when every project runs together.
+          maxWorkers: INTEGRATION_WORKER_COUNT,
+          sequence: { groupOrder: 1 },
           globalSetup: ["src/__tests__/setup/globalSetup.ts"],
           setupFiles: ["src/__tests__/setup/useTestDatabase.ts"],
         },
