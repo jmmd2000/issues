@@ -12,10 +12,14 @@ export const init: ServerInit = () => {
 /**
  * Adds the origins only known when the server runs to the page's
  * Content-Security-Policy: the API, which is on another port in dev, and the
- * GlitchTip host the browser sends errors to.
+ * GlitchTip host the browser sends errors to. A fetch during server rendering
+ * also runs this hook when the API shares the app's origin, as in production.
+ * That response is the API's, not a page, so the hook leaves it alone.
  */
 export const handle: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
+  if (event.isSubRequest) return response;
+
   const policy = response.headers.get("content-security-policy");
   if (!policy) return response;
 
