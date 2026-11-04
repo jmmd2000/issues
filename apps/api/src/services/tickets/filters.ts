@@ -2,7 +2,7 @@ import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-o
 import { db } from "../../db";
 import { statuses, ticketLabels, tickets, users } from "../../db/schema";
 import type { Role } from "../../lib/access";
-import type { Priority } from "../../lib/types";
+import type { Priority, Visibility } from "../../lib/types";
 
 export const TICKET_LIST_SORT_COLUMNS = ["key", "title", "status", "priority", "assignee", "updatedAt"] as const;
 export type TicketListSortColumn = (typeof TICKET_LIST_SORT_COLUMNS)[number];
@@ -58,6 +58,11 @@ export function labelCondition(labelID?: string[]): SQL | undefined {
   return inArray(tickets.id, db.select({ id: ticketLabels.ticketID }).from(ticketLabels).where(inArray(ticketLabels.labelID, labelID)));
 }
 
+export function ticketVisibilityCondition(visibility?: Visibility[]): SQL | undefined {
+  if (!visibility?.length) return undefined;
+  return inArray(tickets.visibility, visibility);
+}
+
 export function titleSearchCondition(titleSearch?: string): SQL | undefined {
   if (!titleSearch) return undefined;
   return ilike(tickets.title, `%${titleSearch}%`);
@@ -74,5 +79,6 @@ export type CommonFilters = {
   priority?: Priority[];
   assigneeID?: string[];
   labelID?: string[];
+  visibility?: Visibility[];
   titleSearch?: string;
 };

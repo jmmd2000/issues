@@ -70,6 +70,7 @@ function makeState(overrides: Partial<SearchPageState> = {}): SearchPageState {
     priorities: [],
     labelNames: [],
     assigneeIDs: [],
+    visibility: [],
     page: 1,
     perPage: 25,
     sortBy,

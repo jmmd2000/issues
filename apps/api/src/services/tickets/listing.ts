@@ -10,6 +10,7 @@ import {
   priorityCondition,
   priorityRank,
   statusCondition,
+  ticketVisibilityCondition,
   titleSearchCondition,
   visibilityCondition,
   type CommonFilters,
@@ -50,6 +51,7 @@ export class TicketListing {
       priorityCondition(filters.priority),
       assigneeCondition(filters.assigneeID),
       labelCondition(filters.labelID),
+      ticketVisibilityCondition(filters.visibility),
       archiveCutoffCondition(filters.includeClosed ?? false)
     );
 
@@ -97,6 +99,7 @@ export class TicketListing {
       priorityCondition(filters.priority),
       assigneeCondition(filters.assigneeID),
       labelCondition(filters.labelID),
+      ticketVisibilityCondition(filters.visibility),
       archiveCutoffCondition(filters.includeClosed ?? false)
     );
 
@@ -140,7 +143,8 @@ export class TicketListing {
       titleSearchCondition(filters.titleSearch),
       priorityCondition(filters.priority),
       assigneeCondition(filters.assigneeID),
-      labelCondition(filters.labelID)
+      labelCondition(filters.labelID),
+      ticketVisibilityCondition(filters.visibility)
     );
 
     const [rows, totalRow] = await Promise.all([
@@ -179,7 +183,8 @@ export class TicketListing {
       titleSearchCondition(filters.titleSearch),
       priorityCondition(filters.priority),
       assigneeCondition(filters.assigneeID),
-      labelCondition(filters.labelID)
+      labelCondition(filters.labelID),
+      ticketVisibilityCondition(filters.visibility)
     );
 
     const rows = await db.select({ ticket: tickets }).from(tickets).innerJoin(statuses, eq(tickets.statusID, statuses.id)).where(where).orderBy(desc(priorityRank), desc(tickets.createdAt));

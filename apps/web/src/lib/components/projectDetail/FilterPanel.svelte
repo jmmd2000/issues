@@ -1,12 +1,13 @@
 <script lang="ts">
-  import type { Label, Priority, ProjectMember, Status } from "@issues/api";
-  import { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
+  import type { Label, Priority, ProjectMember, Status, Visibility } from "@issues/api";
+  import { PRIORITIES, STATUS_CATEGORIES, VISIBILITIES } from "@issues/shared";
   import Checkbox from "$lib/components/ui/Checkbox.svelte";
   import Toggle from "$lib/components/ui/Toggle.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import LabelChip from "$lib/components/tickets/LabelChip.svelte";
   import PriorityChip from "$lib/components/tickets/PriorityChip.svelte";
   import StatusChip from "$lib/components/tickets/StatusChip.svelte";
+  import VisibilityLabel from "$lib/components/tickets/VisibilityLabel.svelte";
 
   interface FilterPanelProps {
     showClosed: boolean;
@@ -15,6 +16,8 @@
     selectedPriorities: readonly Priority[];
     selectedAssigneeIDs: readonly string[];
     selectedLabelIDs: readonly string[];
+    selectedVisibility: readonly Visibility[];
+    showVisibility: boolean;
     statuses: Status[];
     members: ProjectMember[];
     labels: Label[];
@@ -24,6 +27,7 @@
     onTogglePriority: (priority: Priority) => void;
     onToggleAssignee: (id: string) => void;
     onToggleLabel: (id: string) => void;
+    onToggleVisibility: (visibility: Visibility) => void;
   }
 
   let {
@@ -33,6 +37,8 @@
     selectedPriorities,
     selectedAssigneeIDs,
     selectedLabelIDs,
+    selectedVisibility,
+    showVisibility,
     statuses,
     members,
     labels,
@@ -42,6 +48,7 @@
     onTogglePriority,
     onToggleAssignee,
     onToggleLabel,
+    onToggleVisibility,
   }: FilterPanelProps = $props();
 
   const orderedStatuses = $derived([...statuses].sort((a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.position - b.position));
@@ -104,6 +111,21 @@
             <li>
               <Checkbox checked={selectedLabelIDs.includes(label.id)} onchange={() => onToggleLabel(label.id)}>
                 <LabelChip name={label.name} colour={label.colour} />
+              </Checkbox>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if showVisibility}
+      <section>
+        <h3>Visibility</h3>
+        <ul>
+          {#each VISIBILITIES as visibility (visibility)}
+            <li>
+              <Checkbox checked={selectedVisibility.includes(visibility)} onchange={() => onToggleVisibility(visibility)}>
+                <VisibilityLabel {visibility} />
               </Checkbox>
             </li>
           {/each}

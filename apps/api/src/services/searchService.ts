@@ -4,7 +4,7 @@ import { labels as labelsTable, projectMembers, projects, statuses, ticketLabels
 import { visibilityWhere, type Role } from "../lib/access";
 import { STATUS_CATEGORIES } from "../lib/constants";
 import { requireCondition } from "../lib/sql";
-import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult, SearchSortColumn, SearchSortDirection } from "../lib/types";
+import type { Priority, SearchFilterOptions, SearchHighlightPart, SearchResult, SearchSortColumn, SearchSortDirection, Visibility } from "../lib/types";
 
 const HIGHLIGHT_START = "[[issues-highlight-start]]";
 const HIGHLIGHT_END = "[[issues-highlight-end]]";
@@ -18,6 +18,7 @@ export type SearchParams = {
   priorities?: Priority[];
   labelNames?: string[];
   assigneeIDs?: string[];
+  visibility?: Visibility[];
   parentTicketID?: string;
   page?: number;
   perPage?: number;
@@ -82,6 +83,16 @@ function labelCondition(labelNames?: string[]): SQL | undefined {
   if (!labelNames?.length) return undefined;
   const matchingTickets = db.select({ id: ticketLabels.ticketID }).from(ticketLabels).innerJoin(labelsTable, eq(ticketLabels.labelID, labelsTable.id)).where(inArray(labelsTable.name, labelNames));
   return inArray(tickets.id, matchingTickets);
+}
+
+/**
+ * Matches how a ticket appears to a viewer: a ticket in a private project is
+ * private, whatever its own visibility says.
+ */
+function visibilityCondition(visibility?: Visibility[]): SQL | undefined {
+  if (visibility?.length !== 1) return undefined;
+  if (visibility[0] === "public") return and(eq(tickets.visibility, "public"), eq(projects.visibility, "public"));
+  return or(eq(tickets.visibility, "private"), eq(projects.visibility, "private"));
 }
 
 function excerptDescription(description: string): string {
@@ -221,6 +232,7 @@ export class SearchService {
       priorityCondition(params.priorities),
       assigneeCondition(params.assigneeIDs),
       labelCondition(params.labelNames),
+      visibilityCondition(params.visibility),
       params.parentTicketID ? eq(tickets.parentTicketID, params.parentTicketID) : undefined
     );
 

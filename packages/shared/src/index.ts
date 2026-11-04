@@ -1,5 +1,7 @@
 export const PRIORITIES = ["critical", "high", "medium", "low", "none"] as const;
 
+export const VISIBILITIES = ["public", "private"] as const;
+
 export const STATUS_CATEGORIES = ["backlog", "active", "done", "cancelled"] as const;
 
 export const LINK_TYPES = ["blocks", "depends_on", "duplicates", "relates_to", "clones"] as const;

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { Priority, SearchFilterOptions, SearchResult, SearchSortColumn, SearchSortDirection } from "@issues/api";
-import { PRIORITIES } from "@issues/shared";
+import type { Priority, SearchFilterOptions, SearchResult, SearchSortColumn, SearchSortDirection, Visibility } from "@issues/api";
+import { PRIORITIES, VISIBILITIES } from "@issues/shared";
 import { createClient } from "./client";
 
 const DEFAULT_PAGE = 1;
@@ -32,6 +32,7 @@ export type SearchPageState = {
   priorities: Priority[];
   labelNames: string[];
   assigneeIDs: string[];
+  visibility: Visibility[];
   page: number;
   perPage: number;
   sortBy: SearchSortColumn;
@@ -56,6 +57,10 @@ function parseList(params: URLSearchParams, key: string): string[] {
 
 function parsePriorities(params: URLSearchParams): Priority[] {
   return parseList(params, "priority").filter((value): value is Priority => (PRIORITIES as readonly string[]).includes(value));
+}
+
+function parseVisibility(params: URLSearchParams): Visibility[] {
+  return parseList(params, "visibility").filter((value): value is Visibility => (VISIBILITIES as readonly string[]).includes(value));
 }
 
 export function defaultSearchSortColumn(searchTerm: string, sortBy?: SearchSortColumn | null): SearchSortColumn {
@@ -86,6 +91,7 @@ export function parseSearchPageState(url: URL, lockedProjectKey: string | null =
     priorities: parsePriorities(url.searchParams),
     labelNames: parseList(url.searchParams, "label"),
     assigneeIDs: parseList(url.searchParams, "assignee"),
+    visibility: parseVisibility(url.searchParams),
     page: parsed.page,
     perPage: parsed.perPage,
     sortBy,
@@ -102,6 +108,7 @@ export function serialiseSearchPageState(state: SearchPageState, lockedProjectKe
   if (state.priorities.length) params.set("priority", state.priorities.join(","));
   if (state.labelNames.length) params.set("label", state.labelNames.join(","));
   if (state.assigneeIDs.length) params.set("assignee", state.assigneeIDs.join(","));
+  if (state.visibility.length) params.set("visibility", state.visibility.join(","));
   if (state.sortBy !== defaultSearchSortColumn(state.searchTerm)) params.set("sortBy", state.sortBy);
   if (state.sortDirection !== defaultSearchSortDirection(state.sortBy)) params.set("sortDirection", state.sortDirection);
   if (state.page !== DEFAULT_PAGE) params.set("page", String(state.page));
@@ -111,7 +118,15 @@ export function serialiseSearchPageState(state: SearchPageState, lockedProjectKe
 }
 
 export function hasSearchCriteria(state: SearchPageState, lockedProjectKey: string | null = null): boolean {
-  return Boolean(state.searchTerm.trim() || (!lockedProjectKey && state.projectKey) || state.statusSlugs.length || state.priorities.length || state.labelNames.length || state.assigneeIDs.length);
+  return Boolean(
+    state.searchTerm.trim() ||
+    (!lockedProjectKey && state.projectKey) ||
+    state.statusSlugs.length ||
+    state.priorities.length ||
+    state.labelNames.length ||
+    state.assigneeIDs.length ||
+    state.visibility.length
+  );
 }
 
 type SearchRouteQuery = {
@@ -119,6 +134,7 @@ type SearchRouteQuery = {
   priority: string[];
   label: string[];
   assignee: string[];
+  visibility: string[];
   q?: string;
   project?: string;
   sortBy?: SearchSortColumn;
@@ -133,6 +149,7 @@ function searchQuery(state: SearchPageState): SearchRouteQuery {
     priority: state.priorities,
     label: state.labelNames,
     assignee: state.assigneeIDs,
+    visibility: state.visibility,
     page: String(state.page),
     perPage: String(state.perPage),
   };

@@ -2,14 +2,15 @@
   import { fade } from "svelte/transition";
   import { quartOut } from "svelte/easing";
   import { PanelLeftClose, PanelLeftOpen, X } from "@lucide/svelte";
-  import type { Priority, SearchFilterOptions } from "@issues/api";
-  import { PRIORITIES, STATUS_CATEGORIES } from "@issues/shared";
+  import type { Priority, SearchFilterOptions, Visibility } from "@issues/api";
+  import { PRIORITIES, STATUS_CATEGORIES, VISIBILITIES } from "@issues/shared";
   import type { SearchPageState } from "$lib/api/search";
   import FilterSection from "$lib/components/projectDetail/FilterSection.svelte";
   import UserAvatar from "$lib/components/UserAvatar.svelte";
   import LabelChip from "$lib/components/tickets/LabelChip.svelte";
   import PriorityChip from "$lib/components/tickets/PriorityChip.svelte";
   import StatusChip from "$lib/components/tickets/StatusChip.svelte";
+  import VisibilityLabel from "$lib/components/tickets/VisibilityLabel.svelte";
   import Checkbox from "$lib/components/ui/Checkbox.svelte";
 
   interface SearchFiltersPaneProps {
@@ -23,6 +24,7 @@
     onTogglePriority: (priority: Priority) => void;
     onToggleAssignee: (userID: string) => void;
     onToggleLabel: (name: string) => void;
+    onToggleVisibility: (visibility: Visibility) => void;
     onResetFilters: () => void;
     onToggleCollapsed: () => void;
   }
@@ -38,11 +40,12 @@
     onTogglePriority,
     onToggleAssignee,
     onToggleLabel,
+    onToggleVisibility,
     onResetFilters,
     onToggleCollapsed,
   }: SearchFiltersPaneProps = $props();
 
-  const open = $state({ project: true, status: true, priority: true, assignee: true, label: true });
+  const open = $state({ project: true, status: true, priority: true, assignee: true, label: true, visibility: true });
 
   const orderedProjects = $derived([...filters.projects].sort((a, b) => a.key.localeCompare(b.key)));
   const orderedStatuses = $derived([...filters.statuses].sort((a, b) => STATUS_CATEGORIES.indexOf(a.category) - STATUS_CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name)));
@@ -118,6 +121,16 @@
               <span class="row">
                 <PriorityChip {priority} variant="chip" />
               </span>
+            </Checkbox>
+          </li>
+        {/each}
+      </FilterSection>
+
+      <FilterSection title="Visibility" open={open.visibility} count={searchState.visibility.length} onToggle={() => toggleOpen("visibility")}>
+        {#each VISIBILITIES as visibility (visibility)}
+          <li>
+            <Checkbox checked={searchState.visibility.includes(visibility)} onchange={() => onToggleVisibility(visibility)}>
+              <VisibilityLabel {visibility} />
             </Checkbox>
           </li>
         {/each}

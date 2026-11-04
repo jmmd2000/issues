@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { navigating, page } from "$app/state";
   import { Search, X } from "@lucide/svelte";
-  import type { Priority, SearchSortColumn, SearchSortDirection } from "@issues/api";
+  import type { Priority, SearchSortColumn, SearchSortDirection, Visibility } from "@issues/api";
   import type { SearchPageResult, SearchPageState } from "$lib/api/search";
   import { defaultSearchSortColumn, defaultSearchSortDirection, serialiseSearchPageState } from "$lib/api/search";
   import Button from "$lib/components/ui/Button.svelte";
@@ -25,7 +25,12 @@
   const title = $derived(normalisedLockedProjectKey ? `${selectedProject?.name ?? normalisedLockedProjectKey} search` : "Search");
   const subtitle = $derived(normalisedLockedProjectKey ? normalisedLockedProjectKey : "All visible projects");
   const activeFilterCount = $derived(
-    (normalisedLockedProjectKey || !searchState.projectKey ? 0 : 1) + searchState.statusSlugs.length + searchState.priorities.length + searchState.labelNames.length + searchState.assigneeIDs.length
+    (normalisedLockedProjectKey || !searchState.projectKey ? 0 : 1) +
+      searchState.statusSlugs.length +
+      searchState.priorities.length +
+      searchState.labelNames.length +
+      searchState.assigneeIDs.length +
+      searchState.visibility.length
   );
   const hasTypedQuery = $derived(searchState.searchTerm.trim().length > 0);
   const sortColumns = $derived([
@@ -130,6 +135,10 @@
     updateState({ labelNames: toggleEntry(searchState.labelNames, name) });
   }
 
+  function toggleVisibilityFilter(visibility: Visibility) {
+    updateState({ visibility: toggleEntry(searchState.visibility, visibility) });
+  }
+
   function resetFilters() {
     updateState({
       projectKey: normalisedLockedProjectKey,
@@ -137,6 +146,7 @@
       priorities: [],
       labelNames: [],
       assigneeIDs: [],
+      visibility: [],
       sortBy: "updatedAt",
       sortDirection: "desc",
     });
@@ -155,6 +165,7 @@
       priorities: [],
       labelNames: [],
       assigneeIDs: [],
+      visibility: [],
       sortBy: "updatedAt",
       sortDirection: "desc",
     });
@@ -177,6 +188,7 @@
     onTogglePriority={togglePriorityFilter}
     onToggleAssignee={toggleAssigneeFilter}
     onToggleLabel={toggleLabelFilter}
+    onToggleVisibility={toggleVisibilityFilter}
     onResetFilters={resetFilters}
     onToggleCollapsed={() => (filtersCollapsed = !filtersCollapsed)}
   />
