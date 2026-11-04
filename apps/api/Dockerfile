@@ -11,7 +11,7 @@ RUN npm install -g corepack@0.36.0 \
 
 WORKDIR /repo
 
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
@@ -21,6 +21,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 COPY apps/api apps/api
 COPY packages/shared packages/shared
 
+RUN pnpm --filter @issues/api build
 RUN pnpm --filter @issues/api deploy --prod --legacy /deploy
 
 FROM node:26-slim AS production
@@ -40,13 +41,12 @@ ENV BUILT_AT=${BUILT_AT}
 WORKDIR /app
 
 COPY --from=build /deploy/node_modules ./node_modules
-COPY --from=build /repo/apps/api/src ./src
+COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/drizzle ./drizzle
-COPY --from=build /repo/apps/api/drizzle.config.ts ./drizzle.config.ts
 
 RUN mkdir -p /app/data/uploads
 
 EXPOSE 4000
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node_modules/.bin/tsx", "src/index.ts"]
+CMD ["node", "--enable-source-maps", "dist/index.js"]

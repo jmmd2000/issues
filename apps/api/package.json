@@ -10,7 +10,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "esbuild src/index.ts src/scripts/sweep-uploads.ts --bundle --platform=node --format=esm --target=node26 --packages=external --alias:@issues/shared=../../packages/shared/src/index.ts --outdir=dist --sourcemap",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -32,14 +32,15 @@
     "hono": "4.13.12",
     "pg": "8.23.1",
     "sharp": "0.35.5",
-    "tsx": "4.23.15",
-    "vitest": "5.0.3",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "26.6.4",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.11",
-    "typescript": "6.0.3"
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
   }
 }
