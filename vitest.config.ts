@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
 import { defineConfig } from "vitest/config";
-import { INTEGRATION_WORKER_COUNT } from "./apps/api/src/__tests__/setup/workers";
+import { INTEGRATION_WORKER_COUNT } from "./apps/api/src/__tests__/setup/workers.ts";
 
 const apiRoot = path.resolve(import.meta.dirname, "apps/api");
 const mcpRoot = path.resolve(import.meta.dirname, "apps/mcp");
