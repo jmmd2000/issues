@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Sentry from "@sentry/node";
-import type { HandleServerError } from "@sveltejs/kit";
+import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { buildServerErrorReportingOptions } from "$lib/server/errorReporting";
-import { handleError } from "./hooks.server";
+import { handle, handleError } from "./hooks.server";
 
 interface SentEvent {
   environment?: string;
@@ -72,5 +72,29 @@ describe("handleError", () => {
     await handleError(buildErrorInput(404));
 
     expect(console.error).toHaveBeenCalledWith("Unhandled error:", expect.any(Error), { path: "/projects/ISSUE", method: "GET" });
+  });
+});
+
+describe("handle", () => {
+  function runHandle(response: Response, isSubRequest: boolean) {
+    const input = { event: { isSubRequest }, resolve: async () => response } as unknown as Parameters<Handle>[0];
+    return handle(input);
+  }
+
+  it("adds the API origin to a page's policy", async () => {
+    const page = new Response("<html></html>", { headers: { "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'" } });
+
+    const result = await runHandle(page, false);
+
+    expect(result.headers.get("content-security-policy")).toMatch(/connect-src 'self' https?:\/\//);
+  });
+
+  it("leaves an API response alone during server rendering", async () => {
+    const apiPolicy = "default-src 'none'; frame-ancestors 'none'";
+    const apiResponse = Response.json({ ok: true }, { headers: { "content-security-policy": apiPolicy } });
+
+    const result = await runHandle(apiResponse, true);
+
+    expect(result.headers.get("content-security-policy")).toBe(apiPolicy);
   });
 });
