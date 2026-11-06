@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Sentry from "@sentry/node";
-import type { Handle, HandleServerError } from "@sveltejs/kit";
+import type { Handle, HandleFetch, HandleServerError } from "@sveltejs/kit";
 import { buildServerErrorReportingOptions } from "$lib/server/errorReporting";
-import { handle, handleError } from "./hooks.server";
+import { handle, handleError, handleFetch } from "./hooks.server";
 
 interface SentEvent {
   environment?: string;
@@ -96,5 +96,31 @@ describe("handle", () => {
     const result = await runHandle(apiResponse, true);
 
     expect(result.headers.get("content-security-policy")).toBe(apiPolicy);
+  });
+});
+
+describe("handleFetch", () => {
+  function runHandleFetch(response: Response) {
+    const input = { request: new Request("https://issues.example.com/api/projects"), fetch: async () => response } as unknown as Parameters<HandleFetch>[0];
+    return handleFetch(input);
+  }
+
+  it("reads the body at once and keeps the status, headers and content", async () => {
+    const original = new Response('{"ok":true}', { status: 201, headers: { "content-type": "application/json" } });
+
+    const result = await runHandleFetch(original);
+
+    expect(original.bodyUsed).toBe(true);
+    expect(result.status).toBe(201);
+    expect(result.headers.get("content-type")).toBe("application/json");
+    expect(await result.json()).toEqual({ ok: true });
+  });
+
+  it("returns a response with no body, which a new Response would refuse", async () => {
+    const original = new Response(null, { status: 204 });
+
+    const result = await runHandleFetch(original);
+
+    expect(result.status).toBe(204);
   });
 });

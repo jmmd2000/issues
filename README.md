@@ -12,9 +12,8 @@ I built it to learn, and to own my data, my schema and the design. It is not try
 - **Tickets:** markdown descriptions and comments, labels, priorities, assignees, subtickets, links between tickets, attachments and cloning.
 - **Search:** full-text search across every project you can see, with filters for status, priority, label, assignee and visibility.
 - **Activity:** every change to a ticket is logged, field by field, and shows up in feeds for the ticket, the project and the home page.
-- **Visibility:** projects and tickets are public or private. Anyone can read public work without an account.
+- **Visibility:** projects and tickets can be public or private.
 - **Trash:** deleted tickets can be restored, or deleted for good.
-- **API tokens and service users:** give a bot its own identity, with a token you can revoke.
 - **MCP server:** 23 tools that let an agent search, create and update tickets.
 
 ## Stack
@@ -23,7 +22,7 @@ I built it to learn, and to own my data, my schema and the design. It is not try
 - Hono, Zod and TypeScript for the API, with Hono RPC for typed calls from the web app
 - SvelteKit (Svelte 5) with plain scoped CSS
 - PostgreSQL 16 with Drizzle ORM
-- Hand-rolled auth: argon2, a sessions table and HTTP-only cookies
+- Auth with argon2, a sessions table and HTTP-only cookies
 - Vitest for tests, in Node and in a real browser
 - Husky and lint-staged for the pre-commit hook
 

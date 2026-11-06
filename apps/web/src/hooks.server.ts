@@ -1,4 +1,4 @@
-import type { Handle, HandleServerError, ServerInit } from "@sveltejs/kit";
+import type { Handle, HandleFetch, HandleServerError, ServerInit } from "@sveltejs/kit";
 import { env } from "$env/dynamic/public";
 import { PUBLIC_API_URL } from "$env/static/public";
 import { parseErrorReportingConfig } from "$lib/errorReportingConfig";
@@ -30,6 +30,20 @@ export const handle: Handle = async ({ event, resolve }) => {
   const withConnectSources = addSources(policy, "connect-src", connectSources);
   response.headers.set("content-security-policy", addSources(withConnectSources, "img-src", [apiOrigin]));
   return response;
+};
+
+/**
+ * Reads each response body as soon as it arrives during server rendering. SvelteKit sends a
+ * fetch with no matching route to the network, wraps the body in a new Response and drops the
+ * original. Node cancels a fetch body when its Response is garbage collected, so a body that
+ * waits for other parallel fetches can fail with "Body is unusable".
+ */
+export const handleFetch: HandleFetch = async ({ request, fetch }) => {
+  const response = await fetch(request);
+  if (!response.body) return response;
+
+  const body = await response.arrayBuffer();
+  return new Response(body, response);
 };
 
 /**
